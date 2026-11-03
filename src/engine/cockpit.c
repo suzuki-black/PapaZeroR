@@ -162,9 +162,14 @@ void hud_step(void)
 {
     u8 i;
     if (bot_hi != 2) return;
-    for (i = 0; i < 7; i++) {
-        hud_rr = (u8)(hud_rr + 1) & 7;
-        if (hud_rr == 4 && g_scene == 1 && (g_frames & 1)) { radar_step(); return; }
+    for (i = 0; i < 9; i++) {
+        /* 0〜7 = 計器、8 = レーダー(奇数フレーム)。レーダーが計器の番を横取りすると、撃ち続けて過熱のバーが
+         * 毎フレーム変わるときに高度の番がいつも奇数フレームに当たり、高度が一度も書かれなかった */
+        hud_rr = hud_rr >= 8 ? 0 : (u8)(hud_rr + 1);
+        if (hud_rr == 8) {
+            if (g_scene == 1 && (g_frames & 1)) { radar_step(); return; }
+            continue;
+        }
         switch (hud_rr) {
         case 0:
             if (sh_life != life) {

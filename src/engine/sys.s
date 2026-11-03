@@ -81,6 +81,8 @@ SPR_BYTES = 17			; スプライト 4 枚分 + 終端(Y=208)
 _g_tick::	.ds	2	; 60Hz ごとに +1
 _g_flip_req::	.ds	1	; 1 = 次の垂直帰線で g_flip_page を表示する
 _g_flip_page::	.ds	1	; R#4 に書く値(0 または 1)
+_g_spr_live::	.ds	1	; 1 = 本体が VDP に触らない間(描画中と表示待ち)。このときだけ割り込みが照準を書く
+_g_spr0_req::	.ds	1	; 1 = g_spr_attr の照準(スプライト 0 の Y, X)を次の割り込みで VRAM へ
 flip_tick:	.ds	1	; 最後に切り替えたときの g_tick(下位)
 
 	.area	_CODE
@@ -132,6 +134,27 @@ htimi::
 	xor	a, a
 	ld	(_g_flip_req), a
 1$:
+	; 照準だけ毎ティック動かす(描画の 20fps を待たない)。Y と X の 2 バイトだけ書く
+	ld	a, (_g_spr_live)
+	or	a, a
+	jr	z, 2$
+	ld	a, (_g_spr0_req)
+	or	a, a
+	jr	z, 2$
+	xor	a, a
+	ld	(_g_spr0_req), a
+	out	(0x99), a
+	ld	a, #0x8E		; R#14 = 0
+	out	(0x99), a
+	xor	a, a
+	out	(0x99), a		; VRAM 0x1400(スプライト 0)
+	ld	a, #0x54
+	out	(0x99), a
+	ld	a, (_g_spr_attr)
+	out	(0x98), a
+	ld	a, (_g_spr_attr + 1)
+	out	(0x98), a
+2$:
 	; サウンドは音のモジュール(セグメント SEG_SND の 0x8000 = sndtick.c の sndm_tick)にある。ページ2を音のセグメントにしてから
 	; 呼び、元に戻す。音のモジュールを読み込む前(起動の途中)は呼ばない
 	ld	a, (_g_snd_ok)

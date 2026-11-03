@@ -33,11 +33,15 @@ void set_stage_palette(const u8 *pal)
 
 void flash_palette(void) { pal_state = 1; }
 
+void (*g_poll)(void);       /* 表示を待つ間に毎ティック呼ぶ(game.c の照準)。0 = 呼ばない */
+
 void present(void)
 {
     u16 now;
-    while (g_flip_req) wait_tick();
-    while ((u16)(g_tick - last_flip) < 3) wait_tick();   /* 20fps */
+    g_spr_live = 1;            /* 待つ間は VDP に触らない(照準は割り込みが書く) */
+    while (g_flip_req) { wait_tick(); if (g_poll) g_poll(); }
+    while ((u16)(g_tick - last_flip) < 3) { wait_tick(); if (g_poll) g_poll(); }   /* 20fps */
+    g_spr_live = 0;            /* ここから VDP に触る(割り込みに照準を書かせない) */
     now = g_tick;
     g_perf_ticks = (u8)(now - last_flip);
     last_flip = now;

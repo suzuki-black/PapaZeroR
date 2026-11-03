@@ -49,6 +49,7 @@ extern u8 g_buf_hi;                 /* 描画バッファの上位バイト(gfx.
 /* ---- sys.s ---- */
 extern volatile u16 g_tick;
 extern volatile u8  g_flip_req;
+extern volatile u8  g_spr_live, g_spr0_req;   /* 照準を毎ティック動かす(sys.s の割り込み) */
 extern volatile u8  g_flip_page;
 void sys_install_isr(void);
 void wait_tick(void);

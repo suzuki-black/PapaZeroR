@@ -68,6 +68,8 @@ void boss_step(u8 dt)
     if (boss_mov == 0) {
         i16 d = (i16)boss_dist << 8;
         i16 tx = cam_x + fmul(g_fx, d), tz = cam_z + fmul(g_fz, d);
+        /* カメラの動きを先に足してから寄せる(寄せるだけだと速いほど遅れて近づき、大きく描かれて重くなる) */
+        boss_x += cam_vx * dt; boss_z += cam_vz * dt;
         boss_x += (tx - boss_x) >> 3;
         boss_y = boss_y0 + (SIN((u8)(g_frames << 2)) >> 1);
         boss_z += (tz - boss_z) >> 3;
@@ -178,6 +180,7 @@ void obj_step(u8 dt)
             i16 fwd = fmul(g_fx, -dx) + fmul(g_fz, -dz);   /* 視線ではなく進む向きで測る(宙返りの間も変わらない) */
             if (o->ptn != P_TAIL && fwd < -0x0A00) { o->t = T_NONE; continue; }
             o->st += dt;
+            /* 撃つ間隔(ティック)は、速さを 2 倍にしたときに約 1.5 倍へ延ばした。st は u8 で dt <= 8 なので 240 までにする */
             switch (o->ptn) {
             case P_PARALLEL:
                 /* 自機と同じ速さで並走し、左右に振れる */
@@ -185,7 +188,7 @@ void obj_step(u8 dt)
                 o->z += cam_vz * dt - (g_fx >> 6) * (SIN(o->tm) >> 6) * dt;
                 o->yaw = cam_yaw_path;
                 o->tm += 2 * dt;
-                if (o->st >= 150) {
+                if (o->st >= 225) {
                     o->st = 0;
                     if (fwd > 0x0400) shot(T_FLAK, o->x, o->y, o->z, 80);
                     if (++o->roll >= 3) { o->t = T_NONE; break; }    /* 3 回撃ったら道をそれて消える */
@@ -193,16 +196,16 @@ void obj_step(u8 dt)
                 break;
             case P_HOLD:
                 o->yaw = cam_yaw_path;              /* モデルの正面は -z。進む向きと同じヨーでカメラのほうを向く */
-                if (t == T_E03 && o->st >= 200 && fwd > 0x1000 && fwd < 0x4000) { o->st = 0; laser_start(i, 0); }
+                if (t == T_E03 && o->st >= 240 && fwd > 0x1000 && fwd < 0x4000) { o->st = 0; laser_start(i, 0); }
                 else if (t == T_E08 && o->st >= 240 && fwd > 0x1000 && fwd < 0x5000) { o->st = 0; laser_start(i, 3); }
-                else if ((t == T_E02) && o->st >= 120 && fwd > 0x0C00 && fwd < 0x5000) { o->st = 0; shot(T_FLAK, o->x, o->y, o->z, 70); }
+                else if ((t == T_E02) && o->st >= 180 && fwd > 0x0C00 && fwd < 0x5000) { o->st = 0; shot(T_FLAK, o->x, o->y, o->z, 70); }
                 break;
             case P_PASS:
                 /* 正面からまっすぐ来る */
                 o->x -= (g_fx >> 2) * dt >> 1;
                 o->z -= (g_fz >> 2) * dt >> 1;
                 o->yaw = cam_yaw_path;
-                if (o->st >= 100 && fwd < 0x5000 && fwd > 0x1000) {
+                if (o->st >= 150 && fwd < 0x5000 && fwd > 0x1000) {
                     o->st = 0;
                     if (t == T_E06) shot(T_MISSILE, o->x, o->y, o->z, 90);
                     else if (rnd() & 1) laser_start(i, 1);
@@ -233,7 +236,7 @@ void obj_step(u8 dt)
                 o->x += (g_fz >> 4) * dt >> 2;                 /* 右へ = (fz, -fx) */
                 o->z -= (g_fx >> 4) * dt >> 2;
                 o->yaw = (u8)(cam_yaw_path - 64);              /* 機首(-z)を右へ */
-                if (o->st >= 200 && fwd < 0x6000) { o->st = 0; laser_start(i, 2); }
+                if (o->st >= 240 && fwd < 0x6000) { o->st = 0; laser_start(i, 2); }
                 break;
             case P_DRIFT:
                 o->x += SIN(o->tm) >> 5;

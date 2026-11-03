@@ -149,7 +149,7 @@ static void path_step(u8 dt)
     u16 s, idx;
     i16 f;
     i16 x0, y0, z0;
-    s = path_s + (u16)(((u32)spd_cur * dt * 273u) >> 10);
+    s = path_s + (u16)(((u32)spd_cur * dt * 546u) >> 10);    /* 速度 20 で 1 秒に 10 単位(前は 5。揚力で飛ぶにしては遅すぎた) */
     if (loop_b && (s >> 6) >= loop_b) s -= loop_len << 6;
     if (s >= path_max) { s = path_max - 1; scr_end |= 2; }
     path_s = s;
@@ -245,16 +245,31 @@ static void script_step(void)
 }
 
 /* ---- 入力 ---- */
-static void aim_step(u8 dt)
+static void aim_step(u8 in, u8 dt)
 {
-    u8 in = in_cur;
     u8 step;
     if (in & (IN_UP | IN_DOWN | IN_LEFT | IN_RIGHT)) { if (aim_hold < 200) aim_hold += dt; } else aim_hold = 0;
-    step = (u8)((aim_hold >= 8 ? 4 : 2) * dt / 2);
-    if ((in & IN_LEFT) && aim_x > 8 + step) aim_x -= step;
-    if ((in & IN_RIGHT) && aim_x < 247 - step) aim_x += step;
-    if ((in & IN_UP) && aim_y > 8 + step) aim_y -= step;
-    if ((in & IN_DOWN) && aim_y < 151 - step) aim_y += step;
+    /* 1 ティックに 2 ドット、押し続けて 0.1 秒で 4、0.3 秒で 6(画面の端から端まで約 0.7 秒) */
+    step = (u8)((aim_hold >= 18 ? 6 : aim_hold >= 6 ? 4 : 2) * dt);
+    if (in & IN_LEFT) aim_x = aim_x > 8 + step ? aim_x - step : 8;
+    if (in & IN_RIGHT) aim_x = aim_x + step < 247 ? aim_x + step : 247;
+    if (in & IN_UP) aim_y = aim_y > 8 + step ? aim_y - step : 8;
+    if (in & IN_DOWN) aim_y = aim_y + step < 151 ? aim_y + step : 151;
+}
+
+/* 照準を毎ティック動かす。描画(20fps)を待たずに、描画の合間と表示待ちの間に呼ぶ。
+ * スプライト 0 の位置だけ書き換え、割り込み(sys.s)が VRAM へ送る */
+static u16 ap_tick;
+static void aim_poll(void)
+{
+    u8 d = (u8)(g_tick - ap_tick);
+    if (!d) return;
+    ap_tick += d;
+    if (g_scene != 1 || g_auto) return;
+    aim_step(input_raw(), d);
+    g_spr_attr[0] = (u8)(aim_y - 17);
+    g_spr_attr[1] = (u8)(aim_x - 16);
+    g_spr0_req = 1;
 }
 
 static u8 aim_target(void)
@@ -263,7 +278,8 @@ static u8 aim_target(void)
     i16 bz = 0x7FFF;
     HitRect *h = hits;
     for (i = 0; i < n_hits; i++, h++) {
-        if (ax >= h->x0 && ax < h->x1 && ay >= h->y0 && ay < h->y1 && h->z < bz) { bz = h->z; best = h->id; }
+        /* 照準の 3×3 ブロックが矩形に重なれば当たる(1 ブロックだけだと遠くの敵に当たらなかった) */
+        if (ax + 1 >= h->x0 && ax < h->x1 + 1 && ay + 1 >= h->y0 && ay < h->y1 + 1 && h->z < bz) { bz = h->z; best = h->id; }
     }
     return best;
 }
@@ -397,8 +413,9 @@ static void sects_draw(void)
         if (!s->mesh) continue;
         pt_cam(s->x, s->y, s->z, &c);
         mat_yaw(s->yaw, 0);
-        g_lod_min = boss_on ? k > 1 : k > 4;
+        g_lod_min = boss_on ? k > 1 : k > 3;
         mesh_draw(s->mesh, &c, g_mm, 0, 0xFF);
+        aim_poll();
     }
 }
 
@@ -541,6 +558,7 @@ static void overlay_draw(void)
         g_rx = (u8)(ax + (32 - ax) / (k + 1)); g_ry = (u8)(ay + (38 - ay) / (k + 1));
         if (g_rx < 64 && g_ry < 40) pset();
     }
+    if (scene && g_mod == 0 && (g_frames & 8)) text_center(34, "SPACE: SKIP", C_WHITE, 1);   /* オープニングは飛ばせる */
     if (g_cfg.fps) {
         extern u16 g_perf_frame;
         extern u8 g_perf_ticks;
@@ -618,6 +636,8 @@ u8 stage_run(u8 mod)
         caption(MOD->name + 10, C_WHITE, 120);   /* 「STAGE n / 」を除く。字幕は 16 文字まで */
     }
     t0 = g_tick;
+    ap_tick = t0;
+    g_poll = aim_poll;
     t_demo = g_frames;
     for (;;) {
         u16 now = g_tick;
@@ -633,7 +653,7 @@ u8 stage_run(u8 mod)
             if ((in_cur & IN_A) && !(in_prev & IN_A) && mod == 0) { bgm_stop(); return 1; }
         } else {
             if (g_auto) auto_input();
-            aim_step(dt);
+            aim_poll();
             fire_step(dt);
         }
         path_step(dt);
@@ -675,18 +695,22 @@ u8 stage_run(u8 mod)
             extern u16 g_perf_frame;
             u16 t = timer_read();
             g_perf_polys = 0; g_perf_verts = 0;
+            g_spr_live = 1;                /* 描画の間は VDP に触らない。照準は割り込みが書く */
             sky_draw(g_space);
+            aim_poll();
             g_ph[0] = timer_read() - t;
             sects_draw();
             g_ph[1] = timer_read() - t;
             g_lod_min = 0;
             n_hits = 0;
             objs_draw();
+            aim_poll();
             g_ph[2] = timer_read() - t;
             fx_draw(dt);
             lasers_draw();
             if (!(MOD->flags & SF_SCENE)) marks_draw();
             overlay_draw();
+            g_spr_live = 0;                /* 描画の外では割り込みに照準を書かせない(場面を飛ばすと present を通らずに抜ける) */
             g_perf_frame = timer_read() - t;
             g_last_polys = g_perf_polys; g_last_verts = g_perf_verts;
         }

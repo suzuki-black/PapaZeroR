@@ -83,6 +83,7 @@ void game_reset(void);
 
 /* main.c */
 void present(void);
+extern void (*g_poll)(void);  /* present が表示を待つ間に毎ティック呼ぶ */
 void set_stage_palette(const u8 *pal);
 void flash_palette(void);
 void screen3_init(void);
