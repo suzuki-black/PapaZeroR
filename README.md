@@ -9,7 +9,9 @@ openmsx -machine Panasonic_FS-A1ST -carta build/PapaZero.rom -romtype ASCII8
 
 WebMSX では `build/PapaZero [ASCII8].rom` を使う。必要なもの: SDCC、Python 3 と Pillow、声を作り直すときは flite。
 
-操作: カーソル = 照準、スペース = バルカン、スペースを押したまま M = 誘導弾、M = 機動(`ROLL!` などの指示に応える)。
+操作: カーソル = 照準、スペース = バルカン、スペースを押したまま M(または B)= 誘導弾、M(または B)= 機動(`ROLL!` などの指示に応える)。
+
+画面: 敵の四隅に白い鉤、照準が重なった敵は赤い鉤(照準も赤くなる)。補給は緑の鉤。
 
 ## 指示書から変えたこと
 

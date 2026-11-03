@@ -157,9 +157,11 @@ static void path_step(u8 dt)
     f = (i16)(s & 127);
     p = &MOD->path[idx];
     x0 = cam_x; y0 = cam_y; z0 = cam_z;
-    cam_x = p->x + (i16)(((p[1].x - p->x) * f) >> 7);
-    cam_y = p->y + (i16)(((p[1].y - p->y) * f) >> 7);
-    cam_z = p->z + (i16)(((p[1].z - p->z) * f) >> 7);
+    /* 点の間は 2 単位(512)あるので、差 × f を 16bit で掛けると f >= 64 で桁があふれ、カメラが点の中ほどで後ろへ飛んでいた。
+     * fmul(差, 2f) = 差 × f / 128 を 32bit の途中結果で求める */
+    cam_x = p->x + fmul(p[1].x - p->x, f << 1);
+    cam_y = p->y + fmul(p[1].y - p->y, f << 1);
+    cam_z = p->z + fmul(p[1].z - p->z, f << 1);
     cam_yaw_path = (u8)(p->yaw + (i8)(((i16)(i8)(p[1].yaw - p->yaw) * f) >> 7));
     cam_pitch_path = (i8)(p->pitch + (i8)(((i16)(i8)(p[1].pitch - p->pitch) * f) >> 7));
     if (dt) { cam_vx = (cam_x - x0) / dt; cam_vy = (cam_y - y0) / dt; cam_vz = (cam_z - z0) / dt; }
@@ -348,7 +350,11 @@ static void fire_step(u8 dt)
             u8 id = aim_target(), k, dup = 0;
             if (id != 0xFF && obj[id].t >= T_E01 && obj[id].t <= T_E08 || id != 0xFF && obj[id].t == T_PART) {
                 for (k = 0; k < lock_n; k++) if (lock_id[k] == id) dup = 1;
-                if (!dup) { lock_id[lock_n++] = id; se_play(SE_LOCK); }
+                if (!dup) {
+                    lock_id[lock_n++] = id;
+                    se_play(SE_LOCK);
+                    if (lock_n == 1 && !pcm_mode) pcm_say(VOICE_LOCK);    /* 最初のロックで「Lock!」(ほかの声は遮らない) */
+                }
             }
         }
     } else {
@@ -487,6 +493,33 @@ static void lasers_draw(void)
     }
 }
 
+/* 敵の印: 攻撃してくるもの(敵・敵弾・今のボスの部位)の当たり矩形の四隅に鉤を描く。照準が重なっている敵は赤、補給は緑。
+ * 描いた直後の当たり矩形を使うので、照準の色もこのフレームの絵と一致する */
+static u8 aim_foe;      /* 照準の下に攻撃してくるものがいる(照準を赤くする) */
+
+static u8 is_foe(const Obj *o)
+{
+    if (o->t >= T_E01 && o->t <= T_E08) return 1;
+    if (o->t >= T_FLAK && o->t <= T_MINE) return 1;
+    return o->t == T_PART && o->group == boss_grp && !(o->flags & (OF_CAPSULE | OF_DECOR | OF_HIDDEN));
+}
+
+static void marks_draw(void)
+{
+    u8 i, tgt = aim_target();
+    HitRect *h = hits;
+    aim_foe = tgt != 0xFF && is_foe(&obj[tgt]);
+    for (i = 0; i < n_hits; i++, h++) {
+        const Obj *o = &obj[h->id];
+        if (!o->t) continue;
+        if (is_foe(o)) g_color = h->id == tgt ? C_RED : C_WHITE;
+        else if (o->t == T_SUPPLY || o->t == T_MEDIC) g_color = C_GREEN;
+        else continue;
+        g_rx = (u8)(h->x0 - 1); g_ry = (u8)(h->y0 - 1); g_rw = h->x1; g_rh = h->y1;
+        marks4();
+    }
+}
+
 static void spr_set(u8 n, i16 x, i16 y, u8 pat, u8 col)
 {
     u8 *a = &g_spr_attr[n * 4];
@@ -516,7 +549,8 @@ static void overlay_draw(void)
     }
     /* 照準(スプライト 0)とロックの枠 */
     if (scene) { spr_set(0, 0, 200, 0, 2); g_spr_attr[0] = 209; }
-    else spr_set(0, (i16)aim_x - 16, (i16)aim_y - 16, 0, (over_t && (g_frames & 1)) ? C_RED : C_WHITE);
+    else spr_set(0, (i16)aim_x - 16, (i16)aim_y - 16, 0,
+                 over_t ? ((g_frames & 1) ? C_RED : C_WHITE) : aim_foe ? C_RED : C_WHITE);   /* 敵に重なると赤(撃てば当たる・ロックできる) */
     {
         u8 i;
         for (i = 0; i < 3; i++) {
@@ -651,6 +685,7 @@ u8 stage_run(u8 mod)
             g_ph[2] = timer_read() - t;
             fx_draw(dt);
             lasers_draw();
+            if (!(MOD->flags & SF_SCENE)) marks_draw();
             overlay_draw();
             g_perf_frame = timer_read() - t;
             g_last_polys = g_perf_polys; g_last_verts = g_perf_verts;

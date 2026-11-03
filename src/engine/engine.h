@@ -92,6 +92,7 @@ void buf_fill(u8 color);            /* バッファ全体(48 行) */
 void buf_fill_rows(u8 color, u8 row);   /* row から g_rh 行 */
 void rect_fill(void);               /* g_rx, g_ry, g_rw, g_rh(クリップ済み)を g_color で */
 void pset(void);                    /* (g_rx, g_ry) の 1 ブロックを g_color に(画面内であること) */
+void marks4(void);                  /* 矩形 (g_rx, g_ry)-(g_rw, g_rh)(符号付き)の四隅に鉤を g_color で(敵の印) */
 
 /* ---- raster.s ---- */
 extern i16 scr[20];                 /* 多角形の画面座標 (x, y) × n(12.4) */

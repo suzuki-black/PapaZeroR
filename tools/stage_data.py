@@ -164,13 +164,13 @@ def s1():
         s.spawn(at, E02, at + 50, 7, .8, P_HOLD); s.spawn(at, E02, at + 58, -8, .8, P_HOLD)
     s.item(90, SUPPLY, 140, 3, 8); s.item(150, MEDIC, 190, -3, 7)
     for at in (166, 186, 206):
-        s.spawn(at, E02, at + 40, 5, .8, P_HOLD); s.spawn(at, E01, at + 30, -4, .6, P_PARALLEL)
+        s.spawn(at, E02, at + 40, -5, .8, P_HOLD); s.spawn(at, E01, at + 30, 4, .6, P_PARALLEL)
     for at in (240, 262, 284, 306, 328):
         s.spawn(at, E01, at + 30, 3, .6, P_PARALLEL); s.spawn(at, E02, at + 50, -7, .8, P_HOLD)
     s.prompt(332, PR_DIVE, 60)
     s.text(328, 'OVERPASS!')
     for at in (350, 372, 394, 416):
-        s.spawn(at, E02, at + 45, 6, .8, P_HOLD); s.spawn(at, E02, at + 52, -6, .8, P_HOLD)
+        s.spawn(at, E02, at + 45, 6 if at < 390 else -10, .8, P_HOLD); s.spawn(at, E02, at + 52, -6, .8, P_HOLD)
     for at in (432, 450, 468):
         s.spawn(at, E01, at + 30, -3, .6, P_PARALLEL); s.spawn(at, E01, at + 30, 4, .6, P_PARALLEL)
     s.item(470, MEDIC, 520, 2, 7)
@@ -205,7 +205,7 @@ def s2():
         s.spawn(at, E03, at + 56, -10, .8, P_HOLD); s.spawn(at, E04, at + 80, 3, 12, P_PASS, 128)
     s.prompt(300, PR_ROLL, 60)
     for at in (404, 430, 456):
-        s.spawn(at, E02, at + 44, -8, .8, P_HOLD); s.spawn(at, E04, at + 80, 0, 13, P_PASS, 128)
+        s.spawn(at, E02, at + 36, -8, .8, P_HOLD); s.spawn(at, E04, at + 80, 0, 13, P_PASS, 128)
     s.item(470, MEDIC, 510, 2, 9)
     s.setboss(500, 0, 34, [
         ('B_CRAB', 0, -3, 0, 40, 9, 8, 0),
@@ -246,7 +246,7 @@ def s3():
     s.prompt(180, PR_ROLL, 60)
     s.item(216, SUPPLY, 250, 0, 8)
     for at in (310, 340, 370, 400):
-        s.spawn(at, E04, at + 80, 2, 8, P_PASS, 128); s.spawn(at, E03, at + 60, 6, .8, P_HOLD)
+        s.spawn(at, E04, at + 80, 2, 8, P_PASS, 128); s.spawn(at, E03, at + 60, -6, .8, P_HOLD)
     s.item(420, MEDIC, 460, 0, 8)
     for at in (440, 470, 496):
         s.spawn(at, E04, at + 80, -2, 9, P_TAIL, 128)
@@ -317,7 +317,7 @@ def s5():
         s.spawn(at, E04, at + 80, 3, 56, P_TAIL, 128)
     s.setboss(480, 0, 34, [
         ('B_DOPPEL', 0, 0, 0, 60, 1, 0, 0x13),
-        ('B_NOZZLE', -3, 0, -8, 15, 0, 0, 2), ('B_NOZZLE', 3, 0, -8, 15, 0, 0, 2)], s.at(520, 0, 60))
+        ('B_NOZZLE', -3, 0, -8, 15, 0, 0, 2), ('B_NOZZLE', 3, 0, -8, 15, 0, 0, 2)], s.at(520, 0, 50))     # カメラ(高さ 46)の少し上。60 だと画面の上の端に張り付いた
     s.end()
     return s
 
@@ -336,12 +336,12 @@ def s6():
     s.text(36, 'THERE SHE IS!')
     s.ev(8, EV_PAL, 1)                  # 常にゆっくり回る
     for at in (16, 40, 64, 92, 120, 148):
-        s.spawn(at, E07, at + 60, -6, 62, P_DRIFT); s.spawn(at, E07, at + 66, 6, 58, P_DRIFT); s.spawn(at, E08, at + 80, 3, 63, P_HOLD)
+        s.spawn(at, E07, at + 60, -6, 62, P_DRIFT); s.spawn(at, E07, at + 66, 6, 58, P_DRIFT); s.spawn(at, E08, at + 80, -3, 63, P_HOLD)
     for at in (170, 200, 226):
-        s.spawn(at, E08, at + 70, -5, 60, P_HOLD); s.spawn(at, E07, at + 56, 0, 60, P_DRIFT)
+        s.spawn(at, E08, at + 40, -5, 60, P_HOLD); s.spawn(at, E07, at + 56, 0, 60, P_DRIFT)
     s.item(180, SUPPLY, 230, 0, 61)
     for at in (260, 288, 316, 344, 372):
-        s.spawn(at, E08, at + 70, 5, 60, P_HOLD); s.spawn(at, E07, at + 56, -4, 60, P_DRIFT)
+        s.spawn(at, E08, at + 70, -2, 60, P_HOLD); s.spawn(at, E07, at + 56, 4, 60, P_DRIFT)
     for at in (130, 300, 360, 440):
         s.prompt(at, PR_ROLL, 60)
     s.item(400, MEDIC, 440, 0, 60)

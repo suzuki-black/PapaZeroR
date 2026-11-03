@@ -15,11 +15,25 @@ for p in "roll:Roll!" "loop:Loop!" "dive:Dive!" "lock:Lock!" "give:Give her back
   flite -voice rms --setf duration_stretch=0.7 --setf int_f0_target_mean=85 -t "$text" -o "$OUT/$name.raw.wav"
   afconvert -f WAVE -d LEI16@3996 -c 1 "$OUT/$name.raw.wav" "$OUT/$name.wav"
 done
-# 無線とヒナの声(cmu_us_slt を高く)
-for p in "warning:Warning!" "hurry:Papa, hurry!" "see:I can see you!" "nopapa:Papa, no!" "papa:Papa!"; do
+# 無線の声(cmu_us_slt を高く)
+flite -voice slt --setf duration_stretch=0.66 --setf int_f0_target_mean=320 --setf int_f0_target_stddev=45 -t "Warning!" -o "$OUT/warning.raw.wav"
+afconvert -f WAVE -d LEI16@3996 -c 1 "$OUT/warning.raw.wav" "$OUT/warning.wav"
+# ヒナの声(子供): cmu_us_slt をゆっくり読ませ、標本化周波数を K 倍と見なして速く再生する。
+#   声の高さと声道の響き(フォルマント)が両方 K 倍になり、大人の女声を高くしただけより子供らしく聞こえる。
+#   読む速さは duration_stretch に K を掛けて戻す。声の高さは 330 × K ≒ 450Hz
+K=1.36
+for p in "hurry:Papa, hurry!" "see:I can see you!" "nopapa:Papa, no!" "papa:Papa!"; do
   name=${p%%:*}
   text=${p#*:}
-  flite -voice slt --setf duration_stretch=0.66 --setf int_f0_target_mean=320 --setf int_f0_target_stddev=45 -t "$text" -o "$OUT/$name.raw.wav"
+  flite -voice slt --setf duration_stretch=$(echo "0.66 * $K" | bc -l) --setf int_f0_target_mean=330 --setf int_f0_target_stddev=50 -t "$text" -o "$OUT/$name.slow.wav"
+  python3 - "$OUT/$name.slow.wav" "$OUT/$name.raw.wav" "$K" <<'PY'
+import sys, wave
+r = wave.open(sys.argv[1])
+w = wave.open(sys.argv[2], 'wb')
+w.setparams(r.getparams())
+w.setframerate(int(r.getframerate() * float(sys.argv[3])))
+w.writeframes(r.readframes(r.getnframes()))
+PY
   afconvert -f WAVE -d LEI16@3996 -c 1 "$OUT/$name.raw.wav" "$OUT/$name.wav"
 done
 

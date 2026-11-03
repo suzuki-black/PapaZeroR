@@ -354,6 +354,83 @@ _pset::
 	ld	(hl), a
 	ret
 
+;---------------------------------------------------------------------------
+; void marks4(void)   敵の印: 矩形 (g_rx, g_ry)-(g_rw, g_rh) の四隅に鉤(各 3 ブロック)を g_color で描く(game.c の marks_draw)
+;   座標は符号付き 8bit。画面の外の点は描かない
+; ---------------------------------------------------------------------------
+	.area	_DATA
+mk_lo:		.ds	1
+mk_hi:		.ds	1
+	.area	_CODE
+_marks4::
+	ld	a, (_g_color)
+	and	a, #0x0F
+	ld	(mk_lo), a
+	add	a, a
+	add	a, a
+	add	a, a
+	add	a, a
+	ld	(mk_hi), a
+	ld	a, (_g_rx)
+	ld	d, a			; D = 左
+	ld	a, (_g_rw)
+	ld	e, a			; E = 右
+	ld	a, (_g_ry)
+	ld	c, a			; 上の辺
+	ld	b, d
+	call	mk_pt
+	inc	b
+	call	mk_pt
+	ld	b, e
+	call	mk_pt
+	dec	b
+	call	mk_pt
+	inc	c
+	ld	b, d
+	call	mk_pt
+	ld	b, e
+	call	mk_pt
+	ld	a, (_g_rh)
+	ld	c, a			; 下の辺
+	ld	b, d
+	call	mk_pt
+	inc	b
+	call	mk_pt
+	ld	b, e
+	call	mk_pt
+	dec	b
+	call	mk_pt
+	dec	c
+	ld	b, d
+	call	mk_pt
+	ld	b, e
+; B = 列、C = 行の 1 ブロック(画面の外なら何もしない)。B, C, D, E を保つ
+mk_pt:
+	ld	a, b
+	cp	a, #64
+	ret	nc
+	ld	a, c
+	cp	a, #40
+	ret	nc
+	PADDR
+	bit	0, b
+	jr	nz, 1$
+	ld	a, (hl)
+	and	a, #0x0F
+	ld	(hl), a
+	ld	a, (mk_hi)
+	or	a, (hl)
+	ld	(hl), a
+	ret
+1$:
+	ld	a, (hl)
+	and	a, #0xF0
+	ld	(hl), a
+	ld	a, (mk_lo)
+	or	a, (hl)
+	ld	(hl), a
+	ret
+
 ; ---------------------------------------------------------------------------
 ; void glyph1(const u8 *g)   HL = 3×5 の字形(5 バイト、下位 3bit。bit2 が左)。g_rx, g_ry の位置に g_color で描く
 ;   倍率 1 の文字用。画面内(x <= 61, y <= 43)であること(hud.c が確かめる)
