@@ -19,10 +19,13 @@ static void config_show(void)
     u8 sel = 0, prev = 0xFF, in, i;
     u8 *v = (u8 *)&g_cfg;
     for (;;) {
+        /* 字は 5 行あるので 6 行おきに 6 項目だけ出し、選んだ項目に合わせて送る(3 行おきで 9 項目だと重なった) */
+        u8 top = sel > 5 ? sel - 5 : 0;
         buf_fill(C_BLACK);
-        for (i = 0; i < MENU_N; i++) {
-            text_draw(4, (i8)(i * 3), menu_name[i], i == sel ? C_RED : C_WHITE, 1);
-            num_draw(44, (i8)(i * 3), v[i], 2, C_CYAN);
+        for (i = 0; i < 6; i++) {
+            u8 k = top + i;
+            text_draw(4, (i8)(i * 6 + 3), menu_name[k], k == sel ? C_RED : C_WHITE, 1);
+            num_draw(44, (i8)(i * 6 + 3), v[k], 2, C_CYAN);
         }
         present();
         in = input_raw();
@@ -83,6 +86,8 @@ void title_run(void)
             if (kn == sizeof(konami)) {
                 kn = 0;
                 screen3_init();
+                cockpit_load();            /* 下の帯にタイトルの絵が残らないように */
+                cockpit_mode(1);           /* 下は黒帯 */
                 config_show();
                 title_pic();
                 prev = 0xFF;

@@ -283,3 +283,36 @@ void obj_step(u8 dt)
     }
 }
 
+/* レーザーの描画(game.c の描画から呼ぶ。ページ 0 に空きが無いのでこちらに置く) */
+void lasers_draw(void)
+{
+    u8 i;
+    Laser *l = laser;
+    for (i = 0; i < MAX_LASER; i++, l++) {
+        const LaserDef *d;
+        const Obj *o;
+        V3 c;
+        i16 sx, sy;
+        if (l->kind == 0xFF) continue;
+        d = &ldef[l->kind];
+        o = &obj[l->owner];
+        pt_cam(o->x, o->y, o->z, &c);
+        if (!pt_screen(&c, &sx, &sy)) continue;
+        if (l->st == 0) {
+            /* 溜め: 発射口の点滅 */
+            if (g_frames & 1) {
+                i16 x = sx >> 4, y = sy >> 4;
+                if (x >= 1 && x < 62 && y >= 1 && y < 38) { g_rx = (u8)(x - 1); g_ry = (u8)(y - 1); g_rw = 3; g_rh = 3; g_color = d->color; rect_fill(); }
+            }
+            if (l->kind == 3 && (g_frames & 2)) { /* 自由電子: 画面全体が白く脈打つ */
+                g_rx = 0; g_ry = 0; g_rw = 64; g_rh = 1; g_color = C_WHITE; rect_fill();
+                g_ry = 39; rect_fill();
+            }
+        } else {
+            i16 ex = 512, ey = 630;
+            if (l->kind == 2) ex = 512 + (SIN((u8)(g_frames * 8)) >> 0);   /* ファイバー: 掃く */
+            if (sx < -2000 || sx > 3000 || sy < -2000 || sy > 3000) continue;
+            band_draw(sx, sy, ex, ey, d->w0, d->w1, d->color);
+        }
+    }
+}

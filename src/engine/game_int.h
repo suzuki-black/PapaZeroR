@@ -13,6 +13,7 @@ typedef struct { u8 color, charge, fire, w0, w1, dmg, mhp; } LaserDef;
 typedef struct { u8 mesh, hp, score; } ObjDef;
 extern Laser laser[MAX_LASER];
 extern const LaserDef ldef[5];
+void lasers_draw(void);
 extern const ObjDef odef[T_COUNT];
 
 extern i16 g_fx, g_fz;          /* 経路の進む向き(水平、8.8)。機動で視線が回っても変わらない */

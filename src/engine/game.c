@@ -477,39 +477,6 @@ static void fx_draw(u8 dt)
     }
 }
 
-static void lasers_draw(void)
-{
-    u8 i;
-    Laser *l = laser;
-    for (i = 0; i < MAX_LASER; i++, l++) {
-        const LaserDef *d;
-        const Obj *o;
-        V3 c;
-        i16 sx, sy;
-        if (l->kind == 0xFF) continue;
-        d = &ldef[l->kind];
-        o = &obj[l->owner];
-        pt_cam(o->x, o->y, o->z, &c);
-        if (!pt_screen(&c, &sx, &sy)) continue;
-        if (l->st == 0) {
-            /* 溜め: 発射口の点滅 */
-            if (g_frames & 1) {
-                i16 x = sx >> 4, y = sy >> 4;
-                if (x >= 1 && x < 62 && y >= 1 && y < 38) { g_rx = (u8)(x - 1); g_ry = (u8)(y - 1); g_rw = 3; g_rh = 3; g_color = d->color; rect_fill(); }
-            }
-            if (l->kind == 3 && (g_frames & 2)) { /* 自由電子: 画面全体が白く脈打つ */
-                g_rx = 0; g_ry = 0; g_rw = 64; g_rh = 1; g_color = C_WHITE; rect_fill();
-                g_ry = 39; rect_fill();
-            }
-        } else {
-            i16 ex = 512, ey = 630;
-            if (l->kind == 2) ex = 512 + (SIN((u8)(g_frames * 8)) >> 0);   /* ファイバー: 掃く */
-            if (sx < -2000 || sx > 3000 || sy < -2000 || sy > 3000) continue;
-            band_draw(sx, sy, ex, ey, d->w0, d->w1, d->color);
-        }
-    }
-}
-
 /* 敵の印: 攻撃してくるもの(敵・敵弾・今のボスの部位)の当たり矩形の四隅に鉤を描く。照準が重なっている敵は赤、補給は緑。
  * 描いた直後の当たり矩形を使うので、照準の色もこのフレームの絵と一致する */
 static u8 aim_foe;      /* 照準の下に攻撃してくるものがいる(照準を赤くする) */
@@ -558,7 +525,7 @@ static void overlay_draw(void)
         g_rx = (u8)(ax + (32 - ax) / (k + 1)); g_ry = (u8)(ay + (38 - ay) / (k + 1));
         if (g_rx < 64 && g_ry < 40) pset();
     }
-    if (scene && g_mod == 0 && (g_frames & 8)) text_center(34, "SPACE: SKIP", C_WHITE, 1);   /* オープニングは飛ばせる */
+    if (scene && g_mod == 0 && (g_frames & 8)) text_center(1, "SPACE: SKIP", C_WHITE, 1);   /* オープニングは飛ばせる */
     if (g_cfg.fps) {
         extern u16 g_perf_frame;
         extern u8 g_perf_ticks;

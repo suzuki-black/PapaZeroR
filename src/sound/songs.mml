@@ -1,496 +1,502 @@
 # songs.mml — PAPA ZERO の曲(FM 音源 + PSG)。tools/gen_music.py が音のモジュールにする。書き方は tools/gen_music.py の冒頭
 # どの旋律もこのゲームのために書いたオリジナル。手本にした曲は雰囲気だけを借り、旋律は引用していない
 # テンポが途中で変わる曲は、R の長さを %ティック で書く(R の中の t はタムとして読まれ、テンポの指定にはならない)
+# 全体の色: 80 年代のアクション映画の音楽の雰囲気(さらわれた娘を、退役した父が一人で取り戻しに行く)。短調、休まない低音の刻み、
+#   軍隊のスネアとタム、スチールドラムのような打つ金属の音、金管の短い一撃。主題は英雄的だが暗く
 
 @song TITLE loop
-# タイトル: 父の鼻歌。古いラジオから流れる軽いスウィング。変ロ長調、t150、16 小節。8 分音符は 2:1 に跳ねる(6 + 12)
-#   クラリネットの旋律に、同じ音色のサックス隊のような合いの手(チャールストンの 2 打)、4 分音符で歩くベース
+# タイトル: 一人で娘を救いに行く父の主題。ニ短調、t150、16 小節。ガロップ(8 分 + 16 分 2 つ)のベースが休まず走る
+#   1〜8 小節はスチールドラムのような打つ音が主題を静かに(PSG を減衰させて重ねる)、9〜16 小節は暗い金管が同じ主題を吹く
+#   (FM の 2 チャンネルで +3 ずらして重ねる)。ホルンは後半、3 + 3 + 2 で和音を打つ
+#   和音は Dm・E♭(ナポリの和音)・A・B♭。ドラムは前半が遠い太鼓、後半が軍隊のスネア
 @tempo 150
-@voice 22 61 1A 06 A4 74 03 16   # オリジナル音色 0: 木の管の音(モジュレーター 2 倍で奇数の倍音、キャリアにビブラート)
-A @0 v14 q8
-A o5 f6 g12 b-4 g6 f12 d4 | o5 g6 b12 o6 d4 f6 e-12 d4 | o5 e-6 g12 b-4 g6 e-12 c4 | o5 a6 o6 c12 e-4 d6 c12 o5 a4 |
-A o5 b-2 r6 f12 g6 a12 | o5 b-6 g12 e-4 g-6 b-12 o6 d-4 | o6 d6 c12 o5 b-4 g6 a12 b4 | o6 c6 d12 e-4 d6 c12 o5 a4 |
-A o5 a6 f+12 a4 o6 c6 o5 a12 f+4 | o5 a6 b12 o6 c4 d2 | o5 b6 g12 b4 o6 d6 o5 b12 g4 | o5 b6 o6 c12 d4 f2 |
-A o5 g6 e12 g4 b-6 g12 e4 | o5 g6 a12 b-4 o6 c2 | o5 a6 o6 c12 e-4 d6 c12 o5 a4 | o6 c4 o5 a4 f4 r4 |
-P D+7 v9 q8
-P o5 f6 g12 b-4 g6 f12 d4 | o5 g6 b12 o6 d4 f6 e-12 d4 | o5 e-6 g12 b-4 g6 e-12 c4 | o5 a6 o6 c12 e-4 d6 c12 o5 a4 |
-P o5 b-2 r6 f12 g6 a12 | o5 b-6 g12 e-4 g-6 b-12 o6 d-4 | o6 d6 c12 o5 b-4 g6 a12 b4 | o6 c6 d12 e-4 d6 c12 o5 a4 |
-P o5 a6 f+12 a4 o6 c6 o5 a12 f+4 | o5 a6 b12 o6 c4 d2 | o5 b6 g12 b4 o6 d6 o5 b12 g4 | o5 b6 o6 c12 d4 f2 |
-P o5 g6 e12 g4 b-6 g12 e4 | o5 g6 a12 b-4 o6 c2 | o5 a6 o6 c12 e-4 d6 c12 o5 a4 | o6 c4 o5 a4 f4 r4 |
-#   和音は 3 度と 7 度の 2 声(B♭6・G7・Cm7・F7 / B♭・E♭ E♭m・B♭ G7・Cm7 F7 / D7・G7・C7・F7)
-B @0 v9 q8
-B o4 g4. g8 r2 | f4. f8 r2 | g4. g8 r2 | a4. a8 r2 |
-B o4 f4. f8 r2 | g4 r4 g-4 r4 | f4 r4 f4 r4 | g4 r4 a4 r4 |
-B o4 a4. a8 r2 | a4. a8 r2 | b4. b8 r2 | b4. b8 r2 |
-B o4 b-4. b-8 r2 | b-4. b-8 r2 | a4. a8 r2 | a4. a8 r2 |
-C @0 v8 q8
-C o4 d4. d8 r2 | o3 b4. b8 r2 | o4 e-4. e-8 r2 | e-4. e-8 r2 |
-C o4 d4. d8 r2 | e-4 r4 e-4 r4 | d4 r4 o3 b4 r4 | o4 e-4 r4 e-4 r4 |
-C o4 f+4. f+8 r2 | f+4. f+8 r2 | f4. f8 r2 | f4. f8 r2 |
-C o4 e4. e8 r2 | e4. e8 r2 | e-4. e-8 r2 | e-4. e-8 r2 |
-D @14 v13 q7 l4
-D o2 b- o3 d f g | g f d o2 b | o3 c e- g e- | f e- c o2 a |
-D o2 b- o3 d f d | e- g g- e- | d f g f | c e- f a |
-D o3 d f+ a f+ | d c o2 a f+ | g b o3 d o2 b | g o3 f d o2 b |
-D o3 c e g e | c o2 b- g e | f a o3 c o2 a | o3 f e- c o2 a |
-#   リズム: ブラシのように弱く。跳ねるハイハットを各拍の後ろに(強さ 10 以下で PSG のノイズも弱い)。8 小節ごとに小さなフィル
-R V13,10,10,9,10
-R [ [ bh4 sh6 h12 bh4 sh6 h12 ]7 bh4 sh6 s12 t6 t12 s6 s12 ]2
+@voice 04 01 1A 03 F6 F3 24 25   # オリジナル音色 0: スチールドラム(モジュレーター 4 倍で奇数の倍音、減衰する。1〜8 小節)
+@voice 21 21 14 0E B2 A2 14 16   # オリジナル音色 1: 暗い金管(モジュレーターを半波に、帰還 6。9〜16 小節)
+A @0 @v0 v13 q6
+A o5 d8. d16 a4 g8 f8 e8 f8 | o5 d2 r4 c8 d8 | o5 e-8. e-16 b-4 a8 g8 f8 g8 | o5 a2. r4 |
+A o5 d8. d16 a4 o6 d4 c8 o5 b-8 | o5 a4. g8 f4 e4 | o5 f8 g8 a8 b-8 o6 c+4 e4 | o6 d2. r4 |
+A @v1 v15 q7
+A o5 d8. d16 a4 g8 f8 e8 f8 | o5 d2 r4 c8 d8 | o5 e-8. e-16 b-4 a8 g8 f8 g8 | o5 a2. r4 |
+A o5 d8. d16 a4 o6 d4 c8 o5 b-8 | o5 a4. g8 f4 e4 | o5 f8 g8 a8 b-8 o6 c+4 e4 | o6 d2. r4 |
+F K+3 @0 v13 q7 r1 r1 r1 r1 r1 r1 r1 r1
+F o5 d8. d16 a4 g8 f8 e8 f8 | o5 d2 r4 c8 d8 | o5 e-8. e-16 b-4 a8 g8 f8 g8 | o5 a2. r4 |
+F o5 d8. d16 a4 o6 d4 c8 o5 b-8 | o5 a4. g8 f4 e4 | o5 f8 g8 a8 b-8 o6 c+4 e4 | o6 d2. r4 |
+P D+7 v8 E2 q6
+P o5 d8. d16 a4 g8 f8 e8 f8 | o5 d2 r4 c8 d8 | o5 e-8. e-16 b-4 a8 g8 f8 g8 | o5 a2. r4 |
+P o5 d8. d16 a4 o6 d4 c8 o5 b-8 | o5 a4. g8 f4 e4 | o5 f8 g8 a8 b-8 o6 c+4 e4 | o6 d2. r4 |
+P v10 E0 q7
+P o5 d8. d16 a4 g8 f8 e8 f8 | o5 d2 r4 c8 d8 | o5 e-8. e-16 b-4 a8 g8 f8 g8 | o5 a2. r4 |
+P o5 d8. d16 a4 o6 d4 c8 o5 b-8 | o5 a4. g8 f4 e4 | o5 f8 g8 a8 b-8 o6 c+4 e4 | o6 d2. r4 |
+B @13 v15 q5
+B [ [o2 d8 d16 d16]4 | [o2 d8 d16 d16]4 | [o2 e-8 e-16 e-16]4 | [o1 a8 a16 a16]4 |
+B   [o2 d8 d16 d16]4 | [o1 b-8 b-16 b-16]4 | [o1 a8 a16 a16]4 | [o2 d8 d16 d16]4 | ]2
+#   ホルンの和音: 前半は全音符で低く、後半は 8 分の 0・3・6 拍目に打つ(3 + 3 + 2)
+C @9 v8 q8 o4
+C f1 | f1 | g1 | c+1 | f1 | d1 | c+1 | f1 |
+C v11 q3 [f8 r4 f8 r4 f8 r8]2 | g8 r4 g8 r4 g8 r8 | c+8 r4 c+8 r4 c+8 r8 | f8 r4 f8 r4 f8 r8 | d8 r4 d8 r4 d8 r8 | c+8 r4 c+8 r4 c+8 r8 | f8 r4 f8 r4 f8 r8 |
+D @9 v8 q8 o4
+D a1 | a1 | b-1 | e1 | a1 | f1 | e1 | a1 |
+D v11 q3 [a8 r4 a8 r4 a8 r8]2 | b-8 r4 b-8 r4 b-8 r8 | e8 r4 e8 r4 e8 r8 | a8 r4 a8 r4 a8 r8 | f8 r4 f8 r4 f8 r8 | e8 r4 e8 r4 e8 r8 | a8 r4 a8 r4 a8 r8 |
+#   リズム: 前半はバスドラムとタムを 3 + 3 + 2 に、8 小節目でスネアのロール。後半は軍隊のスネアの行進、最後にタムとスネアのフィル
+R V14,14,13,11,11
+R [ b8 r4 b8 r4 t8 t8 ]7 [ s16 ]12 bs8 s8
+R bc8 s16 s16 s8 bs16 s16 b8 s16 s16 sh8 s8 [ b8 s16 s16 s8 bs16 s16 b8 s16 s16 sh8 s8 ]6
+R t16 t16 t16 t16 s16 s16 s16 s16 bs8 s16 s16 bs8 s8
 
 @song OPENING once
-# オープニング: 納屋から離陸。前半は静かな決意の賛歌(3 拍子、t90)、スネアのロールでエンジンが回り、後半は t180 で一気に空へ。変ホ長調
-#   リズムだけはテンポの指定ができないので %ティック で書く(前半は 1 小節 120、後半は 8 分音符 10 ティック)
+# オープニング: 父が武器を取り、飛び立つ。ハ短調。前半は t90 の 4/4 で 6 小節、遠い太鼓の上でふくらむホルンが低く暗い決意を歌い、
+#   6 小節目のスネアのロールでエンジンが回る。後半は t180 で 8 小節、硬い金管が主題を吹き、ガロップのベースと軍隊のスネアで一気に空へ
+#   最後は A♭・B♭ から C の長和音(ピカルディの 3 度)を伸ばしてシンバル。全体で約 26.7 秒
+#   リズムだけはテンポの指定ができないので %ティック で書く(前半は 16 分音符 10 ティック、後半は 5 ティック)
 @tempo 90
-@voice 61 61 18 05 54 64 11 16   # オリジナル音色 0: ふくらむホルン(ゆっくり立ち上げ、ビブラート。前半)
-@voice 21 21 12 14 C2 A3 14 16   # オリジナル音色 1: 明るい金管(キャリアを半波に。離陸から)
-A @0 @v0 v13 q8
-A o4 e-4 g4 b-4 | o5 c2 o4 b-8 a-8 | o4 g4. a-8 b-4 | o4 f2. |
-A o4 e-4 g4 b-4 | o5 e-2 d8 c8 | o5 c4. d8 o4 b-4 | o4 b-2. |
+@voice 61 61 18 06 54 64 11 16   # オリジナル音色 0: ふくらむ暗いホルン(ゆっくり立ち上げ、ビブラート、帰還 6。前半)
+@voice 21 21 13 0E C2 A2 14 16   # オリジナル音色 1: 硬い金管(モジュレーターを半波に、帰還 6。離陸から)
+A @0 @v0 v12 q8
+A o4 c2. g4 | o4 a-4. g8 f4 e-4 | o4 d2 e-4 f4 | o4 g1 | v14 o5 c2. e-4 | o5 d4. e-8 f4 d4 |
 A t180 @v1 v15 q7
-A o5 e-4. b-8 o6 e-4 o5 b-4 | o6 c4. o5 a-8 o6 e-2 | o6 c4 d4 e-4 f4 | o6 f2 o5 b-2 |
-A o5 e-4. b-8 o6 e-4 g4 | o6 a-4. g8 f4 e-4 | o6 f8 g8 a-8 f8 d8 e-8 f8 d8 | o6 e-1
-P D+7 v9 q8
-P o5 e-4 g4 b-4 | o6 c2 o5 b-8 a-8 | o5 g4. a-8 b-4 | o5 f2. |
-P o5 e-4 g4 b-4 | o6 e-2 d8 c8 | o6 c4. d8 o5 b-4 | o5 b-2. |
+A o5 c8. c16 g4 g8 a-8 g8 f8 | o5 e-4. f8 g2 | o5 a-8. a-16 o6 c4 c8 d8 c8 o5 b-8 | o5 g2 f8 e-8 d8 f8 |
+A o5 c8. c16 g4 o6 c4 e-4 | o6 d4. c8 o5 b-4 o6 d4 | o5 a-4 b-4 o6 c4 d4 | q8 o6 e1
+P D+7 v8 q8
+P o5 c2. g4 | o5 a-4. g8 f4 e-4 | o5 d2 e-4 f4 | o5 g1 | v10 o6 c2. e-4 | o6 d4. e-8 f4 d4 |
 P t180 v10 q7
-P o5 e-4. b-8 o6 e-4 o5 b-4 | o6 c4. o5 a-8 o6 e-2 | o6 c4 d4 e-4 f4 | o6 f2 o5 b-2 |
-P o5 e-4. b-8 o6 e-4 g4 | o6 a-4. g8 f4 e-4 | o6 f8 g8 a-8 f8 d8 e-8 f8 d8 | o6 e-1
-B @0 v9 q8
-B o4 g2. | a-2. | g2. | f2. | g2. | g2. | a-4. f4. | f2. |
-B t180 v11 q4 l8 o4 [r b-]4 | [r a-]4 | [r g]2 [r f]2 | [r f]4 | [r b-]4 | [r a-]4 | [r f]4 | q8 b-1
-C @0 v8 q8
-C o4 e-2. | e-2. | e-2. | d2. | e-2. | e-2. | e-4. d4. | d2. |
-C t180 v10 q4 l8 o4 [r g]4 | [r e-]4 | [r e-]2 [r d]2 | [r d]4 | [r g]4 | [r e-]4 | [r d]4 | q8 g1
-D @14 v13 q8
-D o2 e-2. | a-2. | e-2. | b-2. | e-2. | o3 c2. | o2 a-4. b-4. | b-2. |
-D t180 v15 q6 l8 [o2 e- o3 e-]4 | [o2 a- o3 a-]4 | [o3 c o4 c]2 [o2 b- o3 b-]2 | [o2 b- o3 b-]4 |
-D [o2 e- o3 e-]4 | [o2 a- o3 a-]4 | [o2 b- o3 b-]4 | q8 o2 e-1
-R V14,11,12,11,13
-R [ bt%40 r%80 ]6 [ s%6 ]40
-R bch%20 sh%20 b%10 b%10 sh%20 [ bh%20 sh%20 b%10 b%10 sh%20 ]5
-R t%10 t%10 s%10 s%10 t%10 s%10 bs%10 s%10 bc%80
+P o5 c8. c16 g4 g8 a-8 g8 f8 | o5 e-4. f8 g2 | o5 a-8. a-16 o6 c4 c8 d8 c8 o5 b-8 | o5 g2 f8 e-8 d8 f8 |
+P o5 c8. c16 g4 o6 c4 e-4 | o6 d4. c8 o5 b-4 o6 d4 | o5 a-4 b-4 o6 c4 d4 | q8 o6 e1
+B @0 v8 q8 o4
+B g1 | a-1 | f1 | g1 | g1 | g1 |
+B t180 v11 q3 o4 [g8 r4 g8 r4 g8 r8]2 | a-8 r4 a-8 r4 a-8 r8 | g8 r4 g8 r4 g8 r8 | g8 r4 g8 r4 g8 r8 | f8 r4 f8 r4 f8 r8 | a-8 r4 a-8 b-8 r4 b-8 | q8 g1
+C @0 v8 q8 o4
+C e-1 | c1 | d1 | d1 | e-1 | o3 b1 |
+C t180 v10 q3 o4 [e-8 r4 e-8 r4 e-8 r8]2 | c8 r4 c8 r4 c8 r8 | o3 b8 r4 b8 r4 b8 r8 | o4 e-8 r4 e-8 r4 e-8 r8 | d8 r4 d8 r4 d8 r8 | c8 r4 c8 d8 r4 d8 | q8 e1
+D @13 v12 q6
+D [o2 c8]8 | [o1 a-8]8 | [o1 b-8]8 | [o1 g8]8 | v14 [o2 c8]8 | [o1 g8]8 |
+D t180 v15 q6 [o2 c8 c16 c16]4 | [o2 c8 c16 c16]4 | [o1 a-8 a-16 a-16]4 | [o1 g8 g16 g16]4 |
+D [o2 c8 c16 c16]4 | [o1 b-8 b-16 b-16]4 | [o1 a-8 a-16 a-16]2 [o1 b-8 b-16 b-16]2 | q8 o2 c1
+R V14,13,13,12,12
+R [ b%40 r%80 t%20 t%20 ]4 b%40 r%40 t%20 t%20 t%20 t%20 [ s%5 ]32
+R bc%10 s%5 s%5 s%10 bs%5 s%5 b%10 s%5 s%5 sh%10 s%10 [ b%10 s%5 s%5 s%10 bs%5 s%5 b%10 s%5 s%5 sh%10 s%10 ]5
+R [ t%5 ]8 s%5 s%5 s%5 s%5 s%5 s%5 bs%5 s%5 bc%80
 
 @song STAGE1 loop
-# ステージ 1「朝の町」: 軽快な行進(ロッシーニの序曲の雰囲気)。ト長調、2/4、t150。頭 2 小節はスネアのロール(L の前。1 回だけ)
-#   笛の旋律を付点のはずむ形で、チューバの「ブン」と和音の「パッ」。同じ 8 小節を 2 回、短調に寄る 8 小節、もう一度頭の 8 小節
-#   この音色はモジュレーターもキャリアも 2 倍なので、書いた音より 1 オクターブ高く鳴る(和音は 1 オクターブ下に書く)
+# ステージ 1「朝の町」: 静まりかえった町に父が降り立つ。ホ短調、t150、16 小節。頭 1 小節はスネアのロール(L の前。1 回だけ)
+#   1〜8 小節はスチールドラムのような音が 16 分ではずむ旋律を、9〜16 小節は暗い金管が長い音で歌う(FM で +3 ずらして重ねる)
+#   ベースは 16 分で刻み続ける
+#   和音は Em・C・B・Am・D。ホルンは裏拍で和音を打つ
 @tempo 150
-@voice 22 62 1C 04 D3 B3 14 16   # オリジナル音色 0: 澄んだ笛(1 オクターブ上で鳴る。キャリアにビブラート)
-A @0 v13 q7 r2 r2 L
-A [ o5 g8. a16 b8 g8 | o5 a8. b16 a8 f+8 | o5 g8. a16 b8 o6 d8 | o6 d4 o5 b8 r8 |
-A o6 e8. d16 c8 e8 | o6 d8. c16 o5 b8 g8 | o5 a8 b16 o6 c16 d8 o5 f+8 | o5 g8 d8 g8 r8 | ]2
-A o5 b8. a16 g8 b8 | o6 e4 o5 b8 r8 | o6 c8. o5 b16 a8 o6 c8 | o6 e4 c8 r8 |
-A o6 d8. e16 f+8 d8 | o6 g8. f+16 e8 d8 | o6 c+8 d16 e16 f+8 e8 | o6 d8 c8 o5 b8 a8 |
-A o5 g8. a16 b8 g8 | o5 a8. b16 a8 f+8 | o5 g8. a16 b8 o6 d8 | o6 d4 o5 b8 r8 |
-A o6 e8. d16 c8 e8 | o6 d8. c16 o5 b8 g8 | o5 a8 b16 o6 c16 d8 o5 f+8 | o5 g8 d8 g8 r8 |
-P D+6 v9 q7 r2 r2 L
-P [ o6 g8. a16 b8 g8 | o6 a8. b16 a8 f+8 | o6 g8. a16 b8 o7 d8 | o7 d4 o6 b8 r8 |
-P o7 e8. d16 c8 e8 | o7 d8. c16 o6 b8 g8 | o6 a8 b16 o7 c16 d8 o6 f+8 | o6 g8 d8 g8 r8 | ]2
-P o6 b8. a16 g8 b8 | o7 e4 o6 b8 r8 | o7 c8. o6 b16 a8 o7 c8 | o7 e4 c8 r8 |
-P o7 d8. e16 f+8 d8 | o7 g8. f+16 e8 d8 | o7 c+8 d16 e16 f+8 e8 | o7 d8 c8 o6 b8 a8 |
-P o6 g8. a16 b8 g8 | o6 a8. b16 a8 f+8 | o6 g8. a16 b8 o7 d8 | o7 d4 o6 b8 r8 |
-P o7 e8. d16 c8 e8 | o7 d8. c16 o6 b8 g8 | o6 a8 b16 o7 c16 d8 o6 f+8 | o6 g8 d8 g8 r8 |
-B @0 v8 q3 r2 r2 L o3
-B [ r4 b4 | r4 a4 | r4 b4 | r4 b4 | r4 g4 | r4 b4 | r4 a4 | r4 b4 | ]2
-B r4 g4 | r4 g4 | r4 a4 | r4 a4 | r4 a4 | r4 b4 | r4 g4 | r4 a4 |
-B r4 b4 | r4 a4 | r4 b4 | r4 b4 | r4 g4 | r4 b4 | r4 a4 | r4 b4 |
-C @0 v7 q3 r2 r2 L o3
-C [ r4 g4 | r4 f+4 | r4 g4 | r4 g4 | r4 e4 | r4 g4 | r4 f+4 | r4 g4 | ]2
-C r4 e4 | r4 e4 | r4 e4 | r4 e4 | r4 f+4 | r4 g4 | r4 e4 | r4 f+4 |
-C r4 g4 | r4 f+4 | r4 g4 | r4 g4 | r4 e4 | r4 g4 | r4 f+4 | r4 g4 |
-D @14 v14 q4 r2 r2 L
-D [ o2 g4 r4 | d4 r4 | g4 r4 | g4 r4 | o3 c4 r4 | o2 g4 r4 | d4 r4 | g4 d4 | ]2
-D o2 e4 r4 | e4 r4 | a4 r4 | a4 r4 | d4 r4 | g4 r4 | a4 r4 | d4 f+4 |
-D o2 g4 r4 | d4 r4 | g4 r4 | g4 r4 | o3 c4 r4 | o2 g4 r4 | d4 r4 | g4 d4 |
-#   リズム: スネアのロール(32 分)のあと、ハイハットは「チキ」と 2 つずつ。8 小節ごとにスネアの連打
-R V15,15,12,11,15
+@voice 04 01 1C 03 F7 F3 24 26   # オリジナル音色 0: スチールドラム(モジュレーター 4 倍、減衰。1〜8 小節)
+@voice 21 21 15 0D A2 92 14 16   # オリジナル音色 1: 暗い金管(モジュレーターを半波に、帰還 5。9〜16 小節)
+A @0 v13 q6 r1 L
+A @v0 v13 q6
+A o5 e8 r16 e16 b8 e8 r16 e16 a8 g8 f+8 | o5 g4 f+8 e8 d8 e8 r4 | o5 e8 r16 e16 b8 e8 r16 e16 o6 c8 o5 b8 a8 | o5 b2 r4 a8 b8 |
+A o6 c8 r16 c16 o5 b8 a8 r16 a16 g8 f+8 e8 | o5 f+4 d4 a4 f+4 | o5 g8 f+8 e8 d8 e8 f+8 g8 a8 | o5 b2. r4 |
+A @v1 v14 q7
+A o6 e2 d4 c4 | o5 b2 g4 e4 | o6 c2 o5 b4 a4 | o5 b1 |
+A o6 e2 f+4 g4 | o6 a4. g8 f+4 d4 | o6 e4 d4 c4 o5 b4 | o5 b2 d+4 f+4 |
+F K+3 @0 v12 q7 r1 L r1 r1 r1 r1 r1 r1 r1 r1
+F o6 e2 d4 c4 | o5 b2 g4 e4 | o6 c2 o5 b4 a4 | o5 b1 |
+F o6 e2 f+4 g4 | o6 a4. g8 f+4 d4 | o6 e4 d4 c4 o5 b4 | o5 b2 d+4 f+4 |
+P D+6 v8 q6 r1 L
+P v8 E2 q6
+P o5 e8 r16 e16 b8 e8 r16 e16 a8 g8 f+8 | o5 g4 f+8 e8 d8 e8 r4 | o5 e8 r16 e16 b8 e8 r16 e16 o6 c8 o5 b8 a8 | o5 b2 r4 a8 b8 |
+P o6 c8 r16 c16 o5 b8 a8 r16 a16 g8 f+8 e8 | o5 f+4 d4 a4 f+4 | o5 g8 f+8 e8 d8 e8 f+8 g8 a8 | o5 b2. r4 |
+P v9 E0 q7
+P o6 e2 d4 c4 | o5 b2 g4 e4 | o6 c2 o5 b4 a4 | o5 b1 |
+P o6 e2 f+4 g4 | o6 a4. g8 f+4 d4 | o6 e4 d4 c4 o5 b4 | o5 b2 d+4 f+4 |
+B @9 v8 q3 r1 L o4
+B [r8 b8]4 | [r8 b8]4 | [r8 g8]4 | [r8 f+8]4 | [r8 e8]4 | [r8 a8]4 | [r8 g8]4 | [r8 f+8]4 |
+B [r8 g8]4 | [r8 b8]4 | [r8 e8]4 | [r8 f+8]4 | [r8 b8]4 | [r8 a8]4 | [r8 g8]4 | [r8 f+8]4 |
+C @9 v7 q3 r1 L o4
+C [r8 g8]4 | [r8 g8]4 | [r8 e8]4 | [r8 d+8]4 | [r8 c8]4 | [r8 f+8]4 | [r8 e8]4 | [r8 d+8]4 |
+C [r8 e8]4 | [r8 g8]4 | [r8 c8]4 | [r8 d+8]4 | [r8 g8]4 | [r8 f+8]4 | [r8 e8]4 | [r8 d+8]4 |
+D @13 v14 q5 r1 L
+D [o2 e16 e16 o3 e16 o2 e16]4 | [o2 e16 e16 o3 e16 o2 e16]4 | [o2 c16 c16 o3 c16 o2 c16]4 | [o1 b16 b16 o2 b16 o1 b16]4 |
+D [o1 a16 a16 o2 a16 o1 a16]4 | [o2 d16 d16 o3 d16 o2 d16]4 | [o2 c16 c16 o3 c16 o2 c16]4 | [o1 b16 b16 o2 b16 o1 b16]4 |
+D [o2 c16 c16 o3 c16 o2 c16]4 | [o2 e16 e16 o3 e16 o2 e16]4 | [o1 a16 a16 o2 a16 o1 a16]4 | [o1 b16 b16 o2 b16 o1 b16]4 |
+D [o2 e16 e16 o3 e16 o2 e16]4 | [o2 d16 d16 o3 d16 o2 d16]4 | [o2 c16 c16 o3 c16 o2 c16]4 | [o1 b16 b16 o2 b16 o1 b16]4 |
+#   リズム: スネアのロール(32 分)のあと、バスドラムとスネアが 16 分で前へ押す。8 小節ごとにタムとスネアの連打
+R V15,14,12,11,12
 R [ s%3 ]32 L
-R [ bch16 h16 r8 sh16 h16 r8 [ bh16 h16 r8 sh16 h16 r8 ]6 s16 s16 s16 s16 bs8 s8 ]4
+R [ bch8 h16 s16 sh8 h8 bh8 bh16 s16 sh8 h8 [ bh8 h16 s16 sh8 h8 bh8 bh16 s16 sh8 h8 ]6 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 s16 s16 bs8 s8 ]2
 
 @song STAGE2 loop
-# ステージ 2「昼の港」: 工場の槌音のような 8 分のベースに、華やかな金管。ハ長調、t180。旋律はオリジナルで、手本の曲の主題は使っていない
-#   ♭7 の和音(B♭)と♭6 の和音(A♭)で明るさに工業的な硬さを足す。旋律を FM の 2 チャンネルで +3 ずらし、PSG が 1 オクターブ上で吹く
+# ステージ 2「昼の港」: 鉄骨とクレーンの港。ト短調、t180、16 小節。ビブラフォンが 16 分で金属を打つような分散和音を刻み、
+#   暗い金管が主題を吹く(FM の 2 チャンネルで +3 ずらし、PSG を -6 セントで重ねる)。ベースは 8 分のオクターブ
+#   和音は Gm・E♭・D・Cm・F・A♭(14 小節目、ナポリの和音)
 @tempo 180
-@voice 21 21 10 14 C2 B3 14 16   # オリジナル音色 0: 硬く輝く金管(キャリアを半波に。1〜8 小節)
-@voice 21 61 14 15 A3 94 14 16   # オリジナル音色 1: 少し柔らかい金管(ビブラートつき。8 分で走る 9〜12 小節から)
-A @0 v13 q7
-A @v0 o5 g4. e8 g4 o6 c4 | o6 d4. c8 o5 b-4 f4 | o5 a4 o6 c4 f4 e8 d8 | o6 d2 o5 g4 r4 |
-A o5 g4. e8 g4 o6 c4 | o6 e-4. c8 o5 a-4 e-4 | o5 f8 g8 a8 b-8 o6 c8 d8 e-8 f8 | o6 g2 e4 r4 |
-A @v1 o6 c8 o5 a8 e8 a8 o6 c8 e8 d8 c8 | o5 b8 g8 e8 g8 b8 o6 e8 d8 o5 b8 | o5 a8 f8 c8 f8 a8 o6 c8 o5 b-8 a8 | o5 g8 a8 b8 o6 c8 d4 o5 g4 |
-A o6 e4. d8 c4 e4 | o6 f4. e8 d4 f4 | o6 g4 f8 e8 d4 o5 b4 | o6 c4 o5 g4 o6 c4 r4 |
+@voice 21 61 12 0E B2 A3 14 16   # オリジナル音色 0: 暗い金管(モジュレーターを半波に、帰還 6、キャリアにビブラート)
+A @0 v14 q7
+A o5 g4. a8 b-4 o6 c8 d8 | o6 d2 c8 o5 b-8 a8 b-8 | o5 g4. f8 e-4 g4 | o5 f+2. r4 |
+A o5 g4. a8 b-4 o6 c8 d8 | o6 g2 f8 e-8 d8 e-8 | o6 c4. d8 e-4 c4 | o6 d2. r4 |
+A o6 e-4. d8 c4 o5 b-4 | o6 c4. o5 b-8 a4 o6 c4 | o5 b-4 a8 g8 f+4 g4 | o5 d4 g4 b-4 o6 d4 |
+A o6 e-2 d4 c4 | o6 c4. o5 b-8 a-4 o6 c4 | o5 a4. g8 f+4 a4 | o5 f+4 g8 a8 b-8 a8 g8 f+8 |
 F K+3 @0 v12 q7
-F @v0 o5 g4. e8 g4 o6 c4 | o6 d4. c8 o5 b-4 f4 | o5 a4 o6 c4 f4 e8 d8 | o6 d2 o5 g4 r4 |
-F o5 g4. e8 g4 o6 c4 | o6 e-4. c8 o5 a-4 e-4 | o5 f8 g8 a8 b-8 o6 c8 d8 e-8 f8 | o6 g2 e4 r4 |
-F @v1 o6 c8 o5 a8 e8 a8 o6 c8 e8 d8 c8 | o5 b8 g8 e8 g8 b8 o6 e8 d8 o5 b8 | o5 a8 f8 c8 f8 a8 o6 c8 o5 b-8 a8 | o5 g8 a8 b8 o6 c8 d4 o5 g4 |
-F o6 e4. d8 c4 e4 | o6 f4. e8 d4 f4 | o6 g4 f8 e8 d4 o5 b4 | o6 c4 o5 g4 o6 c4 r4 |
-P D-6 v8 q7
-P o6 g4. e8 g4 o7 c4 | o7 d4. c8 o6 b-4 f4 | o6 a4 o7 c4 f4 e8 d8 | o7 d2 o6 g4 r4 |
-P o6 g4. e8 g4 o7 c4 | o7 e-4. c8 o6 a-4 e-4 | o6 f8 g8 a8 b-8 o7 c8 d8 e-8 f8 | o7 g2 e4 r4 |
-P o7 c8 o6 a8 e8 a8 o7 c8 e8 d8 c8 | o6 b8 g8 e8 g8 b8 o7 e8 d8 o6 b8 | o6 a8 f8 c8 f8 a8 o7 c8 o6 b-8 a8 | o6 g8 a8 b8 o7 c8 d4 o6 g4 |
-P o7 e4. d8 c4 e4 | o7 f4. e8 d4 f4 | o7 g4 f8 e8 d4 o6 b4 | o7 c4 o6 g4 o7 c4 r4 |
-B @0 v10 q4 o4 l8
-B [r g]4 | [r f]4 | [r a]4 | [r g]4 |
-B [r g]4 | [r a-]4 | [r f]4 | [r g]4 |
-B [r a]4 | [r g]4 | [r a]4 | [r g]4 |
-B [r g]4 | [r a]4 | [r g]4 | [r g]4 |
-C @0 v9 q4 o4 l8
-C [r e]4 | [r d]4 | [r f]4 | [r d]4 |
-C [r e]4 | [r c]4 | [r d]4 | [r e]4 |
-C [r e]4 | [r e]4 | [r f]4 | [r d]4 |
-C [r e]4 | [r f]4 | [r d]4 | [r e]4 |
-D @14 v15 q6 l8
-D [o3 c o4 c]4 | [o2 b- o3 b-]4 | [o3 f o4 f]4 | [o2 g o3 g]4 |
-D [o3 c o4 c]4 | [o2 a- o3 a-]4 | [o2 b- o3 b-]4 | [o3 c o4 c]4 |
-D [o2 a o3 a]4 | [o2 e o3 e]4 | [o3 f o4 f]4 | [o2 g o3 g]4 |
-D [o3 c o4 c]4 | [o3 f o4 f]4 | [o2 g o3 g]4 | [o3 c o4 c]4 |
-#   リズム: 8 分のハイハットを切れ目なく、頭にシンバル、4 小節ごとにタムとスネア
-R V15,15,12,11,15
-R [ bch8 h8 sh8 h8 bh8 bh8 sh8 h8
-R  [ bh8 h8 sh8 h8 bh8 bh8 sh8 h8 ]2
-R    bh8 h8 sh8 h8 t16 t16 s16 s16 t16 s16 bs8 ]4
+F o5 g4. a8 b-4 o6 c8 d8 | o6 d2 c8 o5 b-8 a8 b-8 | o5 g4. f8 e-4 g4 | o5 f+2. r4 |
+F o5 g4. a8 b-4 o6 c8 d8 | o6 g2 f8 e-8 d8 e-8 | o6 c4. d8 e-4 c4 | o6 d2. r4 |
+F o6 e-4. d8 c4 o5 b-4 | o6 c4. o5 b-8 a4 o6 c4 | o5 b-4 a8 g8 f+4 g4 | o5 d4 g4 b-4 o6 d4 |
+F o6 e-2 d4 c4 | o6 c4. o5 b-8 a-4 o6 c4 | o5 a4. g8 f+4 a4 | o5 f+4 g8 a8 b-8 a8 g8 f+8 |
+P D-6 v9 q7
+P o5 g4. a8 b-4 o6 c8 d8 | o6 d2 c8 o5 b-8 a8 b-8 | o5 g4. f8 e-4 g4 | o5 f+2. r4 |
+P o5 g4. a8 b-4 o6 c8 d8 | o6 g2 f8 e-8 d8 e-8 | o6 c4. d8 e-4 c4 | o6 d2. r4 |
+P o6 e-4. d8 c4 o5 b-4 | o6 c4. o5 b-8 a4 o6 c4 | o5 b-4 a8 g8 f+4 g4 | o5 d4 g4 b-4 o6 d4 |
+P o6 e-2 d4 c4 | o6 c4. o5 b-8 a-4 o6 c4 | o5 a4. g8 f+4 a4 | o5 f+4 g8 a8 b-8 a8 g8 f+8 |
+#   ビブラフォン: 根音・5 度・根音・5 度・3 度を 16 分で(休みを挟んで 3 + 3 + 2)。半小節の型を 2 回で 1 小節
+B @12 v10 q4
+B [o4 g16 r16 o5 d16 o4 g16 r16 o5 d16 o4 b-16 r16]4 | [o4 e-16 r16 b-16 e-16 r16 b-16 g16 r16]2 | [o4 d16 r16 a16 d16 r16 a16 f+16 r16]2 |
+B [o4 g16 r16 o5 d16 o4 g16 r16 o5 d16 o4 b-16 r16]4 | [o4 c16 r16 g16 c16 r16 g16 e-16 r16]2 | [o4 d16 r16 a16 d16 r16 a16 f+16 r16]2 |
+B [o4 e-16 r16 b-16 e-16 r16 b-16 g16 r16]2 | [o4 f16 r16 o5 c16 o4 f16 r16 o5 c16 o4 a16 r16]2 | [o4 g16 r16 o5 d16 o4 g16 r16 o5 d16 o4 b-16 r16]4 |
+B [o4 c16 r16 g16 c16 r16 g16 e-16 r16]2 | [o4 a-16 r16 o5 e-16 o4 a-16 r16 o5 e-16 c16 r16]2 | [o4 d16 r16 a16 d16 r16 a16 f+16 r16]4 |
+C @0 v8 q8 o4
+C b-1 | b-1 | g1 | f+1 | b-1 | b-1 | e-1 | f+1 | g1 | a1 | b-1 | b-1 | e-1 | c1 | f+1 | f+1 |
+D @13 v15 q6 l8
+D [o2 g o3 g]4 | [o2 g o3 g]4 | [o2 e- o3 e-]4 | [o2 d o3 d]4 | [o2 g o3 g]4 | [o2 g o3 g]4 | [o2 c o3 c]4 | [o2 d o3 d]4 |
+D [o2 e- o3 e-]4 | [o2 f o3 f]4 | [o2 g o3 g]4 | [o2 g o3 g]4 | [o2 c o3 c]4 | [o2 a- o3 a-]4 | [o2 d o3 d]4 | [o2 d o3 d]4 |
+#   リズム: 16 分の 2 打を挟む軍隊のスネア。4 小節ごとにタムの連打
+R V15,14,13,11,13
+R [ bc8 s16 s16 sh8 b16 b16 b8 s16 s16 sh8 s16 s16 [ bh8 s16 s16 sh8 b16 b16 b8 s16 s16 sh8 s16 s16 ]2 bh8 s16 s16 sh8 t16 t16 t16 t16 t16 t16 bs8 s8 ]4
 
 @song STAGE3 loop
-# ステージ 3「夕の峡谷」: 忍び足の短調がだんだん速くなる。ホ短調。4 小節の同じ節を t120 → t150 → t180 → t225 と上げ、音域と音量も上げる
-#   回るとまた遅い所へ戻る。リズムは %ティック(8 分音符が 15 → 12 → 10 → 8 ティック)。16 分の連打は最後の t225 だけ
+# ステージ 3「夕の峡谷」: 岩陰を忍び、追手の太鼓が迫る。ニ短調。4 小節の同じ節を t120 → t150 → t180 → t225 と上げ、音域と音量も上げる
+#   回るとまた遅い所へ戻る。リズムは %ティック(8 分音符が 15 → 12 → 10 → 8 ティック)。タムを 3 + 3 + 2 の戦の太鼓のように
+#   和音は Dm・B♭・A。最後に和声的短音階で駆け上がる
 @tempo 120
-@voice 22 21 1A 05 F4 E5 15 26   # オリジナル音色 0: ファゴットのような短い低音(忍び足)
-@voice 21 21 14 17 F3 E4 14 16   # オリジナル音色 1: のこぎり波を半波にした鋭い音(t180 から)
+@voice 03 01 1B 05 F8 F6 35 26   # オリジナル音色 0: くぐもったはじく音(モジュレーター 3 倍、両方とも減衰。忍び足)
+@voice 21 21 13 17 E3 D4 14 16   # オリジナル音色 1: のこぎり波を半波にした鋭い金管(t180 から)
 A @0
 A @v0 v11 q4
-A o4 e8 r8 b8 r8 g8 a8 b4 | o4 a8 r8 o5 c8 r8 o4 a8 g8 f+4 | o4 e8 r8 b8 r8 g8 a8 b4 | o3 b8 o4 d+8 f+8 a8 g8 f+8 e4 |
+A o4 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o4 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o4 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o4 d4 r8 a8 o5 d4 r4 |
 A t150 v13 q5
-A o4 e8 r8 b8 r8 g8 a8 b4 | o4 a8 r8 o5 c8 r8 o4 a8 g8 f+4 | o4 e8 r8 b8 r8 g8 a8 b4 | o3 b8 o4 d+8 f+8 a8 g8 f+8 e4 |
+A o4 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o4 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o4 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o4 d4 r8 a8 o5 d4 r4 |
 A t180 @v1 v14 q6
-A o5 e8 r8 b8 r8 g8 a8 b4 | o5 a8 r8 o6 c8 r8 o5 a8 g8 f+4 | o5 e8 r8 b8 r8 g8 a8 b4 | o4 b8 o5 d+8 f+8 a8 g8 f+8 e4 |
+A o5 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o5 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o5 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o5 d4 r8 a8 o6 d4 r4 |
 A t225 v15 q6
-A o5 e8 r8 b8 r8 g8 a8 b4 | o5 a8 r8 o6 c8 r8 o5 a8 g8 f+4 | o5 e8 r8 b8 r8 g8 a8 b4 | o4 b8 o5 d+8 f+8 a8 g8 f+8 e4 |
-A o5 b8 o6 c8 d+8 e8 f+8 g8 a8 b8 | o6 e2 r2 |
+A o5 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o5 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o5 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o5 d4 r8 a8 o6 d4 r4 |
+A o5 a8 b-8 o6 c+8 d8 e8 f8 g8 a8 | o6 d2 r2 |
 P D+6
 P v7 q4
-P o4 e8 r8 b8 r8 g8 a8 b4 | o4 a8 r8 o5 c8 r8 o4 a8 g8 f+4 | o4 e8 r8 b8 r8 g8 a8 b4 | o3 b8 o4 d+8 f+8 a8 g8 f+8 e4 |
+P o4 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o4 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o4 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o4 d4 r8 a8 o5 d4 r4 |
 P t150 v8 q5
-P o4 e8 r8 b8 r8 g8 a8 b4 | o4 a8 r8 o5 c8 r8 o4 a8 g8 f+4 | o4 e8 r8 b8 r8 g8 a8 b4 | o3 b8 o4 d+8 f+8 a8 g8 f+8 e4 |
+P o4 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o4 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o4 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o4 d4 r8 a8 o5 d4 r4 |
 P t180 v9 q6
-P o5 e8 r8 b8 r8 g8 a8 b4 | o5 a8 r8 o6 c8 r8 o5 a8 g8 f+4 | o5 e8 r8 b8 r8 g8 a8 b4 | o4 b8 o5 d+8 f+8 a8 g8 f+8 e4 |
+P o5 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o5 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o5 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o5 d4 r8 a8 o6 d4 r4 |
 P t225 v10 q6
-P o5 e8 r8 b8 r8 g8 a8 b4 | o5 a8 r8 o6 c8 r8 o5 a8 g8 f+4 | o5 e8 r8 b8 r8 g8 a8 b4 | o4 b8 o5 d+8 f+8 a8 g8 f+8 e4 |
-P o5 b8 o6 c8 d+8 e8 f+8 g8 a8 b8 | o6 e2 r2 |
+P o5 d8 r16 d16 f8 d8 g8 f8 e8 c8 | o5 d8 r16 d16 f8 d8 a8 g8 f8 e8 | o5 b-8 r16 b-16 a8 g8 a8 f8 e8 c+8 | o5 d4 r8 a8 o6 d4 r4 |
+P o5 a8 b-8 o6 c+8 d8 e8 f8 g8 a8 | o6 d2 r2 |
 B @0
-B v8 q3 l8 o4 [r b]4 | [r a]4 | [r b]4 | [r a]4 |
-B t150 v9 q3 l8 o4 [r b]4 | [r a]4 | [r b]4 | [r a]4 |
-B t180 v10 q4 l8 o4 [r b]4 | [r a]4 | [r b]4 | [r a]4 |
-B t225 v11 q4 l8 o4 [r b]4 | [r a]4 | [r b]4 | [r a]4 | [r b]4 | q8 b2 r2 |
+B v8 q3 l8 o4 [r a]4 | [r a]4 | [r f]2 [r e]2 | [r a]4 |
+B t150 v9 q3 l8 o4 [r a]4 | [r a]4 | [r f]2 [r e]2 | [r a]4 |
+B t180 v10 q4 l8 o4 [r a]4 | [r a]4 | [r f]2 [r e]2 | [r a]4 |
+B t225 v11 q4 l8 o4 [r a]4 | [r a]4 | [r f]2 [r e]2 | [r a]4 | [r a]4 | q8 a2 r2 |
 C @0
 C r1 | r1 | r1 | r1 |
-C t150 v8 q3 l8 o4 [r g]4 | [r e]4 | [r g]4 | [r f+]4 |
-C t180 v9 q4 l8 o4 [r g]4 | [r e]4 | [r g]4 | [r f+]4 |
-C t225 v10 q4 l8 o4 [r g]4 | [r e]4 | [r g]4 | [r f+]4 | [r f+]4 | q8 g2 r2 |
-D @14 v13
-D q4 l4 [o3 e o2 b]2 | [o2 a o3 e]2 | [o3 e o2 b]2 | [o2 b o3 f+]2 |
-D t150 v14 q4 l4 [o3 e o2 b]2 | [o2 a o3 e]2 | [o3 e o2 b]2 | [o2 b o3 f+]2 |
-D t180 v15 q4 l4 [o3 e o2 b]2 | [o2 a o3 e]2 | [o3 e o2 b]2 | [o2 b o3 f+]2 |
-D t225 q4 l4 [o3 e o2 b]2 | [o2 a o3 e]2 | [o3 e o2 b]2 | [o2 b o3 f+]2 | [o2 b o3 f+]2 | q8 o2 e2 r2 |
-#   リズム: 4 分のハイハット → 8 分 → 打数の多い 8 分 → 16 分。フィルは 8 小節目と 12 小節目
-R V12,12,10,9,10
-R [ b%30 h%30 s%30 h%30 ]4
-R V15,15,12,11,15
-R [ bh%12 h%12 sh%12 h%12 bh%12 h%12 sh%12 h%12 ]3 bh%12 h%12 sh%12 h%12 s%6 s%6 s%6 s%6 bs%6 s%6 s%6 s%6
-R bch%10 h%10 sh%10 bh%10 h%10 bh%10 sh%10 h%10 [ bh%10 h%10 sh%10 bh%10 h%10 bh%10 sh%10 h%10 ]2 bh%10 h%10 sh%10 bh%10 t%10 t%10 s%5 s%5 bs%10
-R [ bh%4 h%4 h%4 h%4 sh%4 h%4 h%4 h%4 bh%4 h%4 h%4 bh%4 sh%4 h%4 h%4 h%4 ]4
-R bh%4 h%4 h%4 h%4 sh%4 h%4 h%4 h%4 t%4 t%4 t%4 t%4 s%4 s%4 s%4 s%4 btc%32 r%32
+C t150 v8 q3 l8 o4 [r f]4 | [r f]4 | [r d]2 [r c+]2 | [r f]4 |
+C t180 v9 q4 l8 o4 [r f]4 | [r f]4 | [r d]2 [r c+]2 | [r f]4 |
+C t225 v10 q4 l8 o4 [r f]4 | [r f]4 | [r d]2 [r c+]2 | [r f]4 | [r c+]4 | q8 f2 r2 |
+D @13 v13
+D q4 o2 d4 d8 d8 d4 d8 d8 | o2 d4 d8 d8 d4 d8 d8 | o1 b-4 b-8 b-8 a4 a8 a8 | o2 d4 d8 d8 d4 d8 d8 |
+D t150 v14 q4 o2 d4 d8 d8 d4 d8 d8 | o2 d4 d8 d8 d4 d8 d8 | o1 b-4 b-8 b-8 a4 a8 a8 | o2 d4 d8 d8 d4 d8 d8 |
+D t180 v15 q4 o2 d4 d8 d8 d4 d8 d8 | o2 d4 d8 d8 d4 d8 d8 | o1 b-4 b-8 b-8 a4 a8 a8 | o2 d4 d8 d8 d4 d8 d8 |
+D t225 q4 o2 d4 d8 d8 d4 d8 d8 | o2 d4 d8 d8 d4 d8 d8 | o1 b-4 b-8 b-8 a4 a8 a8 | o2 d4 d8 d8 d4 d8 d8 | o1 a4 a8 a8 a4 a8 a8 | q8 o2 d2 r2 |
+#   リズム: 遠いバスドラムとタム → スネアが入る → 16 分の 2 打 → 16 分を埋める。各段の 4 小節目にフィル
+R V13,12,12,9,10
+R [ b%15 r%15 t%15 b%15 r%15 t%15 t%15 r%15 ]4
+R V15,15,13,11,13
+R [ b%12 h%6 h%6 t%12 b%12 sh%12 t%12 bh%12 h%12 ]3 b%12 h%6 h%6 t%12 b%12 s%6 s%6 s%6 s%6 bs%12 s%12
+R [ bh%10 s%5 s%5 th%10 bh%10 sh%10 t%5 t%5 bh%10 sh%10 ]3 bh%10 s%5 s%5 t%5 t%5 t%5 t%5 s%5 s%5 s%5 s%5 bs%10 s%10
+R [ bh%4 h%4 s%4 s%4 th%4 h%4 bh%4 h%4 sh%4 h%4 t%4 t%4 bh%4 h%4 sh%4 s%4 ]4
+R [ s%4 ]8 [ t%4 ]8 btc%32 r%32
 
 @song STAGE4 loop
-# ステージ 4「夜の雲上」: 5 拍子の圧力、飛行船の重さ(ホルスト『火星』の雰囲気)。ト短調、t150、1 小節 = 4 分音符 5 つ、12 小節
-#   同じ高さの音を打ち続ける 5 拍子の刻みの上を、低い金管が半音ずつにじり上がる。刻みは G を 8 小節、A♭ を 2 小節、D を 2 小節
+# ステージ 4「夜の雲上」: 暗い雲の上を飛ぶ重さ。ヘ短調、t150、5 拍子(1 小節 = 4 分音符 5 つ)、12 小節
+#   ベースが 3 + 3 + 2 + 2 の 8 分で刻み、ビブラフォンがその区切りを金属的に打つ。上で暗い金管が長い音でうめく(FM で +4、PSG で +8 セント)
+#   和音は Fm・B♭m・D♭・G♭(ナポリの和音)・C(属和音)
 @tempo 150
-@voice 22 61 1A 0E 72 73 13 15   # オリジナル音色 0: 暗く重い金管(モジュレーターを半波に、帰還 6)
+@voice 21 61 1B 0E 62 72 13 15   # オリジナル音色 0: 暗く重い金管(モジュレーターを半波に、帰還 6、ゆっくり立ち上げ)
 A @0 v13 q8
-A o5 d2 e-2. | o5 g2 a-2. | o5 b-2. a-2 | o5 g1 r4 |
-A o6 d2 e-2. | o6 g2 a-2. | o6 b-2 a-2 g4 | o6 f2. e-4 d4 |
-A o6 e-2 c2 o5 a-4 | o6 c4 e-4 g2 f4 | o6 f+2 a2. | o6 g2 f+2 d4 |
+A o5 c2. d-4 c4 | o4 b-2 a-2. | o5 c2. f4 e-4 | o5 d-1 r4 |
+A o5 f2. g-4 f4 | o5 e-2 d-2. | o5 c2. a-4 g4 | o5 f1 r4 |
+A o5 g-2. b-4 a-4 | o5 g-2 f2 e-4 | o5 e2 g2. | o5 c2 b-4 a-4 g4 |
 F K+4 @0 v12 q8
-F o5 d2 e-2. | o5 g2 a-2. | o5 b-2. a-2 | o5 g1 r4 |
-F o6 d2 e-2. | o6 g2 a-2. | o6 b-2 a-2 g4 | o6 f2. e-4 d4 |
-F o6 e-2 c2 o5 a-4 | o6 c4 e-4 g2 f4 | o6 f+2 a2. | o6 g2 f+2 d4 |
+F o5 c2. d-4 c4 | o4 b-2 a-2. | o5 c2. f4 e-4 | o5 d-1 r4 |
+F o5 f2. g-4 f4 | o5 e-2 d-2. | o5 c2. a-4 g4 | o5 f1 r4 |
+F o5 g-2. b-4 a-4 | o5 g-2 f2 e-4 | o5 e2 g2. | o5 c2 b-4 a-4 g4 |
 P D+8 v9 q8
-P o5 d2 e-2. | o5 g2 a-2. | o5 b-2. a-2 | o5 g1 r4 |
-P o6 d2 e-2. | o6 g2 a-2. | o6 b-2 a-2 g4 | o6 f2. e-4 d4 |
-P o6 e-2 c2 o5 a-4 | o6 c4 e-4 g2 f4 | o6 f+2 a2. | o6 g2 f+2 d4 |
-B @0 v10 q8 o4
-B d1&d4 | d1&d4 | d1&d4 | d1&d4 |
-B d1&d4 | d1&d4 | d1&d4 | d1&d4 |
-B e-1&e-4 | e-1&e-4 | d1&d4 | d1&d4 |
-C @0 v9 q6
-C o3 [ g8 g8 g4 g8 g8 g8 r8 g4 | ]8
-C o3 [ a-8 a-8 a-4 a-8 a-8 a-8 r8 a-4 | ]2 [ d8 d8 d4 d8 d8 d8 r8 d4 | ]2
+P o5 c2. d-4 c4 | o4 b-2 a-2. | o5 c2. f4 e-4 | o5 d-1 r4 |
+P o5 f2. g-4 f4 | o5 e-2 d-2. | o5 c2. a-4 g4 | o5 f1 r4 |
+P o5 g-2. b-4 a-4 | o5 g-2 f2 e-4 | o5 e2 g2. | o5 c2 b-4 a-4 g4 |
+B @0 v9 q8 o4
+B a-1&a-4 | d-1&d-4 | a-1&a-4 | f1&f4 | f1&f4 | g-1&g-4 | a-1&a-4 | a-1&a-4 | g-1&g-4 | f1&f4 | e1&e4 | e1&e4 |
+C @12 v10 q3
+C o5 c8 r4 c8 r4 c8 r8 c8 r8 | o4 f8 r4 f8 r4 f8 r8 f8 r8 | o5 c8 r4 c8 r4 c8 r8 c8 r8 | o4 a-8 r4 a-8 r4 a-8 r8 a-8 r8 |
+C o4 a-8 r4 a-8 r4 a-8 r8 a-8 r8 | o5 d-8 r4 d-8 r4 d-8 r8 d-8 r8 | o5 c8 r4 c8 r4 c8 r8 c8 r8 | o5 c8 r4 c8 r4 c8 r8 c8 r8 |
+C o5 d-8 r4 d-8 r4 d-8 r8 d-8 r8 | o4 a-8 r4 a-8 r4 a-8 r8 a-8 r8 | o4 g8 r4 g8 r4 g8 r8 g8 r8 | o4 g8 r4 g8 r4 g8 r8 g8 r8 |
 D @13 v15 q6
-D o2 [ g8 g8 g4 g8 g8 g8 r8 g4 | ]8
-D o2 [ a-8 a-8 a-4 a-8 a-8 a-8 r8 a-4 | ]2 [ d8 d8 d4 d8 d8 d8 r8 d4 | ]2
-#   リズム: スネアの行進を 5 拍子で(2 + 3 の区切り)。ハイハットは 1・3・4 拍半・5 拍の 4 打。4 小節ごとにタム
-R V15,15,12,11,15
-R [ bch8 s16 s16 s4 bh8 s16 s16 s8 h8 sh4
-R  [ bh8 s16 s16 s4 bh8 s16 s16 s8 h8 sh4 ]2
-R    bh8 s16 s16 s4 t8 t8 s16 s16 s16 s16 bs4 ]3
+D o2 f8 f8 o3 f8 o2 f8 f8 o3 f8 o2 f8 o3 f8 o2 f8 o3 f8 | o1 b-8 b-8 o2 b-8 o1 b-8 b-8 o2 b-8 o1 b-8 o2 b-8 o1 b-8 o2 b-8 |
+D o2 f8 f8 o3 f8 o2 f8 f8 o3 f8 o2 f8 o3 f8 o2 f8 o3 f8 | [o2 d-8 d-8 o3 d-8 o2 d-8 d-8 o3 d-8 o2 d-8 o3 d-8 o2 d-8 o3 d-8 |]2
+D o1 g-8 g-8 o2 g-8 o1 g-8 g-8 o2 g-8 o1 g-8 o2 g-8 o1 g-8 o2 g-8 | [o2 f8 f8 o3 f8 o2 f8 f8 o3 f8 o2 f8 o3 f8 o2 f8 o3 f8 |]2
+D o1 g-8 g-8 o2 g-8 o1 g-8 g-8 o2 g-8 o1 g-8 o2 g-8 o1 g-8 o2 g-8 | o2 d-8 d-8 o3 d-8 o2 d-8 d-8 o3 d-8 o2 d-8 o3 d-8 o2 d-8 o3 d-8 |
+D [o2 c8 c8 o3 c8 o2 c8 c8 o3 c8 o2 c8 o3 c8 o2 c8 o3 c8 |]2
+#   リズム: 5 拍子を 3 + 3 + 2 + 2 で。バスドラムとタムが区切りを踏み、スネアが 16 分で挟む。4 小節ごとにタムの連打
+R V15,14,13,11,12
+R [ bc8 s16 s16 t8 b8 s16 s16 t8 bh8 h8 sh8 s16 s16 [ b8 s16 s16 t8 b8 s16 s16 t8 bh8 h8 sh8 s16 s16 ]2 t8 t8 t8 t8 t8 t8 s16 s16 s16 s16 bs8 s8 ]3
 
 @song STAGE5 loop
-# ステージ 5「薄明の成層圏」: 息の詰まる速さ。イ短調、2/4、t180。手本の曲の主題は使わず、和音の音を跳ねる 16 分の音型をオリジナルで書いた
-#   頭の 8 小節(2 回)は木琴のような打つ音、次の 8 小節は鋭い弦の長い音、最後にまた頭の 8 小節。和音は裏拍で打ち続ける
+# ステージ 5「薄明の成層圏」: 敵の追撃をふり切る。ロ短調、t180、16 小節
+#   1〜8 小節(4 小節を 2 回)と 13〜16 小節はスチールドラムのような音が 16 分の 3 + 3 + 2 で跳ねる。9〜12 小節は暗い金管の長い音
+#   和音は Bm・G・Em・F♯(属和音)。PSG は旋律の 1 オクターブ下に重ね、和音は裏拍で打ち続ける
 @tempo 180
-@voice 07 11 16 04 F5 F6 14 26   # オリジナル音色 0: 木琴(モジュレーター 7 倍、減衰)
-@voice 21 21 14 07 C3 B3 13 15   # オリジナル音色 1: 鋭い弦(帰還 7 ののこぎり波。17〜24 小節だけ)
-A @0 @v0 v14 q8
-A [ o6 a16 e16 c16 e16 a8 r8 | o6 b16 a16 g+16 a16 e8 r8 | o6 a16 f16 d16 f16 a8 r8 | o6 g+16 f16 e16 d16 c8 o5 b8 |
-A o6 a16 f16 c16 f16 a8 r8 | o6 g+16 e16 o5 b16 o6 e16 g+8 r8 | o6 a16 g+16 a16 b16 o7 c8 o6 a8 | o6 b8 o7 c16 o6 b16 g+8 e8 | ]2
+@voice 04 01 1A 04 F7 F4 24 26   # オリジナル音色 0: スチールドラム(モジュレーター 4 倍、減衰)
+@voice 21 21 14 0E C3 B3 14 16   # オリジナル音色 1: 暗い金管(モジュレーターを半波に、帰還 6。9〜12 小節だけ)
+A @0 @v0 v14 q6
+A [ o5 b16 r16 o6 f+16 o5 b16 r16 o6 f+16 d16 c+16 o5 b16 r16 o6 f+16 o5 b16 r16 o6 f+16 e16 d16 |
+A   o5 g16 r16 o6 d16 o5 g16 r16 o6 d16 o5 b16 a16 g16 r16 o6 d16 o5 g16 r16 o6 d16 c+16 o5 b16 |
+A   o5 e16 r16 b16 e16 r16 b16 o6 e16 d16 o5 c+16 r16 a+16 c+16 r16 a+16 o6 e16 c+16 |
+A   o5 f+16 r16 o6 c+16 o5 f+16 r16 o6 c+16 e16 c+16 o5 a+8 f+8 a+8 o6 c+8 | ]2
 A @v1 v14 q7
-A o5 d4 f8 a8 | o5 a4 g8 f8 | o5 e4 a8 o6 c8 | o6 c4 o5 b8 a8 |
-A o5 b-4 o6 d8 o5 b-8 | o5 g+4 b8 o6 d8 | o6 c8 o5 a8 e8 a8 | o5 g+8 e8 b8 g+8 |
-A @v0 v14 q8
-A o6 a16 e16 c16 e16 a8 r8 | o6 b16 a16 g+16 a16 e8 r8 | o6 a16 f16 d16 f16 a8 r8 | o6 g+16 f16 e16 d16 c8 o5 b8 |
-A o6 a16 f16 c16 f16 a8 r8 | o6 g+16 e16 o5 b16 o6 e16 g+8 r8 | o6 a16 g+16 a16 b16 o7 c8 o6 a8 | o6 b8 o7 c16 o6 b16 g+8 e8 |
-P D-5 v9 q7
-P [ o5 a16 e16 c16 e16 a8 r8 | o5 b16 a16 g+16 a16 e8 r8 | o5 a16 f16 d16 f16 a8 r8 | o5 g+16 f16 e16 d16 c8 o4 b8 |
-P o5 a16 f16 c16 f16 a8 r8 | o5 g+16 e16 o4 b16 o5 e16 g+8 r8 | o5 a16 g+16 a16 b16 o6 c8 o5 a8 | o5 b8 o6 c16 o5 b16 g+8 e8 | ]2
-P o5 d4 f8 a8 | o5 a4 g8 f8 | o5 e4 a8 o6 c8 | o6 c4 o5 b8 a8 |
-P o5 b-4 o6 d8 o5 b-8 | o5 g+4 b8 o6 d8 | o6 c8 o5 a8 e8 a8 | o5 g+8 e8 b8 g+8 |
-P o5 a16 e16 c16 e16 a8 r8 | o5 b16 a16 g+16 a16 e8 r8 | o5 a16 f16 d16 f16 a8 r8 | o5 g+16 f16 e16 d16 c8 o4 b8 |
-P o5 a16 f16 c16 f16 a8 r8 | o5 g+16 e16 o4 b16 o5 e16 g+8 r8 | o5 a16 g+16 a16 b16 o6 c8 o5 a8 | o5 b8 o6 c16 o5 b16 g+8 e8 |
+A o5 f+2 b4 o6 d4 | o6 d2 c+4 o5 b4 | o5 b4. o6 c+8 d4 e4 | o6 c+2 o5 a+2 |
+A @v0 v14 q6
+A o5 b16 r16 o6 f+16 o5 b16 r16 o6 f+16 d16 c+16 o5 b16 r16 o6 f+16 o5 b16 r16 o6 f+16 e16 d16 |
+A o5 g16 r16 o6 d16 o5 g16 r16 o6 d16 o5 b16 a16 g16 r16 o6 d16 o5 g16 r16 o6 d16 c+16 o5 b16 |
+A o5 e16 r16 b16 e16 r16 b16 o6 e16 d16 o5 c+16 r16 a+16 c+16 r16 a+16 o6 e16 c+16 |
+A o5 f+16 r16 o6 c+16 o5 f+16 r16 o6 c+16 e16 c+16 o5 a+8 f+8 a+8 o6 c+8 |
+P D-5 v9 q6
+P [ o4 b16 r16 o5 f+16 o4 b16 r16 o5 f+16 d16 c+16 o4 b16 r16 o5 f+16 o4 b16 r16 o5 f+16 e16 d16 |
+P   o4 g16 r16 o5 d16 o4 g16 r16 o5 d16 o4 b16 a16 g16 r16 o5 d16 o4 g16 r16 o5 d16 c+16 o4 b16 |
+P   o4 e16 r16 b16 e16 r16 b16 o5 e16 d16 o4 c+16 r16 a+16 c+16 r16 a+16 o5 e16 c+16 |
+P   o4 f+16 r16 o5 c+16 o4 f+16 r16 o5 c+16 e16 c+16 o4 a+8 f+8 a+8 o5 c+8 | ]2
+P q7
+P o4 f+2 b4 o5 d4 | o5 d2 c+4 o4 b4 | o4 b4. o5 c+8 d4 e4 | o5 c+2 o4 a+2 |
+P q6
+P o4 b16 r16 o5 f+16 o4 b16 r16 o5 f+16 d16 c+16 o4 b16 r16 o5 f+16 o4 b16 r16 o5 f+16 e16 d16 |
+P o4 g16 r16 o5 d16 o4 g16 r16 o5 d16 o4 b16 a16 g16 r16 o5 d16 o4 g16 r16 o5 d16 c+16 o4 b16 |
+P o4 e16 r16 b16 e16 r16 b16 o5 e16 d16 o4 c+16 r16 a+16 c+16 r16 a+16 o5 e16 c+16 |
+P o4 f+16 r16 o5 c+16 o4 f+16 r16 o5 c+16 e16 c+16 o4 a+8 f+8 a+8 o5 c+8 |
 B @0 v10 q4 o4
-B [ r8 e8 r8 e8 | r8 e8 r8 e8 | r8 f8 r8 f8 | r8 g+8 r8 g+8 | r8 a8 r8 a8 | r8 g+8 r8 g+8 | r8 e8 r8 e8 | r8 g+8 r8 g+8 | ]2
-B r8 f8 r8 f8 | r8 f8 r8 f8 | r8 e8 r8 e8 | r8 e8 r8 e8 | r8 f8 r8 f8 | r8 g+8 r8 g+8 | r8 e8 r8 e8 | r8 g+8 r8 g+8 |
-B r8 e8 r8 e8 | r8 e8 r8 e8 | r8 f8 r8 f8 | r8 g+8 r8 g+8 | r8 a8 r8 a8 | r8 g+8 r8 g+8 | r8 e8 r8 e8 | r8 g+8 r8 g+8 |
+B [ [r8 f+8]4 | [r8 g8]4 | [r8 g8]2 [r8 f+8]2 | [r8 f+8]4 | ]2
+B [r8 f+8]4 | [r8 g8]4 | [r8 g8]4 | [r8 f+8]4 |
+B [r8 f+8]4 | [r8 g8]4 | [r8 g8]2 [r8 f+8]2 | [r8 f+8]4 |
 C @0 v9 q4 o4
-C [ r8 c8 r8 c8 | r8 c8 r8 c8 | r8 d8 r8 d8 | r8 e8 r8 e8 | r8 f8 r8 f8 | r8 e8 r8 e8 | r8 c8 r8 c8 | r8 e8 r8 e8 | ]2
-C r8 d8 r8 d8 | r8 d8 r8 d8 | r8 c8 r8 c8 | r8 c8 r8 c8 | r8 d8 r8 d8 | r8 e8 r8 e8 | r8 c8 r8 c8 | r8 e8 r8 e8 |
-C r8 c8 r8 c8 | r8 c8 r8 c8 | r8 d8 r8 d8 | r8 e8 r8 e8 | r8 f8 r8 f8 | r8 e8 r8 e8 | r8 c8 r8 c8 | r8 e8 r8 e8 |
+C [ [r8 d8]4 | [r8 d8]4 | [r8 e8]2 [r8 c+8]2 | [r8 c+8]4 | ]2
+C [r8 d8]4 | [r8 d8]4 | [r8 e8]4 | [r8 c+8]4 |
+C [r8 d8]4 | [r8 d8]4 | [r8 e8]2 [r8 c+8]2 | [r8 c+8]4 |
 D @13 v15 q5
-D [ o2 a8 o3 a8 o2 e8 o3 e8 | o2 a8 o3 a8 o2 e8 o3 e8 | o2 d8 o3 d8 o2 a8 o3 a8 | o2 e8 o3 e8 o2 b8 o3 b8 | o3 f8 o4 f8 o3 c8 o4 c8 | o2 e8 o3 e8 o2 b8 o3 b8 | o2 a8 o3 a8 o2 e8 o3 e8 | o2 e8 o3 e8 o2 b8 o3 b8 | ]2
-D o2 d8 o3 d8 o2 a8 o3 a8 | o2 d8 o3 d8 o2 a8 o3 a8 | o2 a8 o3 a8 o2 e8 o3 e8 | o2 a8 o3 a8 o2 e8 o3 e8 | o2 b-8 o3 b-8 o3 f8 o4 f8 | o2 e8 o3 e8 o2 b8 o3 b8 | o2 a8 o3 a8 o2 e8 o3 e8 | o2 e8 o3 e8 o2 b8 o3 b8 |
-D o2 a8 o3 a8 o2 e8 o3 e8 | o2 a8 o3 a8 o2 e8 o3 e8 | o2 d8 o3 d8 o2 a8 o3 a8 | o2 e8 o3 e8 o2 b8 o3 b8 | o3 f8 o4 f8 o3 c8 o4 c8 | o2 e8 o3 e8 o2 b8 o3 b8 | o2 a8 o3 a8 o2 e8 o3 e8 | o2 e8 o3 e8 o2 b8 o3 b8 |
-#   リズム: 速い 2 拍子。ハイハットは裏拍だけ。8 小節ごとにスネアの連打
-R V15,15,12,11,15
-R [ bc8 h8 s8 h8 [ b8 h8 s8 h8 ]6 s16 s16 s16 s16 bs8 s8 ]4
+D [ [o2 b8 o3 b8]4 | [o2 g8 o3 g8]4 | [o2 e8 o3 e8]2 [o2 f+8 o3 f+8]2 | [o2 f+8 o3 f+8]4 | ]2
+D [o2 b8 o3 b8]4 | [o2 g8 o3 g8]4 | [o2 e8 o3 e8]4 | [o2 f+8 o3 f+8]4 |
+D [o2 b8 o3 b8]4 | [o2 g8 o3 g8]4 | [o2 e8 o3 e8]2 [o2 f+8 o3 f+8]2 | [o2 f+8 o3 f+8]4 |
+#   リズム: 速い 4 拍。2 拍目と 4 拍目の裏で 16 分の 2 打。4 小節ごとにタムとスネアの連打
+R V15,14,12,11,13
+R [ bc8 h8 sh8 b16 b16 b8 h8 sh8 s16 s16 [ b8 h8 sh8 b16 b16 b8 h8 sh8 s16 s16 ]2 b8 s16 s16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 s8 ]4
 
 @song STAGE6 loop
-# ステージ 6「軌道」: 冷たく静か(ホルスト『海王星』の雰囲気)。ホ短調と嬰ト短調を揺れる和音、t75、8 小節
-#   高い音の脈動を PSG で(FM の F パートに +10 セントで重ね、1 オクターブ上で減衰させる)。ドラムは機雷の点滅に合わせたノイズだけ
+# ステージ 6「軌道」: 冷たく静か、時限装置が時を刻む。嬰ハ短調、t75、8 小節
+#   ビブラフォンが属音(G♯)を 8 分で刻み続け、PSG がその 1 オクターブ上で減衰して重なる(+10 セント)。低い和音がゆっくり動く
+#   和音は C♯m・A・F♯m・G♯・D(ナポリの和音)・B。ドラムは心臓の鼓動のようなバスドラムだけ
 @tempo 75
-@voice 21 61 22 02 63 62 03 06   # オリジナル音色 0: 冷たい正弦波(モジュレーションを弱く、キャリアにビブラート)
-A @0 v12 q8
-A o5 b1 | o6 d+2 o5 b2 | o6 e1 | o6 d+2 o5 g+2 | o6 e-1 | o6 e2 o5 b2 | o6 f2 d-2 | o6 f+1 |
+@voice 22 61 24 03 53 52 03 05   # オリジナル音色 0: 冷たい正弦波(モジュレーションを弱く、キャリアにビブラート、ゆっくり立ち上げ)
+A @0 v11 q8
+A o5 e1 | o5 e2 c+2 | o5 f+2 a2 | o5 g+2 o6 c2 | o6 c+1 | o6 d2 o5 a2 | o5 b2 d+2 | o5 g+1 |
 B @0 v8 q8 o4
-B b1 | b1 | b1 | b1 | g1 | b1 | b-1 | b1 |
+B g+1 | a1 | a1 | g+1 | g+1 | a1 | f+1 | g+1 |
 C @0 v8 q8 o4
-C g1 | g+1 | g1 | g+1 | e-1 | g1 | f1 | f+1 |
+C e1 | e1 | f+1 | c1 | e1 | f+1 | d+1 | c1 |
 D @0 v7 q8 o4
-D e1 | d+1 | e1 | d+1 | c1 | e1 | d-1 | d1 |
-E @14 v10 q8 o2
-E e1 | g+1 | e1 | g+1 | o3 c1 | o2 e1 | b-1 | b1 |
-F @0 v7 q4
-F [o5 b16 r16 o6 e16 r16]4 | [o5 b16 r16 o6 d+16 r16]4 | [o5 b16 r16 o6 e16 r16]4 | [o5 b16 r16 o6 d+16 r16]4 |
-F [o5 g16 r16 o6 c16 r16]4 | [o5 b16 r16 o6 e16 r16]4 | [o5 f16 r16 o5 b-16 r16]4 | [o5 f+16 r16 o5 b16 r16]4 |
+D c+1 | c+1 | c+1 | d+1 | c+1 | d1 | o3 b1 | o4 d+1 |
+E @13 v11 q8
+E o2 c+1 | o1 a1 | o2 f+1 | g+1 | c+1 | d1 | o1 b1 | o2 g+1 |
+F @12 v7 q4
+F [ [o5 g+16 r16 r8]4 ]8
 P D+10 v10 E3 q8
-P [o6 b16 r16 o7 e16 r16]4 | [o6 b16 r16 o7 d+16 r16]4 | [o6 b16 r16 o7 e16 r16]4 | [o6 b16 r16 o7 d+16 r16]4 |
-P [o6 g16 r16 o7 c16 r16]4 | [o6 b16 r16 o7 e16 r16]4 | [o6 f16 r16 o6 b-16 r16]4 | [o6 f+16 r16 o6 b16 r16]4 |
-R V0,0,0,8,9
-R [ r2 r4 h8 h8 r1 ]3 r2 r4 h8 h8 c1
+P [ [o6 g+16 r16 r8]4 ]8
+R V12,0,11,9,8
+R [ b8 b8 r2. ]3 b8 b8 r4 h8 h8 r4 [ b8 b8 r2. ]3 b8 b8 r4 c2
 
 @song BOSS loop
-# ボス戦: 荒れ狂う夜の山(ムソルグスキーの雰囲気)。ニ短調、t180、16 小節。旋律はオリジナル
-#   16 分音符で渦を巻く B パートの上を、歪んだ金管が踏み鳴らす。和音は Dm・A7・E♭(ナポリの和音)・Gm・E 減七
+# ボス戦: 正面からの撃ち合い。ホ短調、t180、16 小節。旋律はオリジナル
+#   エレキギターが 16 分でオクターブを刻み、歪んだ金管が踏み鳴らす。ベースは 8 分のオクターブ
+#   和音は Em・C・B(属和音)・F(ナポリの和音)・Am
 @tempo 180
-@voice 31 21 12 1E F2 E2 14 15   # オリジナル音色 0: 歪んだ金管(モジュレーター 3 倍、両方を半波に、帰還 6)
+@voice 21 21 11 1F E2 D2 14 15   # オリジナル音色 0: 歪んだ金管(両方を半波に、帰還 7)
 A @0 v15 q7
-A o5 d4. f8 a4 f4 | o5 e4. g8 b-4 a4 | o5 d4. f8 a4 o6 d4 | o6 e-2 o5 b-2 |
-A o5 g4. b-8 o6 d4 o5 b-4 | o5 a4. o6 d8 f4 d4 | o6 e-4. d8 c4 o5 b-4 | o5 a2 o6 c+2 |
-A o6 d8 d8 r8 d8 f4 d4 | o6 e-8 e-8 r8 e-8 g4 e-4 | o6 e8 e8 r8 e8 g4 b-4 | o6 a2 g8 f8 e8 c+8 |
-A o6 g4. f8 e-4 d4 | o6 f4. e8 d4 a4 | o6 e-4 f4 g4 b-4 | o6 a1 |
+A o5 e4 e8 e8 g4. f+8 | o5 e4 b4 a8 g8 f+8 d8 | o5 e4. g8 o6 c4 o5 g4 | o5 f+2 d+2 |
+A o5 b4 b8 b8 o6 d4. c8 | o6 c8 o5 b8 a8 g8 b4 e4 | o5 f4. a8 o6 c4 o5 a4 | o5 b2 r8 f+8 a8 b8 |
+A o6 c4 c8 c8 e4. d8 | o6 c4 o5 b4 a2 | o5 g4 g8 g8 b4. a8 | o5 g8 f+8 e8 f+8 g4 b4 |
+A o6 c4. d8 e4 g4 | o6 f4. e8 d4 c4 | o5 b4 o6 d+4 f+4 a4 | o6 f+2 d+4 o5 b4 |
 F K+3 @0 v13 q7
-F o5 d4. f8 a4 f4 | o5 e4. g8 b-4 a4 | o5 d4. f8 a4 o6 d4 | o6 e-2 o5 b-2 |
-F o5 g4. b-8 o6 d4 o5 b-4 | o5 a4. o6 d8 f4 d4 | o6 e-4. d8 c4 o5 b-4 | o5 a2 o6 c+2 |
-F o6 d8 d8 r8 d8 f4 d4 | o6 e-8 e-8 r8 e-8 g4 e-4 | o6 e8 e8 r8 e8 g4 b-4 | o6 a2 g8 f8 e8 c+8 |
-F o6 g4. f8 e-4 d4 | o6 f4. e8 d4 a4 | o6 e-4 f4 g4 b-4 | o6 a1 |
+F o5 e4 e8 e8 g4. f+8 | o5 e4 b4 a8 g8 f+8 d8 | o5 e4. g8 o6 c4 o5 g4 | o5 f+2 d+2 |
+F o5 b4 b8 b8 o6 d4. c8 | o6 c8 o5 b8 a8 g8 b4 e4 | o5 f4. a8 o6 c4 o5 a4 | o5 b2 r8 f+8 a8 b8 |
+F o6 c4 c8 c8 e4. d8 | o6 c4 o5 b4 a2 | o5 g4 g8 g8 b4. a8 | o5 g8 f+8 e8 f+8 g4 b4 |
+F o6 c4. d8 e4 g4 | o6 f4. e8 d4 c4 | o5 b4 o6 d+4 f+4 a4 | o6 f+2 d+4 o5 b4 |
 P D-6 v9 q7
-P o5 d4. f8 a4 f4 | o5 e4. g8 b-4 a4 | o5 d4. f8 a4 o6 d4 | o6 e-2 o5 b-2 |
-P o5 g4. b-8 o6 d4 o5 b-4 | o5 a4. o6 d8 f4 d4 | o6 e-4. d8 c4 o5 b-4 | o5 a2 o6 c+2 |
-P o6 d8 d8 r8 d8 f4 d4 | o6 e-8 e-8 r8 e-8 g4 e-4 | o6 e8 e8 r8 e8 g4 b-4 | o6 a2 g8 f8 e8 c+8 |
-P o6 g4. f8 e-4 d4 | o6 f4. e8 d4 a4 | o6 e-4 f4 g4 b-4 | o6 a1 |
-B @0 v10 q8 l16
-B [o5 d e f a f e d c+]2 |
-B [o5 e f g b- g f e c+]2 |
-B [o5 d e f a f e d c+]2 |
-B [o5 e- f g b- g f e- d]2 |
-B [o5 d e- g b- g e- d c]2 |
-B [o5 d e f a f e d c+]2 |
-B [o5 e- f g b- g f e- d]2 |
-B [o5 e f g b- g f e c+]2 |
-B [o5 d e f a f e d c+]2 |
-B [o5 e- f g b- g f e- d]2 |
-B [o5 e f g b- g f e c+]2 |
-B [o5 e f g b- g f e c+]2 |
-B [o5 d e- g b- g e- d c]2 |
-B [o5 d e f a f e d c+]2 |
-B [o5 e- f g b- g f e- d]2 |
-B [o5 e f g b- g f e c+]2 |
-C @0 v10 q8 o4
-C a1 | g1 | a1 | b-1 | b-1 | a1 | b-1 | g1 | a1 | b-1 | b-1 | g1 |
-C b-1 | a1 | b-1 | g1 |
+P o5 e4 e8 e8 g4. f+8 | o5 e4 b4 a8 g8 f+8 d8 | o5 e4. g8 o6 c4 o5 g4 | o5 f+2 d+2 |
+P o5 b4 b8 b8 o6 d4. c8 | o6 c8 o5 b8 a8 g8 b4 e4 | o5 f4. a8 o6 c4 o5 a4 | o5 b2 r8 f+8 a8 b8 |
+P o6 c4 c8 c8 e4. d8 | o6 c4 o5 b4 a2 | o5 g4 g8 g8 b4. a8 | o5 g8 f+8 e8 f+8 g4 b4 |
+P o6 c4. d8 e4 g4 | o6 f4. e8 d4 c4 | o5 b4 o6 d+4 f+4 a4 | o6 f+2 d+4 o5 b4 |
+#   ギター: 根音 2 つ・オクターブ上 1 つ・根音 2 つ・オクターブ上 1 つ・根音 2 つ(16 分で 3 + 3 + 2)を半小節に
+B @15 v9 q5
+B [o3 e16 e16 o4 e16 o3 e16 e16 o4 e16 o3 e16 e16]4 | [o3 c16 c16 o4 c16 o3 c16 c16 o4 c16 o3 c16 c16]2 | [o2 b16 b16 o3 b16 o2 b16 b16 o3 b16 o2 b16 b16]2 |
+B [o3 e16 e16 o4 e16 o3 e16 e16 o4 e16 o3 e16 e16]4 | [o3 f16 f16 o4 f16 o3 f16 f16 o4 f16 o3 f16 f16]2 | [o2 b16 b16 o3 b16 o2 b16 b16 o3 b16 o2 b16 b16]2 |
+B [o2 a16 a16 o3 a16 o2 a16 a16 o3 a16 o2 a16 a16]4 | [o3 e16 e16 o4 e16 o3 e16 e16 o4 e16 o3 e16 e16]4 |
+B [o3 c16 c16 o4 c16 o3 c16 c16 o4 c16 o3 c16 c16]2 | [o3 f16 f16 o4 f16 o3 f16 f16 o4 f16 o3 f16 f16]2 | [o2 b16 b16 o3 b16 o2 b16 b16 o3 b16 o2 b16 b16]4 |
+C @0 v8 q8 o4
+C g1 | g1 | e1 | d+1 | g1 | g1 | a1 | d+1 | c1 | c1 | g1 | g1 | e1 | a1 | d+1 | d+1 |
 D @13 v15 q6 l8
-D [o2 d o3 d]4 | [o2 a o3 a]4 | [o2 d o3 d]4 | [o2 e- o3 e-]4 |
-D [o2 g o3 g]4 | [o2 d o3 d]4 | [o2 e- o3 e-]4 | [o2 a o3 a]4 |
-D [o2 d o3 d]4 | [o2 e- o3 e-]4 | [o2 e o3 e]4 | [o2 a o3 a]4 |
-D [o2 g o3 g]4 | [o2 d o3 d]4 | [o2 e- o3 e-]4 | [o2 a o3 a]4 |
-#   リズム: 速い 4 拍。ハイハットは付点で跳ねる 2 打(8. + 16)、4 小節ごとにタムの連打
-R V15,15,13,12,15
-R [ bch8. h16 sh8 b8 bh8. h16 sh8 sh8
-R  [ bh8. h16 sh8 b8 bh8. h16 sh8 sh8 ]2
-R    bh8. h16 sh8 b8 t16 t16 t16 t16 s16 s16 bs8 ]4
+D [o2 e o3 e]4 | [o2 e o3 e]4 | [o2 c o3 c]4 | [o1 b o2 b]4 | [o2 e o3 e]4 | [o2 e o3 e]4 | [o2 f o3 f]4 | [o1 b o2 b]4 |
+D [o1 a o2 a]4 | [o1 a o2 a]4 | [o2 e o3 e]4 | [o2 e o3 e]4 | [o2 c o3 c]4 | [o2 f o3 f]4 | [o1 b o2 b]4 | [o1 b o2 b]4 |
+#   リズム: バスドラムを踏み続ける速い 4 拍。4 拍目の裏でタム 2 つ、4 小節ごとにタムとスネアの連打
+R V15,15,13,12,13
+R [ bch8 b8 sh8 b16 b16 bh8 b8 sh8 t16 t16 [ bh8 b8 sh8 b16 b16 bh8 b8 sh8 t16 t16 ]2 t16 t16 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 bs8 ]4
 
 @song BRIDGE loop
-# 継ぎ目: 空と海だけの場面。遠い家を思う静かな歌(ドヴォルザークの緩徐楽章の雰囲気、五音音階のオリジナルの旋律)。変ニ長調、t128、8 小節でちょうど 15 秒
-#   刻みなし。PSG を +18 セントと強くずらしてうならせる。旋律は FM でも +3 ずらして重ねる
+# 継ぎ目: 空と海だけの場面。遠くにいる娘を思う、一人きりの笛の歌(オリジナルの旋律)。変ロ短調、t128、8 小節でちょうど 15 秒
+#   刻みなし。息の多い笛を FM で +3 ずらして重ね、PSG を +18 セントと強くずらしてうならせる。低い和音がゆっくり下りる
+#   和音は B♭m・A♭・G♭・F(属和音)・D♭・E♭m
 @tempo 128
-@voice 62 61 16 06 53 63 13 15   # オリジナル音色 0: コーラングレのような息の音(ゆっくり立ち上げ、両方にビブラート)
+@voice 62 61 1B 07 63 73 13 16   # オリジナル音色 0: 息の多い笛(帰還 7 で息の雑音、モジュレーター 2 倍、ゆっくり立ち上げ、ビブラート)
 A @0 v13 q8
-A o5 a-2. b-4 | o5 a-2 f2 | o5 e-2. f4 | o5 a-1 |
-A o5 b-2. o6 d-4 | o6 e-2 d-4 o5 b-4 | o5 a-2 e-4 f4 | o5 f1 |
+A o5 f2. e-8 d-8 | o5 c2 d-4 e-4 | o5 f2 a-4 g-4 | o5 f1 |
+A o5 b-2. a-8 g-8 | o5 f2 e-4 d-4 | o5 c2 d-4 e-4 | o5 f1 |
 E K+3 @0 v11 q8
-E o5 a-2. b-4 | o5 a-2 f2 | o5 e-2. f4 | o5 a-1 |
-E o5 b-2. o6 d-4 | o6 e-2 d-4 o5 b-4 | o5 a-2 e-4 f4 | o5 f1 |
+E o5 f2. e-8 d-8 | o5 c2 d-4 e-4 | o5 f2 a-4 g-4 | o5 f1 |
+E o5 b-2. a-8 g-8 | o5 f2 e-4 d-4 | o5 c2 d-4 e-4 | o5 f1 |
 P D+18 v10 q8
-P o5 a-2. b-4 | o5 a-2 f2 | o5 e-2. f4 | o5 a-1 |
-P o5 b-2. o6 d-4 | o6 e-2 d-4 o5 b-4 | o5 a-2 e-4 f4 | o5 f1 |
+P o5 f2. e-8 d-8 | o5 c2 d-4 e-4 | o5 f2 a-4 g-4 | o5 f1 |
+P o5 b-2. a-8 g-8 | o5 f2 e-4 d-4 | o5 c2 d-4 e-4 | o5 f1 |
 B @0 v9 q8 o4
-B a-1 | a-1 | b-1 | a-1 | b-1 | b-1 | a-1 | a-1 |
-C @0 v9 q8 o4
-C f1 | f1 | g-1 | f1 | f1 | g-1 | e-1 | f1 |
-D @14 v12 q8
-D o3 d-1 | d-1 | o2 g-1 | o3 d-1 | o2 b-1 | g-1 | a-1 | o3 d-1 |
+B f1 | e-1 | d-1 | c1 | d-1 | f1 | g-1 | f1 |
+C @0 v9 q8
+C o4 d-1 | c1 | o3 b-1 | a1 | b-1 | o4 d-1 | o3 b-1 | o4 d-1 |
+D @14 v12 q8 o2
+D b-1 | a-1 | g-1 | f1 | g-1 | d-1 | e-1 | b-1 |
 
 @song CLEAR once
-# ステージクリア: ほっとする短いファンファーレ。ハ長調、t132、4 小節
+# ステージクリア: ひとまずの勝利。短調の金管のファンファーレが、最後の小節で長和音に開く(ピカルディの 3 度)。ニ短調 → ニ長調、t132、4 小節
+#   ベースはガロップ、ドラムは軍隊のスネア
 @tempo 132
-@voice 21 61 16 05 A3 93 13 15   # オリジナル音色 0: 柔らかい金管(強さを抑え、キャリアにビブラート)
+@voice 21 21 15 0D A2 92 14 16   # オリジナル音色 0: 暗い金管(モジュレーターを半波に、帰還 5)
 A @0 v14 q7
-A o5 g8. g16 o6 c4 e4. d8 | o6 f4. e8 d4 c4 | o6 d8 e8 f8 d8 g4 f4 | o6 e8 g8 o7 c2 r4
+A o5 d8. d16 a4 a8. g16 f8 e8 | o5 f4. e8 d4 c4 | o5 b-4 o6 c4 o5 a4 o6 c+4 | q8 o6 d2. r4
 P D+7 v9 q7
-P o5 g8. g16 o6 c4 e4. d8 | o6 f4. e8 d4 c4 | o6 d8 e8 f8 d8 g4 f4 | o6 e8 g8 o7 c2 r4
+P o5 d8. d16 a4 a8. g16 f8 e8 | o5 f4. e8 d4 c4 | o5 b-4 o6 c4 o5 a4 o6 c+4 | q8 o6 d2. r4
 B @0 v10 q8
-B o4 g1 | a1 | b1 | o5 c2. r4
+B o4 a1 | f1 | f2 e2 | f+2. r4
 C @0 v9 q8
-C o4 e1 | f1 | g1 | g2. r4
-D @14 v14 q6
-D o3 c4 g4 c4 g4 | f4 c4 f4 c4 | g4 d4 g4 d4 | c2. r4
-R V15,15,11,12,11
-R bc4 sh8 sh8 b4 sh4 | b4 sh8 sh8 b4 sh4 | b4 sh8 sh8 s16 s16 s16 s16 bs8 s8 | bc2. r4
+C o4 f1 | d1 | d2 c+2 | d2. r4
+D @13 v14 q5
+D [o2 d8 d16 d16]4 | [o1 b-8 b-16 b-16]4 | [o1 b-8 b-16 b-16]2 [o1 a8 a16 a16]2 | q8 o2 d2. r4
+R V15,15,12,12,11
+R bc8 s16 s16 s8 s16 s16 bs8 s16 s16 s8 s8 | b8 s16 s16 s8 s16 s16 bs8 s16 s16 s8 s8 | t16 t16 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 s8 | bc2. r4
 
 @song ENDING loop
-# エンドロール: オルゴール風の 3 拍子(エルガーの変奏曲の雰囲気、オリジナルの旋律)。変ホ長調、t72、16 小節
-#   付点の同じ形が 2 小節ごとに 1 段ずつ上がり(B♭・C・D・E♭)、9 小節目で頂点へ。刻みなし。B パートが分散和音、PSG は旋律に重ねて減衰
-@tempo 72
-@voice 0E 01 1C 03 F4 F3 23 34   # オリジナル音色 0: オルゴール(モジュレーター 14 倍の金属の響き、減衰)
-A @0 v14 q8
-A o5 b-4. g8 a-4 | o5 b-2 g4 | o6 c4. o5 a-8 b-4 | o6 c2 o5 a-4 |
-A o6 d4. o5 b-8 o6 c4 | o6 d2 o5 b-4 | o6 e-4. c8 d4 | o6 e-2 g4 |
-A o6 a-2 g4 | o6 f2 e-4 | o6 d4 c4 o5 b-4 | o6 f2. |
-A o6 g2 f4 | o6 e-2 d4 | o6 c4. d4. | o6 e-2. |
-P D-5 v8 E4 q8
-P o5 b-4. g8 a-4 | o5 b-2 g4 | o6 c4. o5 a-8 b-4 | o6 c2 o5 a-4 |
-P o6 d4. o5 b-8 o6 c4 | o6 d2 o5 b-4 | o6 e-4. c8 d4 | o6 e-2 g4 |
-P o6 a-2 g4 | o6 f2 e-4 | o6 d4 c4 o5 b-4 | o6 f2. |
-P o6 g2 f4 | o6 e-2 d4 | o6 c4. d4. | o6 e-2. |
-B @0 v10 q8 l8
-B o4 e- b- o5 g o4 b- o5 g o4 b- | o4 e- b- o5 g o4 b- o5 g o4 b- | o3 a- o4 e- o5 c o4 e- o5 c o4 e- | o3 a- o4 e- o5 c o4 e- o5 c o4 e- |
-B o3 b- o4 f o5 d o4 f o5 d o4 f | o3 b- o4 f o5 d o4 f o5 d o4 f | o4 c g o5 e- o4 g o5 e- o4 g | o4 c g o5 e- o4 g o5 e- o4 g |
-B o3 a- o4 e- o5 c o4 e- o5 c o4 e- | o3 f o4 c a- c a- c | o3 b- o4 f o5 d o4 f o5 d o4 f | o3 b- o4 f o5 d o4 f o5 d o4 f |
-B o4 e- b- o5 g o4 b- o5 g o4 b- | o4 c g o5 e- o4 g o5 e- o4 g | o3 a- o4 e- o5 c o3 b- o4 f o5 d | o4 e- b- o5 g o4 b- o5 g o4 b- |
-C @14 v10 q8
-C o2 e-2. | e-2. | a-2. | a-2. | b-2. | b-2. | o3 c2. | c2. |
-C o2 a-2. | f2. | b-2. | b-2. | e-2. | o3 c2. | o2 a-4. b-4. | e-2. |
+# エンドロール: 娘を取り戻し、二人で帰る。ハ短調から変ホ長調へ、t90、16 小節
+#   1〜8 小節はスチールドラムのような音がタイトルの主題の形をハ短調で静かに思い出し、8 小節目で変ホ長調に着く
+#   9〜16 小節は温かい金管が同じ形を長調で堂々と吹き、A♭・B♭ から E♭ へ(♭6・♭7 から主和音)。PSG は旋律に重ね、前半は減衰させる
+@tempo 90
+@voice 04 01 1A 03 F5 F3 24 25   # オリジナル音色 0: スチールドラム(モジュレーター 4 倍、減衰。1〜8 小節)
+@voice 21 61 15 0C 92 82 14 16   # オリジナル音色 1: 温かい金管(モジュレーターを半波に、帰還 4、キャリアにビブラート。9〜16 小節)
+A @0 @v0 v13 q7
+A o5 c8. c16 g4 f8 e-8 d8 e-8 | o5 c2 r4 o4 b-8 o5 c8 | o5 d-8. d-16 a-4 g8 f8 e-8 f8 | o5 g2. r4 |
+A o5 c8. c16 g4 o6 c4 o5 b-8 a-8 | o5 g4. f8 e-4 d4 | o5 e-8 f8 g8 a-8 b-4 o6 d4 | o6 e-2. r4 |
+A @v1 v15 q7
+A o5 e-8. e-16 b-4 a-8 g8 f8 g8 | o5 e-2 r4 d8 e-8 | o5 f8. f16 o6 c4 o5 b-8 a-8 g8 a-8 | o5 b-2. r4 |
+A o5 e-8. e-16 b-4 o6 e-4 d8 c8 | o5 b-4. a-8 g4 f4 | o5 a-8 b-8 o6 c8 e-8 d4 f4 | q8 o6 e-1 |
+P D-5 v8 E3 q7
+P o5 c8. c16 g4 f8 e-8 d8 e-8 | o5 c2 r4 o4 b-8 o5 c8 | o5 d-8. d-16 a-4 g8 f8 e-8 f8 | o5 g2. r4 |
+P o5 c8. c16 g4 o6 c4 o5 b-8 a-8 | o5 g4. f8 e-4 d4 | o5 e-8 f8 g8 a-8 b-4 o6 d4 | o6 e-2. r4 |
+P v9 E0 q7
+P o5 e-8. e-16 b-4 a-8 g8 f8 g8 | o5 e-2 r4 d8 e-8 | o5 f8. f16 o6 c4 o5 b-8 a-8 g8 a-8 | o5 b-2. r4 |
+P o5 e-8. e-16 b-4 o6 e-4 d8 c8 | o5 b-4. a-8 g4 f4 | o5 a-8 b-8 o6 c8 e-8 d4 f4 | q8 o6 e-1 |
+B @0 v8 q8 o4
+B g2 g2 | g2 g2 | a-2 a-2 | b2 b2 | g2 e-2 | g2 f2 | e-2 f2 | g2 g2 |
+B v10 g2 g2 | g2 f2 | a-2 e-2 | f2 f2 | g2 g2 | e-2 a-2 | e-2 f2 | g1 |
+C @0 v8 q8 o4
+C e-2 e-2 | e-2 e-2 | f2 f2 | d2 d2 | e-2 c2 | e-2 d2 | c2 d2 | e-2 e-2 |
+C v10 e-2 e-2 | e-2 d2 | f2 c2 | d2 d2 | e-2 e-2 | c2 f2 | c2 d2 | e-1 |
+D @13 v11 q7
+D o2 c2 c2 | o2 c2 c2 | o2 d-2 d-2 | o1 g2 g2 | o2 c2 o1 a-2 | o2 e-2 o1 b-2 | o1 a-2 b-2 | o2 e-2 e-2 |
+D v13 o2 e-4 e-8 e-8 e-4 e-8 e-8 | o2 e-4 e-8 e-8 o1 b-4 b-8 b-8 | o2 f4 f8 f8 o1 a-4 a-8 a-8 | o1 b-4 b-8 b-8 b-4 b-8 b-8 |
+D o2 e-4 e-8 e-8 c4 c8 c8 | o1 a-4 a-8 a-8 o2 f4 f8 f8 | o1 a-4 a-8 a-8 b-4 b-8 b-8 | q8 o2 e-1 |
+#   リズム: 前半はティンパニのように 2 拍ごとに 1 打、8 小節目でスネアのロール。後半は弱い行進
+R V13,12,11,11,9
+R [ b2 r2 ]7 [ s32 ]32
+R bc4 s8 s16 s16 b4 s8 s16 s16 [ b4 s8 s16 s16 b4 s8 s16 s16 ]6 bc1
 
 @song GAMEOVER once
-# ゲームオーバー: 短い下降のジングル。イ短調、t110、3 小節
+# ゲームオーバー: 倒れた父。低い金管が半音ずつ沈む。ニ短調、t110、3 小節。和音は Dm・Gm・B♭m・A・Dm
 @tempo 110
-@voice 21 21 14 07 52 62 13 16   # オリジナル音色 0: 沈んだトロンボーン(ゆっくり立ち上げ)
+@voice 21 21 16 0D 52 62 13 16   # オリジナル音色 0: 沈んだ金管(モジュレーターを半波に、帰還 5、ゆっくり立ち上げ)
 A @0 v13 q7
-A o5 a8 e8 c8 o4 a8 o5 g8 d8 o4 b8 g8 | o5 f8 c8 o4 a8 f8 e4 g+4 | o4 a2. r4
+A o5 a4. b-8 a4 g4 | o5 f4. e8 e-4 c+4 | q8 o5 d2. r4
 P D+7 v9 q7
-P o5 a8 e8 c8 o4 a8 o5 g8 d8 o4 b8 g8 | o5 f8 c8 o4 a8 f8 e4 g+4 | o4 a2. r4
+P o5 a4. b-8 a4 g4 | o5 f4. e8 e-4 c+4 | q8 o5 d2. r4
 B @0 v10 q8
-B o4 e2 d2 | c2 o3 b2 | o4 e2. r4
+B o4 f2 g2 | o4 f2 e2 | o4 f2. r4
 C @0 v9 q8
-C o4 c2 o3 b2 | a2 g+2 | o4 c2. r4
-D @14 v14 q7
-D o2 a2 g2 | f2 e2 | a2. r4
-R V14,13,11,11,9
-R b4 s4 b4 s4 | b4 s4 b4 s8 s8 | bc2. r4
+C o4 d2 o3 b-2 | o4 d-2 c+2 | o4 d2. r4
+D @13 v14 q8
+D o2 d2 g2 | o1 b-2 a2 | o2 d2. r4
+R V14,12,13,11,9
+R b4 r4 b4 r4 | b4 r4 t8 t8 t8 t8 | bc2. r4
 
 @song KING1 once
-# 最終ボスの登場: 重い足どりが高まる。ハ短調、t90、3 小節でちょうど 8 秒。刻みなし(バスドラムとシンバルの単発だけ)
-#   旋律が C から G へ 1 オクターブ半かけて登り、音量も小節ごとに上げる。和音は Cm・D♭(ナポリの和音)・G で、属和音のまま KING2 へ渡す
+# 最終ボスの登場: 敵の首領が姿を見せる。ハ短調、t90、3 小節でちょうど 8 秒。刻みなし(ティンパニのようなバスドラムとタムだけ)
+#   旋律が C・E♭・G と 1 段ずつ登り、それぞれに半音上の隣の音を添える。音量も小節ごとに上げる
+#   和音は Cm・A♭・G で、属和音のまま KING2 へ渡す
 @tempo 90
-@voice 21 61 1C 0E 72 63 13 15   # オリジナル音色 0: 暗くふくらむ金管(モジュレーターを半波に、帰還 6、ゆっくり立ち上げ、キャリアにビブラート)
-A @0 v10 q8 o4 c2 v11 e-2 | v12 g2 v13 a-4 b4 | v14 o5 d2 v15 g2 |
-F K+3 @0 v9 q8 o4 c2 v10 e-2 | v11 g2 v12 a-4 b4 | v13 o5 d2 v14 g2 |
-P D+8 v7 q8 o4 c2 v8 e-2 | v9 g2 v10 a-4 b4 | v11 o5 d2 v12 g2 |
-B @0 v8 q8 o3 g1 | v9 a-1 | v11 b1 |
-C @0 v8 q8 o4 e-1 | v9 f1 | v11 d2 f2 |
-D @13 v12 q8 o2 c1 | v13 d-1 | v15 g1 |
-#   リズム: ティンパニのように遠く打つ。1 小節目は 1 打、2 小節目は 2 打、3 小節目の頭でシンバルを重ねる
-R V15,0,0,12,0
-R b1 | b2 b2 | bc1 |
+@voice 21 61 1A 0E 62 53 13 15   # オリジナル音色 0: 暗くふくらむ金管(モジュレーターを半波に、帰還 6、ゆっくり立ち上げ、キャリアにビブラート)
+A @0 v10 q8 o4 c4. d-8 c2 | v12 o4 e-4. f8 e-2 | v14 o4 b4 o5 d4 v15 g2 |
+F K+3 @0 v9 q8 o4 c4. d-8 c2 | v11 o4 e-4. f8 e-2 | v13 o4 b4 o5 d4 v14 g2 |
+P D+8 v7 q8 o4 c4. d-8 c2 | v9 o4 e-4. f8 e-2 | v11 o4 b4 o5 d4 v12 g2 |
+B @0 v8 q8 o3 g1 | v9 o4 c1 | v11 o3 b1 |
+C @0 v8 q8 o4 e-1 | v9 e-1 | v11 d1 |
+D @13 v12 q8 o2 c1 | v13 o1 a-1 | v15 g1 |
+#   リズム: 1 小節目は遠く 3 打、2 小節目は詰めて 6 打、3 小節目はタムの連打からシンバル
+R V15,10,13,12,8
+R b4 r4 b8 b8 r4 | b4 b8 b8 b4 b8 b8 | t16 t16 t16 t16 t16 t16 t16 t16 bc2 |
 
 @song KING2 loop
-# 最終ボス戦: 夜の山に亡者が集まる(ムソルグスキーの雰囲気)。ハ短調、t200、16 小節。旋律はオリジナル
-#   半音でうごめく 16 分音符の B パートの上で、歪んだ金管が吠える。9 小節目から音色を替え、同じ音を叩きつける形にする
-#   和音は Cm・D♭(ナポリの和音)・G・A♭・Fm・B 減三和音。2 つの和音のパートは低く伸ばし、ベースは 3 + 3 + 2 に打つ
+# 最終ボス戦: 娘を背に、最後の撃ち合い。ハ短調、t200、16 小節。旋律はオリジナル
+#   1〜8 小節は歪んだ金管が吠え、9〜16 小節は金属を打つような音に替えて 16 分で叩きつける(9〜12 小節はビブラフォンと PSG が休む)
+#   ビブラフォンが 16 分の 3 + 3 + 2 で和音を刻み、ベースはガロップ。和音は Cm・G・A♭・Fm・G♭(♭5)・D♭(ナポリの和音)
 @tempo 200
-@voice 21 21 10 1F F2 E2 13 15   # オリジナル音色 0: 強く歪んだ金管(両方を半波に、帰還 7。1〜8 小節)
-@voice 21 61 14 17 E3 D3 14 16   # オリジナル音色 1: 鋭い金管(キャリアを半波に、帰還 7、ビブラート。9〜16 小節)
+@voice 31 21 11 1E F2 E2 14 15   # オリジナル音色 0: 強く歪んだ金管(モジュレーター 3 倍、両方を半波に、帰還 6。1〜8 小節)
+@voice 07 21 18 05 F3 E2 F4 15   # オリジナル音色 1: 金属を打つ音(モジュレーター 7 倍で頭だけ明るく、すぐに丸くなる。9〜16 小節)
 A @0 @v0 v15 q7
-A o5 g2. a-8 g8 | o5 f+8 g8 b-8 a-8 g4 c4 | o5 a-2. b-8 a-8 | o5 g8 a-8 b8 o6 c8 d4 o5 b4 |
-A o6 c2. d8 e-8 | o6 e-8 d8 c8 o5 b8 o6 c4 o5 a-4 | o6 d-2 f4 a-4 | o6 g1 |
-A @v1 o6 c8 c8 c8 r8 f4. e-8 | o6 a-8 g8 f8 e-8 f2 | o6 d8 d8 d8 r8 a-4. g8 | o6 e-8 d8 c8 o5 b8 o6 c2 |
-A o6 d-4 f4 a-4 o7 d-4 | o6 b2 a-4 f4 | o6 e-8 d8 c8 o5 b8 a-8 g8 f+8 g8 | o5 g4 g8 g8 o6 g2 |
+A o5 c4 c8 c8 g4. f8 | o5 e-4 d8 c8 d4 o4 g4 | o5 a-4 a-8 a-8 o6 c4. o5 b-8 | o5 g2 b4 o6 d4 |
+A o6 c4 c8 c8 e-4. d8 | o6 c8 o5 b-8 a-8 g8 a-4 f4 | o5 g-4 a-4 b-4 o6 d-4 | o6 c2 o5 b2 |
+A @v1
+A o6 c16 c16 o5 g16 o6 c16 e-16 c16 o5 g16 o6 c16 d16 d16 o5 g16 o6 d16 f16 d16 o5 g16 o6 d16 |
+A o6 e-16 e-16 c16 e-16 g16 e-16 c16 e-16 d16 d16 o5 b16 o6 d16 f16 d16 o5 b16 o6 d16 |
+A o6 c16 c16 o5 a-16 o6 c16 f16 c16 o5 a-16 o6 c16 d-16 d-16 o5 a-16 o6 d-16 f16 d-16 o5 a-16 o6 d-16 |
+A o5 b16 b16 g16 b16 o6 d16 o5 b16 g16 b16 o6 d8 f8 a-8 b8 |
+A o6 c4 g4 a-4 g8 f8 | o6 e-4 d8 c8 o5 b4 g4 | o6 a-4. g8 g-4 f4 | o6 g2 d4 o5 b4 |
 F K+3 @0 v13 q7
-F o5 g2. a-8 g8 | o5 f+8 g8 b-8 a-8 g4 c4 | o5 a-2. b-8 a-8 | o5 g8 a-8 b8 o6 c8 d4 o5 b4 |
-F o6 c2. d8 e-8 | o6 e-8 d8 c8 o5 b8 o6 c4 o5 a-4 | o6 d-2 f4 a-4 | o6 g1 |
-F o6 c8 c8 c8 r8 f4. e-8 | o6 a-8 g8 f8 e-8 f2 | o6 d8 d8 d8 r8 a-4. g8 | o6 e-8 d8 c8 o5 b8 o6 c2 |
-F o6 d-4 f4 a-4 o7 d-4 | o6 b2 a-4 f4 | o6 e-8 d8 c8 o5 b8 a-8 g8 f+8 g8 | o5 g4 g8 g8 o6 g2 |
+F o5 c4 c8 c8 g4. f8 | o5 e-4 d8 c8 d4 o4 g4 | o5 a-4 a-8 a-8 o6 c4. o5 b-8 | o5 g2 b4 o6 d4 |
+F o6 c4 c8 c8 e-4. d8 | o6 c8 o5 b-8 a-8 g8 a-4 f4 | o5 g-4 a-4 b-4 o6 d-4 | o6 c2 o5 b2 |
+F o6 c16 c16 o5 g16 o6 c16 e-16 c16 o5 g16 o6 c16 d16 d16 o5 g16 o6 d16 f16 d16 o5 g16 o6 d16 |
+F o6 e-16 e-16 c16 e-16 g16 e-16 c16 e-16 d16 d16 o5 b16 o6 d16 f16 d16 o5 b16 o6 d16 |
+F o6 c16 c16 o5 a-16 o6 c16 f16 c16 o5 a-16 o6 c16 d-16 d-16 o5 a-16 o6 d-16 f16 d-16 o5 a-16 o6 d-16 |
+F o5 b16 b16 g16 b16 o6 d16 o5 b16 g16 b16 o6 d8 f8 a-8 b8 |
+F o6 c4 g4 a-4 g8 f8 | o6 e-4 d8 c8 o5 b4 g4 | o6 a-4. g8 g-4 f4 | o6 g2 d4 o5 b4 |
 P D-8 v10 q7
-P o5 g2. a-8 g8 | o5 f+8 g8 b-8 a-8 g4 c4 | o5 a-2. b-8 a-8 | o5 g8 a-8 b8 o6 c8 d4 o5 b4 |
-P o6 c2. d8 e-8 | o6 e-8 d8 c8 o5 b8 o6 c4 o5 a-4 | o6 d-2 f4 a-4 | o6 g1 |
-P o6 c8 c8 c8 r8 f4. e-8 | o6 a-8 g8 f8 e-8 f2 | o6 d8 d8 d8 r8 a-4. g8 | o6 e-8 d8 c8 o5 b8 o6 c2 |
-P o6 d-4 f4 a-4 o7 d-4 | o6 b2 a-4 f4 | o6 e-8 d8 c8 o5 b8 a-8 g8 f+8 g8 | o5 g4 g8 g8 o6 g2 |
-B @0 v10 q8 l16
-B [o4 g a- g f+ g b- a- g]2 |
-B [o4 g a- g f+ g b- a- g]2 |
-B [o4 a- b- a- g a- o5 d- c o4 b-]2 |
-B [o4 g a- b o5 c d c o4 b a-]2 |
-B [o4 g a- g f+ g b- a- g]2 |
-B [o4 a- b- a- g a- o5 c o4 b- a-]2 |
-B [o4 a- b- a- g a- o5 d- c o4 b-]2 |
-B [o4 g a- b o5 c d c o4 b a-]2 |
-B [o4 a- g f e f a- g f]2 |
-B [o4 a- g f e f a- g f]2 |
-B [o4 a- b o5 d f d o4 b a- g]2 |
-B [o4 a- b- a- g a- o5 c o4 b- a-]2 |
-B [o4 a- b- a- g a- o5 d- c o4 b-]2 |
-B [o4 a- b o5 d f d o4 b a- g]2 |
-B [o4 g a- g f+ g b- a- g]2 |
-B [o4 g a- b o5 c d c o4 b a-]2 |
+P o5 c4 c8 c8 g4. f8 | o5 e-4 d8 c8 d4 o4 g4 | o5 a-4 a-8 a-8 o6 c4. o5 b-8 | o5 g2 b4 o6 d4 |
+P o6 c4 c8 c8 e-4. d8 | o6 c8 o5 b-8 a-8 g8 a-4 f4 | o5 g-4 a-4 b-4 o6 d-4 | o6 c2 o5 b2 |
+P r1 r1 r1 r1 |
+P o6 c4 g4 a-4 g8 f8 | o6 e-4 d8 c8 o5 b4 g4 | o6 a-4. g8 g-4 f4 | o6 g2 d4 o5 b4 |
+#   ビブラフォン: 和音の音を 16 分で(休みを挟んで 3 + 3 + 2)。半小節の型を 2 回で 1 小節、和音が半小節で替わる所は型をつなぐ
+B @12 v9 q4
+B [o5 c16 r16 o4 g16 o5 c16 r16 o4 g16 o5 e-16 r16]2 | [o4 b16 r16 g16 b16 r16 g16 o5 d16 r16]2 |
+B [o5 c16 r16 o4 a-16 o5 c16 r16 o4 a-16 o5 e-16 r16]2 | [o4 b16 r16 g16 b16 r16 g16 o5 d16 r16]2 |
+B [o5 c16 r16 o4 g16 o5 c16 r16 o4 g16 o5 e-16 r16]2 | [o5 c16 r16 o4 a-16 o5 c16 r16 o4 a-16 f16 r16]2 |
+B [o4 b-16 r16 g-16 b-16 r16 g-16 o5 d-16 r16]2 | [o4 b16 r16 g16 b16 r16 g16 o5 d16 r16]2 |
+B r1 r1 r1 r1 |
+B o5 c16 r16 o4 g16 o5 c16 r16 o4 g16 o5 e-16 r16 o5 c16 r16 o4 a-16 o5 c16 r16 o4 a-16 f16 r16 | [o4 b16 r16 g16 b16 r16 g16 o5 d16 r16]2 |
+B o5 c16 r16 o4 a-16 o5 c16 r16 o4 a-16 o5 e-16 r16 o5 d-16 r16 o4 a-16 o5 d-16 r16 o4 a-16 f16 r16 | [o4 b16 r16 g16 b16 r16 g16 o5 d16 r16]2 |
 C @0 v9 q8 o4
-C e-1 | e-1 | f1 | d1 | e-1 | e-1 | f1 | d1 |
-C f1 | f1 | f1 | e-1 | f1 | f1 | e-1 | d1 |
-E @0 v9 q8 o3
-E g1 | g1 | a-1 | b1 | g1 | a-1 | a-1 | b1 |
-E a-1 | a-1 | b1 | a-1 | a-1 | b1 | g1 | b1 |
-D @13 v15 q6 l8
-D o2 c c o3 c o2 c c o3 c o2 c o3 c | o2 c c o3 c o2 c c o3 c o2 c o3 c | o2 d- d- o3 d- o2 d- d- o3 d- o2 d- o3 d- | o2 g g o3 g o2 g g o3 g o2 g o3 g |
-D o2 c c o3 c o2 c c o3 c o2 c o3 c | o2 a- a- o3 a- o2 a- a- o3 a- o2 a- o3 a- | o2 d- d- o3 d- o2 d- d- o3 d- o2 d- o3 d- | o2 g g o3 g o2 g g o3 g o2 g o3 g |
-D o2 f f o3 f o2 f f o3 f o2 f o3 f | o2 f f o3 f o2 f f o3 f o2 f o3 f | o2 b b o3 b o2 b b o3 b o2 b o3 b | o2 a- a- o3 a- o2 a- a- o3 a- o2 a- o3 a- |
-D o2 d- d- o3 d- o2 d- d- o3 d- o2 d- o3 d- | o2 b b o3 b o2 b b o3 b o2 b o3 b | o2 c c o3 c o2 c c o3 c o2 c o3 c | o2 g g o3 g o2 g g o3 g o2 g o3 g |
-#   リズム: 速い 4 拍。ハイハットを切らさず、2 拍目の裏でバスドラムを 2 つ踏む。4 小節ごとにスネアの連打(タムは使わない)
-R V15,15,13,12,15
-R [ bch8 h8 sh8 bh16 b16 h8 bh8 sh8 h8
-R  [ bh8 h8 sh8 bh16 b16 h8 bh8 sh8 h8 ]2
-R    bh8 h8 sh8 bh16 b16 s16 s16 s16 s16 bs8 bs8 ]4
+C e-1 | d1 | c1 | d1 | e-1 | c1 | o3 b-1 | o4 d1 |
+C e-1 | e-1 | c1 | d1 | e-1 | d1 | c1 | d1 |
+D @13 v15 q6
+D [o2 c8 c16 c16]4 | [o1 g8 g16 g16]4 | [o1 a-8 a-16 a-16]4 | [o1 g8 g16 g16]4 |
+D [o2 c8 c16 c16]4 | [o2 f8 f16 f16]4 | [o1 g-8 g-16 g-16]4 | [o1 g8 g16 g16]4 |
+D [ [o2 c8 c16 c16]2 [o1 g8 g16 g16]2 | ]2 [o2 f8 f16 f16]2 [o2 d-8 d-16 d-16]2 | [o1 g8 g16 g16]4 |
+D [o2 c8 c16 c16]2 [o2 f8 f16 f16]2 | [o1 g8 g16 g16]4 | [o1 a-8 a-16 a-16]2 [o2 d-8 d-16 d-16]2 | [o1 g8 g16 g16]4 |
+#   リズム: 速い 4 拍。2 拍目と 4 拍目にバスドラムとスネアを重ね、間を 16 分のスネアで埋める。4 小節ごとにタムとスネアの連打
+R V15,15,13,12,14
+R [ bch8 s16 s16 bsh8 b16 b16 bh8 s16 s16 bsh8 s8 [ bh8 s16 s16 bsh8 b16 b16 bh8 s16 s16 bsh8 s8 ]2 t16 t16 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 bs8 ]4

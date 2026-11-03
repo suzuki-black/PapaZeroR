@@ -73,11 +73,15 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     syms = read_noi(eng_noi)
     if syms.get('s__DATA', 0) < DATA_BASE or syms.get('s__HEAP', 0) > DATA_LIMIT:
         sys.exit('mkrom: 変数域 0x%04X-0x%04X が範囲を超えた' % (syms.get('s__DATA', 0), syms.get('s__HEAP', 0)))
+    if syms.get('s__CODE', 0) + syms.get('l__CODE', 0) > CODE_LIMIT:     # 0x8000 を超えた分は上の code に入らず、黙って落ちる
+        sys.exit('mkrom: 常駐部が %d B あふれた' % (syms['s__CODE'] + syms['l__CODE'] - CODE_LIMIT))
     plen = syms.get('l__PAGE0', 0)
     if p0 and (min(p0) != P0D_BASE or max(p0) >= P0D_LIMIT):
         sys.exit('mkrom: ページ0の表が範囲を超えた (0x%04X-0x%04X)' % (min(p0), max(p0)))
     if plen > 2 * BANK:
         sys.exit('mkrom: ページ0が 16KB を超えた')
+    if P0D_BASE + plen > P0D_LIMIT:     # あふれた分は 0x4000 以降(常駐部)のアドレスになり、上の検査では見えない
+        sys.exit('mkrom: ページ0が %d B あふれて常駐部に重なった' % (P0D_BASE + plen - P0D_LIMIT))
     for a in p0:
         rom[BANK + a - P0D_BASE] = eng[a]
     for a in code:

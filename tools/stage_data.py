@@ -377,9 +377,9 @@ def opening():
     s.sub(52, 'THEN SHE RIDES THE ROCKET.')
     s.sub(62, '06:00')
     s.sub(76, 'HE DID NOT CALL THE POLICE.')
-    s.ev(74, EV_PROP, 'ZERO', 0, 0, *[s.wrap(v) for v in s.at(104, 0, 2)])
-    s.ev(116, EV_VOICE, V_LOCK)
-    s.sub(112, "LET'S GO.")
+    s.ev(74, EV_PROP, 'ZERO', 0, 0, *[s.wrap(v) for v in s.at(146, 0, 3.5)])   # 道の終わりのすぐ先、目の高さの少し下。走り寄って乗り込むところで場面が終わる
+    s.ev(134, EV_VOICE, V_LOCK)
+    s.sub(130, "LET'S GO.")
     s.end()
     return s
 
