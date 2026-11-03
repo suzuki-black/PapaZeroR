@@ -1,0 +1,737 @@
+/* game.c — ゲーム本体(指示書 3〜7 章): 経路・台本・照準・バルカン・誘導弾・機動・レーザー・敵・ボス・継ぎ目
+ *
+ * 1 回の更新で dt ティック(60Hz)進める。描画は 20fps が上限で、重いフレームでも遊びの速さは変わらない。
+ */
+
+#include "game_int.h"
+
+Obj obj[MAX_OBJ];
+u8 g_last_polys;
+u16 g_ph[3];
+u16 g_last_verts;
+Config g_cfg;
+u8 g_auto;
+u8 life, mis_left;
+u16 g_score, g_hiscore;
+u8 g_clock;
+u16 g_frames;
+
+/* 経路 */
+u16 path_s;                     /* 位置(1/64 単位) */
+static u16 path_max;
+u8  sect_i;
+static u8  spd_cur;             /* 単位/秒 × 4 */
+i8  cam_pitch_path;
+u8  cam_yaw_path;
+i16 g_fx, g_fz;
+u8  boss_yaw;
+i16 boss_y0;
+u8  g_shake;
+static u8 g_space, g_fade;
+static u8 pal_w[14];
+i16 cam_vx, cam_vy, cam_vz;   /* 1 ティックの移動(8.8) */
+u16 loop_b, loop_len;    /* 周回区間の終わりと長さ(単位)。0 = なし。長さを引き算で毎回出すと SDCC が番地を読み違えるので持っておく */
+/* 台本 */
+static u16 ev_i;
+u8  boss_on, boss_dead;
+i16 boss_x, boss_y, boss_z;
+u8  boss_t, boss_mov, boss_dist, boss_grp;
+u8  boss_intro;
+static u8  scr_end;
+/* 入力・照準 */
+u16 aim_x, aim_y;
+static u8 in_cur, in_prev, aim_hold;
+static u8 fire_t, heat_t, over_t;
+static u8 lock_n, lock_id[4];
+/* 機動 */
+u8 pr_kind, pr_t, man_kind, man_t, man_len, inv_t;
+static u8 env_roll, env_rt;     /* 演出のロール: 残りフレーム */
+static i8 env_rs;
+static u8 cam_spin;             /* 宇宙でゆっくり回る(ティックごとに足す 1/8 度) */
+/* 字幕 */
+static const char *cap_s;
+static u8 cap_t, cap_c;
+Laser laser[MAX_LASER];
+/* 爆発 */
+#define MAX_FX 6
+typedef struct { i16 x, y, z; u8 t, big; } Fx;
+static Fx fx[MAX_FX];
+
+const ObjDef odef[T_COUNT] = {
+    { 0, 0, 0 },
+    { M_BIKE, 1, 10 }, { M_TANK, 4, 40 }, { M_LTANK, 4, 40 }, { M_MUSTANG, 2, 20 },
+    { M_SHIP, 6, 60 }, { M_RMUSTANG, 3, 30 }, { M_MINE, 2, 20 }, { M_LSAT, 5, 50 },
+    { M_SUPPLY, 1, 0 }, { M_MEDIC, 1, 0 },
+    { M_FLAK, 1, 5 }, { M_ROCKET, 2, 5 }, { M_FLAK, 0, 0 }, { M_ROCKET, 0, 0 }, { 0, 1, 0 }, { 0, 1, 20 },
+};
+
+/* 乱数 */
+static u16 rnd_s = 0x5A3C;
+u8 rnd(void)
+{
+    rnd_s = (u16)(rnd_s * 25173u + 13849u);
+    return (u8)(rnd_s >> 8);
+}
+
+void fx_add(i16 x, i16 y, i16 z, u8 big)
+{
+    u8 i;
+    for (i = 0; i < MAX_FX; i++) if (!fx[i].t) {
+        fx[i].x = x; fx[i].y = y; fx[i].z = z; fx[i].t = 16; fx[i].big = big;
+        return;
+    }
+}
+
+void caption(const char *s, u8 color, u8 t)
+{
+    cap_s = s; cap_c = color; cap_t = t;
+}
+
+void damage(u8 n)
+{
+    if (inv_t || g_cfg.god || g_auto == 2) return;
+    n = (u8)(n * g_cfg.damage);
+    life = life > n ? (u8)(life - n) : 0;
+    flash_palette();
+    se_play(SE_DAMAGE);
+    g_shake = 8;
+    inv_t = 12;
+}
+
+Obj *obj_new(u8 t)
+{
+    u8 i;
+    Obj *o = obj;
+    for (i = 0; i < MAX_OBJ; i++, o++) if (!o->t) {
+        u8 k;
+        u8 *p = (u8 *)o;
+        for (k = 0; k < sizeof(Obj); k++) p[k] = 0;
+        o->t = t;
+        o->hp = odef[t].hp;
+        o->mesh = odef[t].mesh;
+        return o;
+    }
+    return 0;
+}
+
+void obj_kill(Obj *o, u8 scored)
+{
+    u8 t = o->t;
+    if (scored) g_score += odef[t].score;
+    fx_add(o->x, o->y, o->z, t >= T_E01 && t <= T_E08);
+    if (t == T_SUPPLY) { if (mis_left < 6) mis_left = (u8)(mis_left + 2 > 6 ? 6 : mis_left + 2); se_play(SE_HEAL); }
+    else if (t == T_MEDIC) { life = (u8)(life + 2 > 8 ? 8 : life + 2); se_play(SE_HEAL); }
+    else se_play(t == T_PART ? SE_BOSS : SE_KILL);
+    o->t = T_NONE;
+}
+
+void obj_damage(Obj *o, u8 n)
+{
+    if (o->t == T_PART && (o->flags & OF_CAPSULE)) {   /* 娘を撃たない */
+        o->flash = 3;
+        damage(1);
+        pcm_say(VOICE_NOPAPA);
+        return;
+    }
+    if (o->t == T_PART && boss_intro) return;   /* 登場の間は撃てない(6.1) */
+    if (o->t == T_PART && ((o->flags & OF_DECOR) || o->group != boss_grp)) return;   /* 飾り・まだ開いていない部位 */
+    if (o->t == T_PART && (o->flags & OF_WEAK)) n = (u8)(n * 3);
+    if (g_cfg.oneshot) n = 255;
+    o->flash = 2;
+    if (o->hp > n) { o->hp -= n; return; }
+    obj_kill(o, 1);
+}
+
+/* ---- 経路 ---- */
+static void path_step(u8 dt)
+{
+    const PathPt *p;
+    u16 s, idx;
+    i16 f;
+    i16 x0, y0, z0;
+    s = path_s + (u16)(((u32)spd_cur * dt * 273u) >> 10);
+    if (loop_b && (s >> 6) >= loop_b) s -= loop_len << 6;
+    if (s >= path_max) { s = path_max - 1; scr_end |= 2; }
+    path_s = s;
+    idx = s >> 7;
+    f = (i16)(s & 127);
+    p = &MOD->path[idx];
+    x0 = cam_x; y0 = cam_y; z0 = cam_z;
+    cam_x = p->x + (i16)(((p[1].x - p->x) * f) >> 7);
+    cam_y = p->y + (i16)(((p[1].y - p->y) * f) >> 7);
+    cam_z = p->z + (i16)(((p[1].z - p->z) * f) >> 7);
+    cam_yaw_path = (u8)(p->yaw + (i8)(((i16)(i8)(p[1].yaw - p->yaw) * f) >> 7));
+    cam_pitch_path = (i8)(p->pitch + (i8)(((i16)(i8)(p[1].pitch - p->pitch) * f) >> 7));
+    if (dt) { cam_vx = (cam_x - x0) / dt; cam_vy = (cam_y - y0) / dt; cam_vz = (cam_z - z0) / dt; }
+    g_fx = SIN(cam_yaw_path);
+    g_fz = COS(cam_yaw_path);
+    sect_i = (u8)(idx >> 2);
+    spd_cur = MOD->sect[sect_i].spd;
+}
+
+/* ---- 台本 ---- */
+static void script_step(void)
+{
+    u16 at = path_s >> 6;
+    const Stage *m = MOD;
+    while (ev_i < m->nev) {
+        const Event *e = &m->ev[ev_i];
+        if (e->cmd != EV_END && e->at > at) break;
+        if (e->cmd == EV_LOOP) {      /* 敵が残っていれば周回。a = 始まり[単位 / 2] */
+            u8 i, alive = 0;
+            for (i = 0; i < MAX_OBJ; i++) if (obj[i].t >= T_E01 && obj[i].t <= T_E08) alive = 1;
+            if (boss_on || alive) {
+                loop_b = e->at + 2; loop_len = loop_b - (u16)e->x;
+                return;
+            }
+            loop_b = 0;
+            ev_i++;
+            continue;
+        }
+        if (e->cmd == EV_END) {
+            if (e->at > at && !(scr_end & 2)) break;
+            if (boss_on) return;
+            scr_end |= 1;
+            return;
+        }
+        ev_i++;
+        switch (e->cmd) {
+        case EV_SPAWN: {
+            Obj *o = obj_new(e->a);
+            if (o) {
+                o->x = e->x; o->y = e->y; o->z = e->z; o->ptn = e->b; o->yaw = cam_yaw_path;
+                o->tm = rnd();
+            }
+            break; }
+        case EV_PROP: {
+            Obj *o = obj_new(T_PROP);
+            if (o) { o->mesh = e->a; o->x = e->x; o->y = e->y; o->z = e->z; o->yaw = cam_yaw_path; o->ptn = e->b; }
+            break; }
+        case EV_ITEM: {
+            Obj *o = obj_new(e->a);
+            if (o) { o->x = e->x; o->y = e->y; o->z = e->z; o->ptn = P_HOLD; o->yaw = cam_yaw_path; }
+            break; }
+        case EV_BOSS:
+            boss_y0 = boss_y = e->y;
+            boss_begin();
+            {   /* 遠景から近づく(6.1) */
+                i16 d = (i16)(boss_dist + 40) << 8;
+                boss_x = cam_x + fmul(g_fx, d); boss_z = cam_z + fmul(g_fz, d);
+            }
+            break;
+        case EV_ROLL:
+            env_rs = (i8)e->b; env_rt = e->a;
+            break;
+        case EV_PROMPT:
+            pr_kind = e->a; pr_t = e->b;
+            se_play(SE_ALARM);
+            pcm_say(e->a == PR_ROLL ? VOICE_ROLL : e->a == PR_LOOP ? VOICE_LOOP : VOICE_DIVE);
+            break;
+        case EV_TEXT:
+            caption(m->str[e->a], e->b ? e->b : C_WHITE, 120);
+            break;
+        case EV_SUB:
+            sub_text(m->str[e->a]);
+            break;
+        case EV_VOICE: pcm_say(e->a); break;
+        case EV_BGM: bgm_play(e->a); break;
+        case EV_PAL: cam_spin = e->a; break;
+        case EV_CAM: cam_x += e->x; break;
+        case EV_FADE: g_fade = 1; break;
+        }
+    }
+}
+
+/* ---- 入力 ---- */
+static void aim_step(u8 dt)
+{
+    u8 in = in_cur;
+    u8 step;
+    if (in & (IN_UP | IN_DOWN | IN_LEFT | IN_RIGHT)) { if (aim_hold < 200) aim_hold += dt; } else aim_hold = 0;
+    step = (u8)((aim_hold >= 8 ? 4 : 2) * dt / 2);
+    if ((in & IN_LEFT) && aim_x > 8 + step) aim_x -= step;
+    if ((in & IN_RIGHT) && aim_x < 247 - step) aim_x += step;
+    if ((in & IN_UP) && aim_y > 8 + step) aim_y -= step;
+    if ((in & IN_DOWN) && aim_y < 151 - step) aim_y += step;
+}
+
+static u8 aim_target(void)
+{
+    u8 ax = (u8)(aim_x >> 2), ay = (u8)(aim_y >> 2), i, best = 0xFF;
+    i16 bz = 0x7FFF;
+    HitRect *h = hits;
+    for (i = 0; i < n_hits; i++, h++) {
+        if (ax >= h->x0 && ax < h->x1 && ay >= h->y0 && ay < h->y1 && h->z < bz) { bz = h->z; best = h->id; }
+    }
+    return best;
+}
+
+static void auto_input(void)
+{
+    /* 自動プレイ: 一番手前の敵を狙い、指示が出たら B を押す */
+    u8 i, best = 0xFF;
+    i16 bz = 0x7FFF;
+    HitRect *h = hits;
+    in_cur = 0;
+    for (i = 0; i < n_hits; i++, h++) {
+        const Obj *o = &obj[h->id];
+        if (o->t == T_PART && (o->flags & OF_CAPSULE)) continue;
+        if (o->t == T_PART && o->group != boss_grp) continue;
+        if (h->z < bz) { bz = h->z; best = i; }
+    }
+    if (best != 0xFF) {
+        h = &hits[best];
+        aim_x = (u16)(h->x0 + h->x1) * 2;
+        aim_y = (u16)(h->y0 + h->y1) * 2;
+        if (aim_x < 12) aim_x = 12;
+        if (aim_y < 12) aim_y = 12;
+        if (aim_y > 148) aim_y = 148;
+        in_cur = IN_A;
+    }
+    if (pr_kind && pr_t < 20) in_cur |= IN_B;
+}
+
+static void man_start(u8 kind, u8 len)
+{
+    man_kind = kind; man_t = 0; man_len = len;
+}
+
+static void fire_step(u8 dt)
+{
+    u8 in = in_cur, pressed = (u8)(in & ~in_prev);
+    /* 機動の指示に応える */
+    if (pr_kind) {
+        if ((pressed & IN_B) && !(in & IN_A && lock_n)) {
+            man_start(pr_kind, pr_kind == PR_ROLL ? 24 : 32);
+            inv_t = pr_kind == PR_ROLL ? 80 : 40;
+            g_score += 50;
+            se_play(SE_LOCK);
+            if (pr_kind == PR_LOOP) {
+                /* 後ろの敵を正面へ */
+                u8 i;
+                Obj *o = obj;
+                for (i = 0; i < MAX_OBJ; i++, o++) if (o->t && o->ptn == P_TAIL) {
+                    i16 d = 0x3C00;
+                    o->ptn = P_PASS; o->st = 0;
+                    o->x = cam_x + fmul(g_fx, d); o->z = cam_z + fmul(g_fz, d);
+                }
+            }
+            pr_kind = PR_NONE;
+        } else if (pr_t <= dt) {
+            pr_kind = PR_NONE;
+        } else {
+            if ((pr_t ^ (u8)(pr_t - dt)) & 16) se_play(SE_LOCK);     /* 受付の間のピッ・ピッ */
+            pr_t -= dt;
+        }
+    }
+    /* バルカン: 6 ティックごと。3 秒連続で過熱 */
+    if (fire_t) fire_t = fire_t > dt ? fire_t - dt : 0;
+    if (over_t) {
+        over_t = over_t > dt ? over_t - dt : 0;
+        if (!over_t) heat_t = 0;
+    } else if (in & IN_A) {
+        heat_t += dt;
+        if (heat_t >= 180) { over_t = 60; heat_t = 180; }
+        else if (!fire_t) {
+            u8 id;
+            fire_t = 6;
+            se_play(SE_SHOT);
+            id = aim_target();
+            if (id != 0xFF) {
+                Obj *o = &obj[id];
+                obj_damage(o, 1);
+                if (o->t) se_play(SE_HIT);
+            }
+        }
+        /* なぞってロック */
+        if (lock_n < 4 && !(g_frames & 1)) {
+            u8 id = aim_target(), k, dup = 0;
+            if (id != 0xFF && obj[id].t >= T_E01 && obj[id].t <= T_E08 || id != 0xFF && obj[id].t == T_PART) {
+                for (k = 0; k < lock_n; k++) if (lock_id[k] == id) dup = 1;
+                if (!dup) { lock_id[lock_n++] = id; se_play(SE_LOCK); }
+            }
+        }
+    } else {
+        if (heat_t) heat_t = heat_t > dt * 2 ? heat_t - dt * 2 : 0;
+        if (!(in & IN_B)) lock_n = 0;
+    }
+    g_heat = heat_t >> 3;
+    /* 誘導弾: A を押したまま B */
+    if ((pressed & IN_B) && (in & IN_A) && lock_n && mis_left) {
+        Obj *o = obj_new(T_MYMIS);
+        u8 k = lock_id[--lock_n];
+        if (o && obj[k].t) {
+            o->x = cam_x - (cm[3] >> 1); o->y = cam_y - 0x80; o->z = cam_z - (cm[5] >> 1);
+            o->tgt = k; o->tm = 72;
+            mis_left--;
+            se_play(SE_LOCK);
+        }
+    }
+}
+
+/* ---- 描画 ---- */
+static u8 ord[MAX_OBJ];
+static i16 ord_z[MAX_OBJ];
+static V3 ord_c[MAX_OBJ];
+
+static void sects_draw(void)
+{
+    const Sect *s0 = MOD->sect;
+    u8 n = MOD->nsect > 255 ? 255 : (u8)MOD->nsect;
+    i8 k;
+    u8 base = sect_i;
+    V3 c;
+    for (k = boss_on ? 4 : 10; k >= 0; k--) {   /* 背後の区画は描かない。ボス戦は地形を減らす(8.1) */
+        i16 si = (i16)base + k;
+        const Sect *s;
+        if (si < 0) continue;
+        if (loop_b && (u16)si >= (loop_b >> 3)) si -= (i16)(loop_len >> 3);
+        if (si >= n) continue;
+        s = &s0[si];
+        if (!s->mesh) continue;
+        pt_cam(s->x, s->y, s->z, &c);
+        mat_yaw(s->yaw, 0);
+        g_lod_min = boss_on ? k > 1 : k > 4;
+        mesh_draw(s->mesh, &c, g_mm, 0, 0xFF);
+    }
+}
+
+static void objs_draw(void)
+{
+    u8 i, n = 0, k;
+    Obj *o = obj;
+    for (i = 0; i < MAX_OBJ; i++, o++) {
+        V3 *c;
+        if (!o->t || (o->t == T_PROP && !o->mesh)) continue;
+        c = &ord_c[i];
+        pt_cam(o->x, o->y, o->z, c);
+        if (c->z < 0x0100 || c->z > 0x7800) continue;
+        k = n;
+        while (k && ord_z[k - 1] < c->z) { ord[k] = ord[k - 1]; ord_z[k] = ord_z[k - 1]; k--; }
+        ord[k] = i; ord_z[k] = c->z;
+        n++;
+    }
+    for (k = 0; k < n; k++) {
+        u8 id = ord[k];
+        const u8 *mesh;
+        o = &obj[id];
+        mesh = MOD->meshes[o->mesh];
+        if (!mesh) continue;
+        g_obj_yaw = o->yaw;
+        g_lod_min = o->t == T_PART;        /* ボスの部位は常に細部を省く(大きい面が多く、1 面のボスで 10fps まで落ちた) */
+        if (o->t == T_PART && !o->yaw && !o->roll) {
+            mesh_draw(mesh, &ord_c[id], 0, o->flash ? C_WHITE : 0, id);
+        } else {
+            mat_yaw(o->yaw, o->roll);
+            mesh_draw(mesh, &ord_c[id], g_mm, o->flash ? C_WHITE : 0, id);
+        }
+    }
+}
+
+static void fx_draw(u8 dt)
+{
+    u8 i;
+    Fx *f = fx;
+    for (i = 0; i < MAX_FX; i++, f++) {
+        V3 c;
+        i16 sx, sy, r, x0, y0, x1, y1;
+        if (!f->t) continue;
+        f->t = f->t > dt ? f->t - dt : 0;
+        pt_cam(f->x, f->y, f->z, &c);
+        if (!pt_screen(&c, &sx, &sy)) continue;
+        r = (f->big ? 24 : 12) * (i16)(17 - f->t);
+        if (c.z > 0x1000) r >>= 1;
+        if (c.z > 0x3000) r >>= 1;
+        x0 = (sx - r) >> 4; x1 = (sx + r) >> 4; y0 = (sy - r) >> 4; y1 = (sy + r) >> 4;
+        if (x0 < 0) x0 = 0;
+        if (y0 < 0) y0 = 0;
+        if (x1 > 64) x1 = 64;
+        if (y1 > 40) y1 = 40;
+        if (x0 >= x1 || y0 >= y1) continue;
+        g_rx = (u8)x0; g_ry = (u8)y0; g_rw = (u8)(x1 - x0); g_rh = (u8)(y1 - y0);
+        g_color = f->t > 10 ? C_WHITE : f->t > 4 ? C_ORANGE : C_RED;
+        rect_fill();
+    }
+}
+
+static void lasers_draw(void)
+{
+    u8 i;
+    Laser *l = laser;
+    for (i = 0; i < MAX_LASER; i++, l++) {
+        const LaserDef *d;
+        const Obj *o;
+        V3 c;
+        i16 sx, sy;
+        if (l->kind == 0xFF) continue;
+        d = &ldef[l->kind];
+        o = &obj[l->owner];
+        pt_cam(o->x, o->y, o->z, &c);
+        if (!pt_screen(&c, &sx, &sy)) continue;
+        if (l->st == 0) {
+            /* 溜め: 発射口の点滅 */
+            if (g_frames & 1) {
+                i16 x = sx >> 4, y = sy >> 4;
+                if (x >= 1 && x < 62 && y >= 1 && y < 38) { g_rx = (u8)(x - 1); g_ry = (u8)(y - 1); g_rw = 3; g_rh = 3; g_color = d->color; rect_fill(); }
+            }
+            if (l->kind == 3 && (g_frames & 2)) { /* 自由電子: 画面全体が白く脈打つ */
+                g_rx = 0; g_ry = 0; g_rw = 64; g_rh = 1; g_color = C_WHITE; rect_fill();
+                g_ry = 39; rect_fill();
+            }
+        } else {
+            i16 ex = 512, ey = 630;
+            if (l->kind == 2) ex = 512 + (SIN((u8)(g_frames * 8)) >> 0);   /* ファイバー: 掃く */
+            if (sx < -2000 || sx > 3000 || sy < -2000 || sy > 3000) continue;
+            band_draw(sx, sy, ex, ey, d->w0, d->w1, d->color);
+        }
+    }
+}
+
+static void spr_set(u8 n, i16 x, i16 y, u8 pat, u8 col)
+{
+    u8 *a = &g_spr_attr[n * 4];
+    if (y < -16 || y > 143) { a[0] = 209; return; }
+    a[0] = (u8)(y - 1); a[1] = (u8)x; a[2] = (u8)(pat * 4); a[3] = col;
+}
+
+static void overlay_draw(void)
+{
+    u8 scene = MOD->flags & SF_SCENE;
+    if (cap_t) {
+        text_center(1, cap_s, cap_c, 1);
+    } else if (pr_kind && (g_frames & 2)) {
+        text_center(1, pr_kind == PR_ROLL ? "ROLL!" : pr_kind == PR_LOOP ? "LOOP!" : "DIVE!", C_RED, 1);
+    }
+    if (fire_t > 3 && !(MOD->flags & SF_SCENE)) {     /* 曳光弾: 照準の手前から奥へ流れる白い 2 個(演出のみ) */
+        u8 ax = (u8)(aim_x >> 2), ay = (u8)(aim_y >> 2), k = (u8)(fire_t - 3);
+        g_color = C_WHITE;
+        g_rx = (u8)(ax + (32 - ax) / (k + 1)); g_ry = (u8)(ay + (38 - ay) / (k + 1));
+        if (g_rx < 64 && g_ry < 40) pset();
+    }
+    if (g_cfg.fps) {
+        extern u16 g_perf_frame;
+        extern u8 g_perf_ticks;
+        num_draw(0, 34, g_perf_ticks, 2, C_WHITE);
+        num_draw(10, 34, g_perf_frame >> 8, 3, C_WHITE);
+    }
+    /* 照準(スプライト 0)とロックの枠 */
+    if (scene) { spr_set(0, 0, 200, 0, 2); g_spr_attr[0] = 209; }
+    else spr_set(0, (i16)aim_x - 16, (i16)aim_y - 16, 0, (over_t && (g_frames & 1)) ? C_RED : C_WHITE);
+    {
+        u8 i;
+        for (i = 0; i < 3; i++) {
+            V3 c;
+            i16 sx, sy;
+            g_spr_attr[(i + 1) * 4] = 209;
+            if (i < lock_n && obj[lock_id[i]].t) {
+                const Obj *o = &obj[lock_id[i]];
+                pt_cam(o->x, o->y, o->z, &c);
+                if (pt_screen(&c, &sx, &sy)) spr_set((u8)(i + 1), (sx >> 2) - 16, (sy >> 2) - 16, 3, C_RED);
+            }
+        }
+    }
+}
+
+static void lerp_pal(const u8 *a, const u8 *b, u8 k, u8 *o)   /* k = 0..16 */
+{
+    u8 i;
+    for (i = 0; i < 14; i += 2) {
+        u8 r0 = a[i] >> 4, b0 = a[i] & 7, g0 = a[i + 1], r1 = b[i] >> 4, b1 = b[i] & 7, g1 = b[i + 1];
+        u8 r = (u8)(r0 + (((i16)r1 - r0) * k >> 4));
+        u8 bl = (u8)(b0 + (((i16)b1 - b0) * k >> 4));
+        u8 g = (u8)(g0 + (((i16)g1 - g0) * k >> 4));
+        o[i] = (u8)((r << 4) | bl);
+        o[i + 1] = g;
+    }
+}
+
+/* ---- 1 面 ---- */
+static void stage_reset(void)
+{
+    u8 i;
+    for (i = 0; i < MAX_OBJ; i++) obj[i].t = T_NONE;
+    for (i = 0; i < MAX_LASER; i++) laser[i].kind = 0xFF;
+    for (i = 0; i < MAX_FX; i++) fx[i].t = 0;
+    path_s = 0; ev_i = 0; scr_end = 0; loop_b = 0;
+    g_space = MOD->flags & SF_SPACE; g_fade = 0; g_shake = 0;
+    boss_on = 0; boss_dead = 0; boss_grp = 0;
+    pr_kind = 0; man_t = 0; man_len = 0; inv_t = 0; env_rt = 0; env_roll = 0; lock_n = 0; cam_spin = 0;
+    cap_t = 0; heat_t = 0; over_t = 0;
+    n_hits = 0;
+    aim_x = 128; aim_y = 80;
+    path_max = (u16)(MOD->npath - 2) << 7;
+    spd_cur = MOD->sect[0].spd;
+}
+
+void game_reset(void)
+{
+    life = g_cfg.life; mis_left = 3; g_score = 0; g_clock = 0x60;
+    cockpit_reset();
+}
+
+u8 stage_run(u8 mod)
+{
+    u16 t0, t_demo;
+    mod_load_now(mod);
+    stage_reset();
+    g_scene = (MOD->flags & SF_SCENE) ? 3 : 1;
+    set_stage_palette(MOD->pal);
+    cockpit_mode(g_scene == 3);
+    cockpit_reset();
+    if (MOD->clock) g_clock = MOD->clock;
+    if (MOD->bgm) bgm_play(MOD->bgm);
+    if (g_scene == 1) {
+        caption(MOD->name + 10, C_WHITE, 120);   /* 「STAGE n / 」を除く。字幕は 16 文字まで */
+    }
+    t0 = g_tick;
+    t_demo = g_frames;
+    for (;;) {
+        u16 now = g_tick;
+        u8 dt = (u8)(now - t0);
+        t0 = now;
+        if (dt > 8) dt = 8;
+        if (!dt) dt = 1;
+        g_frames++;
+        in_prev = in_cur;
+        in_cur = input_raw();
+        if (g_auto == 2 && ((in_cur & IN_A) || (u16)(g_frames - t_demo) >= 800)) { bgm_stop(); return 1; }   /* デモは 40 秒か、キーで終わる */
+        if (g_scene == 3) {
+            if ((in_cur & IN_A) && !(in_prev & IN_A) && mod == 0) { bgm_stop(); return 1; }
+        } else {
+            if (g_auto) auto_input();
+            aim_step(dt);
+            fire_step(dt);
+        }
+        path_step(dt);
+        script_step();
+        if (g_fade) {                      /* エンディング: 再突入の色へ移り、白く光って朝の町へ */
+            lerp_pal(MOD->pal, MOD->pal2, g_fade >> 1, pal_w);
+            vdp_set_palette(9, pal_w);
+            if (++g_fade > 32) { g_fade = 0; g_space = 0; set_stage_palette(MOD->pal2); }
+        }
+        /* カメラの向き: 経路 + 機動 + 演出のロール */
+        {
+            u8 roll = 0, pitch = (u8)cam_pitch_path;
+            if (env_rt) { env_roll = (u8)(env_roll + env_rs); env_rt--; }
+            roll = env_roll;
+            if (cam_spin) roll = (u8)(g_frames * cam_spin >> 2);
+            if (man_len) {
+                u16 ang = (u16)man_t * 256 / man_len;
+                man_t += 1;
+                if (man_kind == PR_ROLL) roll += (u8)ang;
+                else if (man_kind == PR_LOOP) pitch += (u8)ang;
+                else {                     /* 急降下: 半ロール + 機首下げ */
+                    u8 a = man_t < man_len / 2 ? (u8)ang : (u8)(255 - ang);
+                    pitch -= a >> 2;
+                    roll += a;
+                }
+                if (man_t >= man_len) man_len = 0;
+            }
+            cam_yaw = cam_yaw_path;
+            cam_pitch = pitch;
+            cam_roll = g_cfg.roll ? 0 : roll;
+            if (life && inv_t > 8 && !man_len && (g_frames & 1)) cam_roll += 2;   /* 被弾の揺れ */
+            cam_update();
+        }
+        if (inv_t) inv_t = inv_t > dt ? inv_t - dt : 0;
+        if (cap_t) cap_t = cap_t > dt ? cap_t - dt : 0;
+        obj_step(dt);
+        if (boss_on) boss_step(dt);
+        {
+            extern u16 g_perf_frame;
+            u16 t = timer_read();
+            g_perf_polys = 0; g_perf_verts = 0;
+            sky_draw(g_space);
+            g_ph[0] = timer_read() - t;
+            sects_draw();
+            g_ph[1] = timer_read() - t;
+            g_lod_min = 0;
+            n_hits = 0;
+            objs_draw();
+            g_ph[2] = timer_read() - t;
+            fx_draw(dt);
+            lasers_draw();
+            overlay_draw();
+            g_perf_frame = timer_read() - t;
+            g_last_polys = g_perf_polys; g_last_verts = g_perf_verts;
+        }
+        g_spd_show = (u8)(spd_cur + 30);
+        g_alt_show = (u8)(cam_y >> 8);
+        present();
+        if (g_shake) g_shake--;
+        g_r18_bot = g_shake ? (g_shake & 2 ? 0x03 : 0x0D) : 0;
+        if (life == 0) {
+            /* ENGINE FIRE: 黒煙(色を灰へ移す)→ ゲームオーバー */
+            static const u8 gray[14] = { 0x22, 2, 0x11, 1, 0x33, 3, 0x22, 2, 0x22, 2, 0x11, 1, 0x33, 3 };
+            u8 i;
+            bgm_stop();
+            g_r18_bot = 0;
+            for (i = 0; i <= 32; i++) {
+                lerp_pal(MOD->pal, gray, i >> 1, pal_w);
+                vdp_set_palette(9, pal_w);
+                sky_draw(g_space);
+                text_center(16, "ENGINE FIRE", C_RED, 1);
+                present();
+            }
+            return 0;
+        }
+        if (scr_end & 1 || (scr_end & 2 && !boss_on)) break;
+        if (boss_dead == 1) {
+            boss_dead = 2;
+            caption("STAGE CLEAR!", C_WHITE, 120);
+        }
+    }
+    g_hiscore = g_score > g_hiscore ? g_score : g_hiscore;
+    return 1;
+}
+
+/* ---- 継ぎ目(指示書 7.2): 海の上を飛びながら時刻の色を移し、次の面のセグメントへ切り替える。多角形は 6 枚以下 ---- */
+void seam_run(u8 from, u8 to)
+{
+    static u8 pa[14], pb[14], pc[14];
+    static const u8 cloud_rect[] = { 0x90, 0xF8, 0x70, 0x08, C_CLOUD, 0, 0xB0, 0x00, 0x50, 0x10, C_CLOUD, 0 };
+    u8 i;
+    u16 t;
+    (void)from;
+    for (i = 0; i < 14; i++) pa[i] = MOD->pal[i];
+    mod_next_begin(to);
+    g_scene = 2;
+    cam_x = cam_y = cam_z = 0; cam_yaw = 0; cam_pitch = 0; cam_roll = 0;
+    cam_update();
+    n_hits = 0;
+    g_spr_attr[0] = 209; g_spr_attr[4] = 209; g_spr_attr[8] = 209; g_spr_attr[12] = 209;
+    bgm_play(SONG_BRIDGE);
+    for (t = 0; t < 300; t++) {   /* 15 秒 */
+        g_frames++;
+        /* 1 フレームに 1KB ずつ読み、読み終えたら切り替える(7.2)。常駐部とページ0だけで動くのでセグメントを替えても続く */
+        if (t < 18) {
+            if (t < 16) mod_next_step();
+            else if (t == 16) {            /* 16KB 読み終えたので 1 回だけ切り替える */
+                mod_next_use();
+                for (i = 0; i < 14; i++) pb[i] = MOD->pal[i];
+                if (MOD->clock) g_clock = MOD->clock;
+            }
+            sky_draw(0);
+            present();
+            continue;
+        }
+        if (t <= 100 && !(t & 3)) { lerp_pal(pa, pb, (u8)(t >> 2 > 16 ? 16 : t >> 2), pc); vdp_set_palette(9, pc); }
+        sky_draw(MOD->flags & SF_SPACE);
+        /* 雲のビルボード 5 個 */
+        for (i = 0; i < 5; i++) {
+            V3 c;
+            c.x = (i16)(i * 53 - 106) << 8;
+            c.y = (i16)(i & 1 ? -6 : -3) << 8;
+            c.z = 0x7000 - (i16)((t * 16 + (u16)i * 0x1600) & 0x6FFF);
+            if (c.z < 0x0400) continue;
+            g_dm_rects = cloud_rect; g_dm_n = 2; g_dm_flash = 0; g_dm_id = 0; g_dm_hit = 0; g_dm_grow = 0; g_dm_thin = 0; g_dm_deco = 1;
+            draw_model(&c);
+        }
+        if (t > 110 && t < 180) { text_center(10, MOD->name + 10, C_WHITE, 1); }
+        if (t == 200) pcm_say(to == 6 ? VOICE_SEE : VOICE_HURRY);
+        if (t > 200 && t < 280) text_center(1, MOD->str[0], C_WHITE, 1);
+        present();
+        if (input_raw() & IN_B && t > 30) t = 299;
+    }
+    set_stage_palette(MOD->pal);
+}
