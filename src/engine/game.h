@@ -73,7 +73,10 @@ extern u16 g_score;             /* 得点 / 10 */
 extern u16 g_hiscore;
 extern u8 g_clock;              /* 残り時間(0x60 = 06:00 の分) */
 extern u16 g_frames;
-extern u8 g_shake;              /* 計器盤の揺れの残りフレーム */
+extern u16 g_anim;              /* 演出の時計: 3 ティック(20fps の 1 枚)ごとに 1 進む。fps が変わっても点滅や揺れの速さは同じ */
+extern u8 g_an;                 /* このフレームで g_anim が進んだ数(0〜) */
+extern u8 g_shake;              /* 計器盤の揺れの残り(g_anim の数) */
+extern u8 g_min_ticks;          /* present が 1 枚に待つ最小のティック数(3 = 20fps、2 = 30fps) */
 extern u8 g_r18_bot;            /* sys.s: 下の画面の R#18 */
 
 /* game.c */

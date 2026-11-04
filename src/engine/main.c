@@ -13,6 +13,7 @@ u8 g_scene;
 u16 g_perf_frame;               /* 直前のフレームの時間(テストが読む。タイマ値 ≒ 3.9µs) */
 u16 g_perf_xfer;
 u8  g_perf_ticks;
+u8  g_min_ticks = 3;
 
 static u8 back_page = 1;
 static u16 last_flip;
@@ -40,7 +41,7 @@ void present(void)
     u16 now;
     g_spr_live = 1;            /* 待つ間は VDP に触らない(照準は割り込みが書く) */
     while (g_flip_req) { wait_tick(); if (g_poll) g_poll(); }
-    while ((u16)(g_tick - last_flip) < 3) { wait_tick(); if (g_poll) g_poll(); }   /* 20fps */
+    while ((u16)(g_tick - last_flip) < g_min_ticks) { wait_tick(); if (g_poll) g_poll(); }   /* 3 = 20fps(場面の多くはフレームで数えるのでこちら)、ゲームの本体だけ 2 = 30fps */
     g_spr_live = 0;            /* ここから VDP に触る(割り込みに照準を書かせない) */
     now = g_tick;
     g_perf_ticks = (u8)(now - last_flip);

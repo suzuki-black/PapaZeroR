@@ -71,7 +71,7 @@ void boss_step(u8 dt)
         /* カメラの動きを先に足してから寄せる(寄せるだけだと速いほど遅れて近づき、大きく描かれて重くなる) */
         boss_x += cam_vx * dt; boss_z += cam_vz * dt;
         boss_x += (tx - boss_x) >> 3;
-        boss_y = boss_y0 + (SIN((u8)(g_frames << 2)) >> 1);
+        boss_y = boss_y0 + (SIN((u8)(g_anim << 2)) >> 1);
         boss_z += (tz - boss_z) >> 3;
     }
     /* ボスはカメラの進む向きに合わせて回す。部位の位置を世界に固定すると、周回で視線が逆を向いたときに左右も前後も入れ替わる */
@@ -87,7 +87,7 @@ void boss_step(u8 dt)
         {
             i16 lx = (i16)o->ox << 8, ly = (i16)o->oy << 8, lz = (i16)o->oz << 8;
             if (o->flags & OF_SPIN) {      /* 風車のように回る(ムスタング・ヒュドラ) */
-                u8 a = (u8)(g_frames << 1);
+                u8 a = (u8)(g_anim << 1);
                 i16 s = SIN(a), c = COS(a);
                 lx = o->ox * c - o->oy * s;
                 ly = o->ox * s + o->oy * c;
@@ -103,7 +103,7 @@ void boss_step(u8 dt)
             alive = 1;
             if (o->group == boss_grp) grp_left = 1;
         }
-        if (o->group == boss_grp && (o->flags & OF_WEAK) && !(g_frames & 2)) o->flash = 1;
+        if (o->group == boss_grp && (o->flags & OF_WEAK) && !(g_anim & 2)) o->flash = 1;
     }
     if (!any) alive = 0;
     if (alive && !grp_left) { boss_grp++; }
@@ -151,7 +151,7 @@ void obj_step(u8 dt)
         u8 t = o->t;
         i16 dx, dy, dz;
         if (!t) continue;
-        if (o->flash) o->flash--;
+        o->flash = o->flash > g_an ? o->flash - g_an : 0;
         if (t == T_FLAK || t == T_MISSILE || t == T_MYMIS) {
             /* 残りティックで目標へ近づく。弾はカメラへ、誘導弾は目標へ */
             i16 tx = cam_x, ty = cam_y, tz = cam_z;
@@ -300,17 +300,17 @@ void lasers_draw(void)
         if (!pt_screen(&c, &sx, &sy)) continue;
         if (l->st == 0) {
             /* 溜め: 発射口の点滅 */
-            if (g_frames & 1) {
+            if (g_anim & 1) {
                 i16 x = sx >> 4, y = sy >> 4;
                 if (x >= 1 && x < 62 && y >= 1 && y < 38) { g_rx = (u8)(x - 1); g_ry = (u8)(y - 1); g_rw = 3; g_rh = 3; g_color = d->color; rect_fill(); }
             }
-            if (l->kind == 3 && (g_frames & 2)) { /* 自由電子: 画面全体が白く脈打つ */
+            if (l->kind == 3 && (g_anim & 2)) { /* 自由電子: 画面全体が白く脈打つ */
                 g_rx = 0; g_ry = 0; g_rw = 64; g_rh = 1; g_color = C_WHITE; rect_fill();
                 g_ry = 39; rect_fill();
             }
         } else {
             i16 ex = 512, ey = 630;
-            if (l->kind == 2) ex = 512 + (SIN((u8)(g_frames * 8)) >> 0);   /* ファイバー: 掃く */
+            if (l->kind == 2) ex = 512 + (SIN((u8)(g_anim * 8)) >> 0);   /* ファイバー: 掃く */
             if (sx < -2000 || sx > 3000 || sy < -2000 || sy > 3000) continue;
             band_draw(sx, sy, ex, ey, d->w0, d->w1, d->color);
         }

@@ -15,6 +15,9 @@ u8 life, mis_left;
 u16 g_score, g_hiscore;
 u8 g_clock;
 u16 g_frames;
+u16 g_anim;
+u8 g_an;
+static u8 an_acc;
 
 /* 経路 */
 u16 path_s;                     /* 位置(1/64 単位) */
@@ -362,7 +365,7 @@ static void fire_step(u8 dt)
             }
         }
         /* なぞってロック */
-        if (lock_n < 4 && !(g_frames & 1)) {
+        if (lock_n < 4 && g_an && !(g_anim & 1)) {   /* 6 ティックに 1 つ(fps によらない) */
             u8 id = aim_target(), k, dup = 0;
             if (id != 0xFF && obj[id].t >= T_E01 && obj[id].t <= T_E08 || id != 0xFF && obj[id].t == T_PART) {
                 for (k = 0; k < lock_n; k++) if (lock_id[k] == id) dup = 1;
@@ -516,7 +519,7 @@ static void overlay_draw(void)
     u8 scene = MOD->flags & SF_SCENE;
     if (cap_t) {
         text_center(1, cap_s, cap_c, 1);
-    } else if (pr_kind && (g_frames & 2)) {
+    } else if (pr_kind && (g_anim & 2)) {
         text_center(1, pr_kind == PR_ROLL ? "ROLL!" : pr_kind == PR_LOOP ? "LOOP!" : "DIVE!", C_RED, 1);
     }
     if (fire_t > 3 && !(MOD->flags & SF_SCENE)) {     /* 曳光弾: 照準の手前から奥へ流れる白い 2 個(演出のみ) */
@@ -525,7 +528,7 @@ static void overlay_draw(void)
         g_rx = (u8)(ax + (32 - ax) / (k + 1)); g_ry = (u8)(ay + (38 - ay) / (k + 1));
         if (g_rx < 64 && g_ry < 40) pset();
     }
-    if (scene && g_mod == 0 && (g_frames & 8)) text_center(1, "SPACE: SKIP", C_WHITE, 1);   /* オープニングは飛ばせる */
+    if (scene && g_mod == 0 && (g_anim & 8)) text_center(1, "SPACE: SKIP", C_WHITE, 1);   /* オープニングは飛ばせる */
     if (g_cfg.fps) {
         extern u16 g_perf_frame;
         extern u8 g_perf_ticks;
@@ -535,7 +538,7 @@ static void overlay_draw(void)
     /* 照準(スプライト 0)とロックの枠 */
     if (scene) { spr_set(0, 0, 200, 0, 2); g_spr_attr[0] = 209; }
     else spr_set(0, (i16)aim_x - 16, (i16)aim_y - 16, 0,
-                 over_t ? ((g_frames & 1) ? C_RED : C_WHITE) : aim_foe ? C_RED : C_WHITE);   /* 敵に重なると赤(撃てば当たる・ロックできる) */
+                 over_t ? ((g_anim & 1) ? C_RED : C_WHITE) : aim_foe ? C_RED : C_WHITE);   /* 敵に重なると赤(撃てば当たる・ロックできる) */
     {
         u8 i;
         for (i = 0; i < 3; i++) {
@@ -605,7 +608,7 @@ u8 stage_run(u8 mod)
     t0 = g_tick;
     ap_tick = t0;
     g_poll = aim_poll;
-    t_demo = g_frames;
+    t_demo = g_anim;
     for (;;) {
         u16 now = g_tick;
         u8 dt = (u8)(now - t0);
@@ -613,9 +616,13 @@ u8 stage_run(u8 mod)
         if (dt > 8) dt = 8;
         if (!dt) dt = 1;
         g_frames++;
+        an_acc += dt;                      /* 演出の時計は 3 ティックで 1 つ(20fps のときの 1 枚と同じ速さ) */
+        g_an = an_acc / 3;
+        an_acc -= g_an * 3;
+        g_anim += g_an;
         in_prev = in_cur;
         in_cur = input_raw();
-        if (g_auto == 2 && ((in_cur & IN_A) || (u16)(g_frames - t_demo) >= 800)) { bgm_stop(); return 1; }   /* デモは 40 秒か、キーで終わる */
+        if (g_auto == 2 && ((in_cur & IN_A) || (u16)(g_anim - t_demo) >= 800)) { bgm_stop(); return 1; }   /* デモは 40 秒か、キーで終わる */
         if (g_scene == 3) {
             if ((in_cur & IN_A) && !(in_prev & IN_A) && mod == 0) { bgm_stop(); return 1; }
         } else {
@@ -628,17 +635,17 @@ u8 stage_run(u8 mod)
         if (g_fade) {                      /* エンディング: 再突入の色へ移り、白く光って朝の町へ */
             lerp_pal(MOD->pal, MOD->pal2, g_fade >> 1, pal_w);
             vdp_set_palette(9, pal_w);
-            if (++g_fade > 32) { g_fade = 0; g_space = 0; set_stage_palette(MOD->pal2); }
+            if ((g_fade += g_an) > 32) { g_fade = 0; g_space = 0; set_stage_palette(MOD->pal2); }
         }
         /* カメラの向き: 経路 + 機動 + 演出のロール */
         {
-            u8 roll = 0, pitch = (u8)cam_pitch_path;
-            if (env_rt) { env_roll = (u8)(env_roll + env_rs); env_rt--; }
+            u8 roll = 0, pitch = (u8)cam_pitch_path, k;
+            for (k = g_an; k && env_rt; k--) { env_roll = (u8)(env_roll + env_rs); env_rt--; }
             roll = env_roll;
-            if (cam_spin) roll = (u8)(g_frames * cam_spin >> 2);
+            if (cam_spin) roll = (u8)(g_anim * cam_spin >> 2);
             if (man_len) {
                 u16 ang = (u16)man_t * 256 / man_len;
-                man_t += 1;
+                man_t += g_an;
                 if (man_kind == PR_ROLL) roll += (u8)ang;
                 else if (man_kind == PR_LOOP) pitch += (u8)ang;
                 else {                     /* 急降下: 半ロール + 機首下げ */
@@ -651,7 +658,7 @@ u8 stage_run(u8 mod)
             cam_yaw = cam_yaw_path;
             cam_pitch = pitch;
             cam_roll = g_cfg.roll ? 0 : roll;
-            if (life && inv_t > 8 && !man_len && (g_frames & 1)) cam_roll += 2;   /* 被弾の揺れ */
+            if (life && inv_t > 8 && !man_len && (g_anim & 1)) cam_roll += 2;   /* 被弾の揺れ */
             cam_update();
         }
         if (inv_t) inv_t = inv_t > dt ? inv_t - dt : 0;
@@ -683,8 +690,10 @@ u8 stage_run(u8 mod)
         }
         g_spd_show = (u8)(spd_cur + 30);
         g_alt_show = (u8)(cam_y >> 8);
+        g_min_ticks = 2;                   /* ゲームの本体だけ 30fps まで(ほかの場面はフレームで数えるので 20fps のまま) */
         present();
-        if (g_shake) g_shake--;
+        g_min_ticks = 3;
+        g_shake = g_shake > g_an ? g_shake - g_an : 0;
         g_r18_bot = g_shake ? (g_shake & 2 ? 0x03 : 0x0D) : 0;
         if (life == 0) {
             /* ENGINE FIRE: 黒煙(色を灰へ移す)→ ゲームオーバー */
