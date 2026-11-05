@@ -8,7 +8,7 @@ EV_SPAWN, EV_BOSS, EV_ROLL, EV_PROMPT, EV_TEXT, EV_SUB, EV_VOICE, EV_BGM, EV_PAL
 PR_ROLL, PR_LOOP, PR_DIVE = 1, 2, 3
 E01, E02, E03, E04, E05, E06, E07, E08, SUPPLY, MEDIC = range(1, 11)
 P_PARALLEL, P_HOLD, P_PASS, P_TAIL, P_CROSS, P_DRIFT, P_BOUNCE, P_FALL, P_LIFT = range(1, 10)
-V_ROLL, V_LOOP, V_DIVE, V_LOCK, V_WARNING, V_HURRY, V_SEE, V_NOPAPA, V_PAPA, V_GIVE = range(1, 11)
+V_ROLL, V_LOOP, V_DIVE, V_FIRE, V_WARNING, V_HURRY, V_SEE, V_NOPAPA, V_PAPA, V_GIVE = range(1, 11)
 SF_SPACE, SF_SCENE = 1, 2
 ENEMY_MODELS = {E01: 'BIKE', E02: 'TANK', E03: 'LTANK', E04: 'MUSTANG', E05: 'SHIP', E06: 'RMUSTANG', E07: 'MINE', E08: 'LSAT'}
 SONG = {}
@@ -378,7 +378,6 @@ def opening():
     s.sub(62, '06:00')
     s.sub(76, 'HE DID NOT CALL THE POLICE.')
     s.ev(74, EV_PROP, 'ZERO', 0, 0, *[s.wrap(v) for v in s.at(146, 0, 3.5)])   # 道の終わりのすぐ先、目の高さの少し下。走り寄って乗り込むところで場面が終わる
-    s.ev(134, EV_VOICE, V_LOCK)
     s.sub(130, "LET'S GO.")
     s.end()
     return s

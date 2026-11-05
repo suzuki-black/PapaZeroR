@@ -68,7 +68,9 @@ extern Config g_cfg;
 extern u8 g_auto;               /* 1 = 自動プレイ(デモと test_flow) */
 extern u8 g_scene;              /* 0 = タイトル 1 = ゲーム 2 = 継ぎ目 3 = 場面 */
 
-extern u8 life, mis_left;
+extern u8 life;
+extern u16 mis_left;            /* 誘導弾の残り。面の始めに MIS_MAX */
+#define MIS_MAX 500
 extern u16 g_score;             /* 得点 / 10 */
 extern u16 g_hiscore;
 extern u8 g_clock;              /* 残り時間(0x60 = 06:00 の分) */

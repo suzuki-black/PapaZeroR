@@ -17,7 +17,8 @@ extern u8 g_r2_bot;              /* sys.s */
 static u8 bot_hi;                /* VRAM の番地の A16〜A14: 2 = 計器盤、6 = 黒帯 */
 u8 g_spd_show, g_alt_show, g_heat;
 static u16 sh_score;
-static u8 sh_life, sh_mis, sh_spd, sh_alt, sh_clock, sh_heat, sh_crack;
+static u16 sh_mis;
+static u8 sh_life, sh_spd, sh_alt, sh_clock, sh_heat, sh_crack;
 static u8 sh_dig[6];
 static u8 hud_rr;
 static u8 rad_x[RAD_N], rad_y[RAD_N], rad_on[RAD_N];
@@ -115,7 +116,7 @@ static void sub_draw(const char *s)
 void cockpit_reset(void)
 {
     u8 i;
-    sh_score = 0xFFFF; sh_life = 0xFF; sh_mis = 0xFF; sh_spd = 0xFF; sh_alt = 0xFF; sh_clock = 0xFF; sh_heat = 0xFF; sh_crack = 0;
+    sh_score = 0xFFFF; sh_life = 0xFF; sh_mis = 0xFFFF; sh_spd = 0xFF; sh_alt = 0xFF; sh_clock = 0xFF; sh_heat = 0xFF; sh_crack = 0;
     for (i = 0; i < 6; i++) sh_dig[i] = 0xFF;
     for (i = 0; i < RAD_N; i++) rad_on[i] = 0;
 }
@@ -181,9 +182,8 @@ void hud_step(void)
             break;
         case 1:
             if (sh_mis != mis_left) {
-                u8 k;
                 sh_mis = mis_left;
-                for (k = 0; k < 6; k++) bot_rect((u8)(37 + k * 4), 24, 2, 8, k < mis_left ? C_WHITE : C_BLACK);
+                bot_num(37, 25, mis_left, 3, C_WHITE, C_BLACK);     /* 残りの数(面ごとに 500) */
                 return;
             }
             break;

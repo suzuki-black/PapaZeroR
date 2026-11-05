@@ -11,7 +11,8 @@ u16 g_ph[3];
 u16 g_last_verts;
 Config g_cfg;
 u8 g_auto;
-u8 life, mis_left;
+u8 life;
+u16 mis_left;
 u16 g_score, g_hiscore;
 u8 g_clock;
 u16 g_frames;
@@ -45,7 +46,10 @@ static u8  scr_end;
 u16 aim_x, aim_y;
 static u8 in_cur, in_prev, aim_hold;
 static u8 fire_t, heat_t, over_t;
-static u8 lock_n, lock_id[4];
+#define MAX_LOCK 8
+#define LOCK_HOLD 60                     /* 照準が外れてもロックが残るティック(約 1 秒) */
+u8 lock_n, lock_id[MAX_LOCK], lock_t[MAX_LOCK];   /* 静的にしない(試験のスクリプトが読む) */
+static u16 fire_tick;                    /* 最後に「Fire!」と言ったティック */
 /* 機動 */
 u8 pr_kind, pr_t, man_kind, man_t, man_len, inv_t;
 static u8 env_roll, env_rt;     /* 演出のロール: 残りフレーム */
@@ -122,7 +126,7 @@ void obj_kill(Obj *o, u8 scored)
     u8 t = o->t;
     if (scored) g_score += odef[t].score;
     fx_add(o->x, o->y, o->z, t >= T_E01 && t <= T_E08);
-    if (t == T_SUPPLY) { if (mis_left < 6) mis_left = (u8)(mis_left + 2 > 6 ? 6 : mis_left + 2); se_play(SE_HEAL); }
+    if (t == T_SUPPLY) { mis_left = mis_left + 50 > MIS_MAX ? MIS_MAX : mis_left + 50; se_play(SE_HEAL); }
     else if (t == T_MEDIC) { life = (u8)(life + 2 > 8 ? 8 : life + 2); se_play(SE_HEAL); }
     else se_play(t == T_PART ? SE_BOSS : SE_KILL);
     o->t = T_NONE;
@@ -310,6 +314,7 @@ static void auto_input(void)
         in_cur = IN_A;
     }
     if (pr_kind && pr_t < 20) in_cur |= IN_B;
+    else if (!pr_kind && lock_n && !(in_prev & IN_B) && !(g_anim & 3)) in_cur |= IN_B;   /* ロックがあれば誘導弾も撃つ(デモと試験) */
 }
 
 static void man_start(u8 kind, u8 len)
@@ -317,12 +322,79 @@ static void man_start(u8 kind, u8 len)
     man_kind = kind; man_t = 0; man_len = len;
 }
 
+static u8 lockable(u8 id)
+{
+    u8 t = obj[id].t;
+    return t >= T_E01 && t <= T_E08 || t == T_PART;
+}
+
+static void lock_drop(u8 i)
+{
+    for (lock_n--; i < lock_n; i++) { lock_id[i] = lock_id[i + 1]; lock_t[i] = lock_t[i + 1]; }
+}
+
+/* ロックせずに撃った誘導弾: 進む向きへまっすぐ飛んで外れる(game_ai.c の obj_step から。そちらに書くと obj_step が 800 B 膨らんだ) */
+void mis_straight(Obj *o, u8 dt)
+{
+    if (o->tm <= dt) { o->t = T_NONE; return; }
+    o->x += (g_fx >> 1) * dt; o->z += (g_fz >> 1) * dt;
+    o->tm -= dt;
+}
+
+static u8 mis_chasing(u8 id)
+{
+    u8 i;
+    const Obj *o = obj;
+    for (i = 0; i < MAX_OBJ; i++, o++) if (o->t == T_MYMIS && o->tgt == id) return 1;
+    return 0;
+}
+
+/* ロックの枠(ブロック。照準を中心に横 LB_W × 縦 LB_H、画面の中に切る)。描くのは overlay_draw */
+#define LB_W 24
+#define LB_H 16
+static u8 lb_x0, lb_y0, lb_x1, lb_y1;
+
+static void lock_scan(void)
+{
+    u8 ax = (u8)(aim_x >> 2), ay = (u8)(aim_y >> 2), i, k, id;
+    HitRect *h = hits;
+    lb_x0 = ax > LB_W / 2 ? ax - LB_W / 2 : 0;
+    lb_x1 = ax + LB_W / 2 - 1 < 63 ? ax + LB_W / 2 - 1 : 63;
+    lb_y0 = ay > LB_H / 2 ? ay - LB_H / 2 : 0;
+    lb_y1 = ay + LB_H / 2 - 1 < 39 ? ay + LB_H / 2 - 1 : 39;
+    for (i = 0; i < n_hits; i++, h++) {
+        if (h->x1 < lb_x0 || h->x0 > lb_x1 || h->y1 < lb_y0 || h->y0 > lb_y1) continue;
+        id = h->id;
+        if (!lockable(id)) continue;
+        for (k = 0; k < lock_n && lock_id[k] != id; k++) ;
+        if (k < lock_n) lock_t[k] = LOCK_HOLD;
+        else if (lock_n < MAX_LOCK && !mis_chasing(id)) { lock_id[lock_n] = id; lock_t[lock_n++] = LOCK_HOLD; se_play(SE_LOCK); }
+    }
+}
+
+static void lock_box_draw(void)
+{
+    /* 四隅に長さ 3 の鉤(水色)。敵の印(白・赤の小さな鉤)と見分けられるように */
+    g_color = C_CYAN;
+    g_rw = 3; g_rh = 1;
+    g_rx = lb_x0; g_ry = lb_y0; rect_fill();
+    g_rx = lb_x1 - 2; rect_fill();
+    g_ry = lb_y1; rect_fill();
+    g_rx = lb_x0; rect_fill();
+    g_rw = 1; g_rh = 3;
+    g_ry = lb_y0; rect_fill();
+    g_rx = lb_x1; rect_fill();
+    g_ry = lb_y1 - 2; rect_fill();
+    g_rx = lb_x0; rect_fill();
+}
+
 static void fire_step(u8 dt)
 {
-    u8 in = in_cur, pressed = (u8)(in & ~in_prev);
-    /* 機動の指示に応える */
+    u8 in = in_cur, pressed = (u8)(in & ~in_prev), b = pressed & IN_B, i, id;
+    /* 機動の指示に応える(指示が出ている間は B は機動) */
     if (pr_kind) {
-        if ((pressed & IN_B) && !(in & IN_A && lock_n)) {
+        if (b) {
+            b = 0;
             man_start(pr_kind, pr_kind == PR_ROLL ? 24 : 32);
             inv_t = pr_kind == PR_ROLL ? 80 : 40;
             g_score += 50;
@@ -354,7 +426,6 @@ static void fire_step(u8 dt)
         heat_t += dt;
         if (heat_t >= 180) { over_t = 60; heat_t = 180; }
         else if (!fire_t) {
-            u8 id;
             fire_t = 6;
             se_play(SE_SHOT);
             id = aim_target();
@@ -364,32 +435,30 @@ static void fire_step(u8 dt)
                 if (o->t) se_play(SE_HIT);
             }
         }
-        /* なぞってロック */
-        if (lock_n < 4 && g_an && !(g_anim & 1)) {   /* 6 ティックに 1 つ(fps によらない) */
-            u8 id = aim_target(), k, dup = 0;
-            if (id != 0xFF && obj[id].t >= T_E01 && obj[id].t <= T_E08 || id != 0xFF && obj[id].t == T_PART) {
-                for (k = 0; k < lock_n; k++) if (lock_id[k] == id) dup = 1;
-                if (!dup) {
-                    lock_id[lock_n++] = id;
-                    se_play(SE_LOCK);
-                    if (lock_n == 1 && !pcm_mode) pcm_say(VOICE_LOCK);    /* 最初のロックで「Lock!」(ほかの声は遮らない) */
-                }
-            }
-        }
     } else {
         if (heat_t) heat_t = heat_t > dt * 2 ? heat_t - dt * 2 : 0;
-        if (!(in & IN_B)) lock_n = 0;
     }
     g_heat = heat_t >> 3;
-    /* 誘導弾: A を押したまま B */
-    if ((pressed & IN_B) && (in & IN_A) && lock_n && mis_left) {
+    /* 誘導弾のロック: 照準のまわりの大きな枠に敵の枠が少しでもかかれば自動(8 体まで。外れても約 1 秒残る)。
+     * 誘導弾が向かっている敵はロックしない */
+    for (i = 0; i < lock_n; ) {
+        if (lock_t[i] <= dt || !lockable(lock_id[i])) { lock_drop(i); continue; }
+        lock_t[i] -= dt;
+        i++;
+    }
+    lock_scan();
+    /* 誘導弾: B で 1 発。古いロックから撃ち、撃った敵はロックから外す(倒しきれなければロックからやり直し)。
+     * ロックが無ければまっすぐ飛んで外れる。撃つたびに「Fire!」(続けて撃てば前の Fire! を切って頭から) */
+    if (b && mis_left) {
         Obj *o = obj_new(T_MYMIS);
-        u8 k = lock_id[--lock_n];
-        if (o && obj[k].t) {
+        if (o) {
             o->x = cam_x - (cm[3] >> 1); o->y = cam_y - 0x80; o->z = cam_z - (cm[5] >> 1);
-            o->tgt = k; o->tm = 72;
+            o->tm = 72;
+            if (lock_n) { o->tgt = lock_id[0]; lock_drop(0); }
+            else { o->tgt = 0xFF; o->tm = 60; }
             mis_left--;
-            se_play(SE_LOCK);
+            /* ほかの声(ヒナの台詞など)が鳴っている間は割り込まない。Fire! どうしは差し替える */
+            if (!pcm_mode || (u16)(g_tick - fire_tick) < 24) { pcm_say(VOICE_FIRE); fire_tick = g_tick; }
         }
     }
 }
@@ -499,7 +568,11 @@ static void marks_draw(void)
     for (i = 0; i < n_hits; i++, h++) {
         const Obj *o = &obj[h->id];
         if (!o->t) continue;
-        if (is_foe(o)) g_color = h->id == tgt ? C_RED : C_WHITE;
+        if (is_foe(o)) {                   /* 照準が重なっているか、ロックしている敵は赤 */
+            u8 k;
+            for (k = 0; k < lock_n && lock_id[k] != h->id; k++) ;
+            g_color = h->id == tgt || k < lock_n ? C_RED : C_WHITE;
+        }
         else if (o->t == T_SUPPLY || o->t == T_MEDIC) g_color = C_GREEN;
         else continue;
         g_rx = (u8)(h->x0 - 1); g_ry = (u8)(h->y0 - 1); g_rw = h->x1; g_rh = h->y1;
@@ -535,23 +608,12 @@ static void overlay_draw(void)
         num_draw(0, 34, g_perf_ticks, 2, C_WHITE);
         num_draw(10, 34, g_perf_frame >> 8, 3, C_WHITE);
     }
-    /* 照準(スプライト 0)とロックの枠 */
+    if (!scene && g_scene == 1) lock_box_draw();
+    /* 照準(スプライト 0) */
     if (scene) { spr_set(0, 0, 200, 0, 2); g_spr_attr[0] = 209; }
     else spr_set(0, (i16)aim_x - 16, (i16)aim_y - 16, 0,
                  over_t ? ((g_anim & 1) ? C_RED : C_WHITE) : aim_foe ? C_RED : C_WHITE);   /* 敵に重なると赤(撃てば当たる・ロックできる) */
-    {
-        u8 i;
-        for (i = 0; i < 3; i++) {
-            V3 c;
-            i16 sx, sy;
-            g_spr_attr[(i + 1) * 4] = 209;
-            if (i < lock_n && obj[lock_id[i]].t) {
-                const Obj *o = &obj[lock_id[i]];
-                pt_cam(o->x, o->y, o->z, &c);
-                if (pt_screen(&c, &sx, &sy)) spr_set((u8)(i + 1), (sx >> 2) - 16, (sy >> 2) - 16, 3, C_RED);
-            }
-        }
-    }
+    g_spr_attr[4] = 209; g_spr_attr[8] = 209; g_spr_attr[12] = 209;   /* スプライト 1〜3 は使わない(ロックは敵の印を赤くして示す) */
 }
 
 static void lerp_pal(const u8 *a, const u8 *b, u8 k, u8 *o)   /* k = 0..16 */
@@ -577,6 +639,7 @@ static void stage_reset(void)
     path_s = 0; ev_i = 0; scr_end = 0; loop_b = 0;
     g_space = MOD->flags & SF_SPACE; g_fade = 0; g_shake = 0;
     boss_on = 0; boss_dead = 0; boss_grp = 0;
+    mis_left = MIS_MAX;                /* 誘導弾は面ごとに満タン */
     pr_kind = 0; man_t = 0; man_len = 0; inv_t = 0; env_rt = 0; env_roll = 0; lock_n = 0; cam_spin = 0;
     cap_t = 0; heat_t = 0; over_t = 0;
     n_hits = 0;
@@ -587,7 +650,7 @@ static void stage_reset(void)
 
 void game_reset(void)
 {
-    life = g_cfg.life; mis_left = 3; g_score = 0; g_clock = 0x60;
+    life = g_cfg.life; mis_left = MIS_MAX; g_score = 0; g_clock = 0x60;
     cockpit_reset();
 }
 

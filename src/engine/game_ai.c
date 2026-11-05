@@ -119,7 +119,7 @@ void boss_step(u8 dt)
         for (i = 0; i < MAX_LASER; i++) laser[i].kind = 0xFF;
         boss_on = 0; boss_dead = 1;
         se_play(SE_BOSS);
-        mis_left = 6;
+        mis_left = MIS_MAX;
         g_score += (u16)g_mod * 500;
         bgm_play(SONG_CLEAR);
         caption(MOD->str[1], C_WHITE, 170);
@@ -157,7 +157,9 @@ void obj_step(u8 dt)
             i16 tx = cam_x, ty = cam_y, tz = cam_z;
             u8 rem = o->tm;
             if (t == T_MYMIS) {
-                Obj *g = &obj[o->tgt];
+                Obj *g;
+                if (o->tgt == 0xFF) { mis_straight(o, dt); continue; }   /* ロックせずに撃った(game.c) */
+                g = &obj[o->tgt];
                 if (!g->t) { o->t = T_NONE; continue; }
                 tx = g->x; ty = g->y; tz = g->z;
             }
