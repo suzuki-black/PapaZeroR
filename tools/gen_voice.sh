@@ -17,7 +17,19 @@ for p in "roll:Roll!" "loop:Loop!" "dive:Dive!" "give:Give her back."; do
   afconvert -f WAVE -d LEI16@3996 -c 1 "$OUT/$name.raw.wav" "$OUT/$name.wav"
 done
 # Fire!: 撃つたびに言うので、半分の速さで読ませて短く(0.15 秒ほど)。声を鳴らしている間は転送が遅くなり fps が落ちるため
-flite -voice rms --setf duration_stretch=0.35 --setf int_f0_target_mean=85 -t "Fire!" -o "$OUT/fire.raw.wav"
+#   甲高く叫ぶ声にする(低すぎるという指摘): ヒナの声と同じく標本化周波数を KF 倍と見なして、声の高さと響きを両方上げる。
+#   rms は高さを 240Hz と指定しても 115Hz ほどで頭打ちになるので、KF を 2 にした(測ると約 220Hz、語尾は 150Hz。父のほかの声は約 85Hz)。
+#   読む速さは duration_stretch に KF を掛けて戻す
+KF=2.0
+flite -voice rms --setf duration_stretch=$(echo "0.35 * $KF" | bc -l) --setf int_f0_target_mean=240 --setf int_f0_target_stddev=25 -t "Fire!" -o "$OUT/fire.slow.wav"
+python3 - "$OUT/fire.slow.wav" "$OUT/fire.raw.wav" "$KF" <<'PY'
+import sys, wave
+r = wave.open(sys.argv[1])
+w = wave.open(sys.argv[2], 'wb')
+w.setparams(r.getparams())
+w.setframerate(int(r.getframerate() * float(sys.argv[3])))
+w.writeframes(r.readframes(r.getnframes()))
+PY
 afconvert -f WAVE -d LEI16@3996 -c 1 "$OUT/fire.raw.wav" "$OUT/fire.wav"
 # 無線の声(cmu_us_slt を高く)
 flite -voice slt --setf duration_stretch=0.66 --setf int_f0_target_mean=320 --setf int_f0_target_stddev=45 -t "Warning!" -o "$OUT/warning.raw.wav"

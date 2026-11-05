@@ -150,8 +150,8 @@ def towns():
 def s1():
     s = Mod(1, 'STAGE 1 / THE TOWN', MORNING, 'STAGE1', clock=0x50, radio='HOLD ON, HINA.', line='HOT AIR.')
     s.y0 = 6
-    sp = 20
-    s.segs((96, 0, 0, sp), (32, 30, 0, sp), (32, -30, 0, sp), *lap_segs(sp), (64, 0, 0, sp), (32, -35, 0, sp), (32, 35, 0, sp), *lap_segs(sp), (32, 0, 0, sp), *lap_segs(16))
+    sp = 14     # 低く飛ぶ面なので、ほかの面(20〜26)より遅く。20 だとロックした戦車へ誘導弾が届く前に通り過ぎ、倒したか見えなかった
+    s.segs((96, 0, 0, sp), (32, 30, 0, sp), (32, -30, 0, sp), *lap_segs(sp), (64, 0, 0, sp), (32, -35, 0, sp), (32, 35, 0, sp), *lap_segs(sp), (32, 0, 0, sp), *lap_segs(13))
     pats, over = towns()
     s.finish(lambda k: over if k == 42 else pats[(k * 5 + k // 7) % len(pats)])
     # 周回区間 1: 136-208、2: 368-440、ボス: 496-568
