@@ -49,6 +49,7 @@ static u8 fire_t, heat_t, over_t;
 #define MAX_LOCK 8
 #define LOCK_HOLD 60                     /* 照準が外れてもロックが残るティック(約 1 秒) */
 u8 lock_n, lock_id[MAX_LOCK], lock_t[MAX_LOCK];   /* 静的にしない(試験のスクリプトが読む) */
+static u8 lock_rr;                       /* 次に撃つロックの番 */
 static u16 fire_tick;                    /* 最後に「Fire!」と言ったティック */
 /* 機動 */
 u8 pr_kind, pr_t, man_kind, man_t, man_len, inv_t;
@@ -328,6 +329,7 @@ static u8 lockable(u8 id)
 
 static void lock_drop(u8 i)
 {
+    if (i < lock_rr) lock_rr--;            /* 撃つ順番をずらさない */
     for (lock_n--; i < lock_n; i++) { lock_id[i] = lock_id[i + 1]; lock_t[i] = lock_t[i + 1]; }
 }
 
@@ -339,12 +341,11 @@ void mis_straight(Obj *o, u8 dt)
     o->tm -= dt;
 }
 
-static u8 mis_chasing(u8 id)
+/* ロックを続けてよいか: 撃てる敵で、まだ前にいる(通り過ぎた敵には撃たない) */
+static u8 lock_keep(u8 id)
 {
-    u8 i;
-    const Obj *o = obj;
-    for (i = 0; i < MAX_OBJ; i++, o++) if (o->t == T_MYMIS && o->tgt == id) return 1;
-    return 0;
+    const Obj *o = &obj[id];
+    return lockable(id) && fmul(g_fx, o->x - cam_x) + fmul(g_fz, o->z - cam_z) > 0;
 }
 
 /* ロックの枠(ブロック。照準を中心に横 LB_W × 縦 LB_H、画面の中に切る)。描くのは overlay_draw */
@@ -366,7 +367,7 @@ static void lock_scan(void)
         if (!lockable(id)) continue;
         for (k = 0; k < lock_n && lock_id[k] != id; k++) ;
         if (k < lock_n) lock_t[k] = LOCK_HOLD;
-        else if (lock_n < MAX_LOCK && !mis_chasing(id)) { lock_id[lock_n] = id; lock_t[lock_n++] = LOCK_HOLD; se_play(SE_LOCK); }
+        else if (lock_n < MAX_LOCK) { lock_id[lock_n] = id; lock_t[lock_n++] = LOCK_HOLD; se_play(SE_LOCK); }
     }
 }
 
@@ -438,21 +439,24 @@ static void fire_step(u8 dt)
     }
     g_heat = heat_t >> 3;
     /* 誘導弾のロック: 照準のまわりの大きな枠に敵の枠が少しでもかかれば自動(8 体まで。外れても約 1 秒残る)。
-     * 誘導弾が向かっている敵はロックしない */
+     * 撃っても外さない。外すのは時間切れ・倒した・通り過ぎたとき */
     for (i = 0; i < lock_n; ) {
-        if (lock_t[i] <= dt || !lockable(lock_id[i])) { lock_drop(i); continue; }
+        if (lock_t[i] <= dt || !lock_keep(lock_id[i])) { lock_drop(i); continue; }
         lock_t[i] -= dt;
         i++;
     }
     lock_scan();
-    /* 誘導弾: B で 1 発。古いロックから撃ち、撃った敵はロックから外す(倒しきれなければロックからやり直し)。
+    /* 誘導弾: B で 1 発。ロックした敵へ順に撃つ(3 体なら A → B → C → A → B → C。倒れていない前提で回す)。
      * ロックが無ければまっすぐ飛んで外れる。撃つたびに「Fire!」(続けて撃てば前の Fire! を切って頭から) */
     if (b && mis_left) {
         Obj *o = obj_new(T_MYMIS);
         if (o) {
             o->x = cam_x - (cm[3] >> 1); o->y = cam_y - 0x80; o->z = cam_z - (cm[5] >> 1);
             o->tm = 72;
-            if (lock_n) { o->tgt = lock_id[0]; lock_drop(0); }
+            if (lock_n) {
+                if (lock_rr >= lock_n) lock_rr = 0;
+                o->tgt = lock_id[lock_rr++];
+            }
             else { o->tgt = 0xFF; o->tm = 60; }
             mis_left--;
             /* ほかの声(ヒナの台詞など)が鳴っている間は割り込まない。Fire! どうしは差し替える */
