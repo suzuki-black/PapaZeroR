@@ -80,6 +80,7 @@ extern u8 g_an;                 /* このフレームで g_anim が進んだ数(
 extern u8 g_shake;              /* 計器盤の揺れの残り(g_anim の数) */
 extern u8 g_min_ticks;          /* present が 1 枚に待つ最小のティック数(3 = 20fps、2 = 30fps) */
 extern u8 g_r18_bot;            /* sys.s: 下の画面の R#18 */
+extern u8 g_r18_top;            /* sys.s: 上の画面の R#18(被弾の揺れ。横だけ: 縦にずらすと分割の行も動く) */
 
 /* game.c */
 u8 stage_run(u8 mod);           /* 1 = クリア、0 = ゲームオーバー */

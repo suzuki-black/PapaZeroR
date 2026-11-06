@@ -60,9 +60,7 @@ static const char *cap_s;
 static u8 cap_t, cap_c;
 Laser laser[MAX_LASER];
 /* 爆発 */
-#define MAX_FX 6
-typedef struct { i16 x, y, z; u8 t, big; } Fx;
-static Fx fx[MAX_FX];
+Fx fx[MAX_FX];
 
 const ObjDef odef[T_COUNT] = {
     { 0, 0, 0 },
@@ -84,7 +82,7 @@ void fx_add(i16 x, i16 y, i16 z, u8 big)
 {
     u8 i;
     for (i = 0; i < MAX_FX; i++) if (!fx[i].t) {
-        fx[i].x = x; fx[i].y = y; fx[i].z = z; fx[i].t = 16; fx[i].big = big;
+        fx[i].x = x; fx[i].y = y; fx[i].z = z; fx[i].t = FX_T; fx[i].big = big;
         return;
     }
 }
@@ -101,7 +99,7 @@ void damage(u8 n)
     life = life > n ? (u8)(life - n) : 0;
     flash_palette();
     se_play(SE_DAMAGE);
-    g_shake = 8;
+    g_shake = 10;
     inv_t = 12;
 }
 
@@ -523,32 +521,6 @@ static void objs_draw(void)
     }
 }
 
-static void fx_draw(u8 dt)
-{
-    u8 i;
-    Fx *f = fx;
-    for (i = 0; i < MAX_FX; i++, f++) {
-        V3 c;
-        i16 sx, sy, r, x0, y0, x1, y1;
-        if (!f->t) continue;
-        f->t = f->t > dt ? f->t - dt : 0;
-        pt_cam(f->x, f->y, f->z, &c);
-        if (!pt_screen(&c, &sx, &sy)) continue;
-        r = (f->big ? 24 : 12) * (i16)(17 - f->t);
-        if (c.z > 0x1000) r >>= 1;
-        if (c.z > 0x3000) r >>= 1;
-        x0 = (sx - r) >> 4; x1 = (sx + r) >> 4; y0 = (sy - r) >> 4; y1 = (sy + r) >> 4;
-        if (x0 < 0) x0 = 0;
-        if (y0 < 0) y0 = 0;
-        if (x1 > 64) x1 = 64;
-        if (y1 > 40) y1 = 40;
-        if (x0 >= x1 || y0 >= y1) continue;
-        g_rx = (u8)x0; g_ry = (u8)y0; g_rw = (u8)(x1 - x0); g_rh = (u8)(y1 - y0);
-        g_color = f->t > 10 ? C_WHITE : f->t > 4 ? C_ORANGE : C_RED;
-        rect_fill();
-    }
-}
-
 /* 敵の印: 攻撃してくるもの(敵・敵弾・今のボスの部位)の当たり矩形の四隅に鉤を描く。照準が重なっている敵は赤、補給は緑。
  * 描いた直後の当たり矩形を使うので、照準の色もこのフレームの絵と一致する */
 static u8 aim_foe;      /* 照準の下に攻撃してくるものがいる(照準を赤くする) */
@@ -654,7 +626,15 @@ void game_reset(void)
     cockpit_reset();
 }
 
+static u8 stage_body(u8 mod);
 u8 stage_run(u8 mod)
+{
+    u8 r = stage_body(mod);
+    g_r18_top = 0; g_r18_bot = 0;          /* 揺れの途中で面を抜けても、ほかの場面にずれを残さない */
+    return r;
+}
+
+static u8 stage_body(u8 mod)
 {
     u16 t0, t_demo;
     mod_load_now(mod);
@@ -721,7 +701,7 @@ u8 stage_run(u8 mod)
             cam_yaw = cam_yaw_path;
             cam_pitch = pitch;
             cam_roll = g_cfg.roll ? 0 : roll;
-            if (life && inv_t > 8 && !man_len && (g_anim & 1)) cam_roll += 2;   /* 被弾の揺れ */
+            if (life && g_shake > 4 && !man_len) cam_roll += (g_shake & 1) ? 4 : (u8)-4;   /* 被弾の揺れ(傾きも左右に) */
             cam_update();
         }
         if (inv_t) inv_t = inv_t > dt ? inv_t - dt : 0;
@@ -758,12 +738,13 @@ u8 stage_run(u8 mod)
         g_min_ticks = 3;
         g_shake = g_shake > g_an ? g_shake - g_an : 0;
         g_r18_bot = g_shake ? (g_shake & 2 ? 0x03 : 0x0D) : 0;
+        g_r18_top = g_shake ? (g_shake & 1 ? (g_shake > 5 ? 0x06 : 0x03) : (g_shake > 5 ? 0x0A : 0x0D)) : 0;   /* ゲーム画面も左右に(初めは大きく) */
         if (life == 0) {
             /* ENGINE FIRE: 黒煙(色を灰へ移す)→ ゲームオーバー */
             static const u8 gray[14] = { 0x22, 2, 0x11, 1, 0x33, 3, 0x22, 2, 0x22, 2, 0x11, 1, 0x33, 3 };
             u8 i;
             bgm_stop();
-            g_r18_bot = 0;
+            g_r18_bot = 0; g_r18_top = 0;
             for (i = 0; i <= 32; i++) {
                 lerp_pal(MOD->pal, gray, i >> 1, pal_w);
                 vdp_set_palette(9, pal_w);

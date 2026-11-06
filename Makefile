@@ -23,7 +23,7 @@ LDFLAGS = -mr800 --no-std-crt0 --code-loc 0x4008 --data-loc 0xCC00 -Wl-b_PAGE0=0
 MODFLAGS = -mr800 --no-std-crt0 --data-loc 0xBC00 -Wl-j -Wl-m -Wl-u
 
 ASM = crt0 sys vdp gfx math raster dm xf face pcm
-CRES = view shared_ram sound hud main
+CRES = view shared_ram sound hud main fx
 CP0 = game scene cockpit
 SND = modhead_snd sndfm
 RELS = $(patsubst %,$(BUILD)/%.rel,$(ASM) $(CRES) $(CP0) game_ai gen_data)

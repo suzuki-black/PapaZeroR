@@ -258,6 +258,7 @@ split_phase::	.ds	1	; 0 = 次は走査線割込み、1 = 次は垂直帰線
 _g_r1_cur::	.ds	1	; いま R#1 に入っている値(Z80 転送が IE0 を止めるときに使う)
 _g_r1_mask::	.ds	1	; R#1 に掛けるマスク(ふだん 0xFF、声の間は IE0 を落とす 0xDF。main が起動時に 0xFF にする)
 _g_r18_bot::	.ds	1	; 下の R#18
+_g_r18_top::	.ds	1	; 上の R#18(被弾でゲーム画面を横に揺らす。ふだん 0)
 _g_r2_bot::	.ds	1	; 下の名前表: 0x3F = 計器盤(8000h)、0x7F = 黒帯(18000h)
 _g_split_t::	.ds	1	; 分割線を通ったときのシステムタイマの上位(1 カウント = 約 1ms)
 	.area	_CODE
@@ -307,7 +308,10 @@ split_to_bot::
 	ret
 ; 上のモードへ。垂直帰線の中なので順番は問わない
 split_to_top::
-	VREG	#0, 18
+	ld	a, (_g_r18_top)
+	out	(0x99), a
+	ld	a, #0x80 + 18
+	out	(0x99), a
 	VREG	#R0_TOP, 0
 	VREG	#R2_TOP, 2
 	VREG	#R8_TOP, 8

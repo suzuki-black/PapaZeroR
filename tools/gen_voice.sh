@@ -18,9 +18,9 @@ for p in "roll:Roll!" "loop:Loop!" "dive:Dive!" "give:Give her back."; do
 done
 # Fire!: 撃つたびに言うので、半分の速さで読ませて短く(0.15 秒ほど)。声を鳴らしている間は転送が遅くなり fps が落ちるため
 #   甲高く叫ぶ声にする(低すぎるという指摘): ヒナの声と同じく標本化周波数を KF 倍と見なして、声の高さと響きを両方上げる。
-#   rms は高さを 240Hz と指定しても 115Hz ほどで頭打ちになるので、KF を 2 にした(測ると約 220Hz、語尾は 150Hz。父のほかの声は約 85Hz)。
+#   rms は高さを 240Hz と指定しても 115Hz ほどで頭打ちになるので、KF を 2.6 にした(もっと高くという指摘。測ると約 290Hz、語尾は 200Hz。父のほかの声は約 85Hz)。
 #   読む速さは duration_stretch に KF を掛けて戻す
-KF=2.0
+KF=2.6
 flite -voice rms --setf duration_stretch=$(echo "0.35 * $KF" | bc -l) --setf int_f0_target_mean=240 --setf int_f0_target_stddev=25 -t "Fire!" -o "$OUT/fire.slow.wav"
 python3 - "$OUT/fire.slow.wav" "$OUT/fire.raw.wav" "$KF" <<'PY'
 import sys, wave
