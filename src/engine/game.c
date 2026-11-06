@@ -321,10 +321,13 @@ static void man_start(u8 kind, u8 len)
     man_kind = kind; man_t = 0; man_len = len;
 }
 
+/* ロックできるもの: 敵と、今撃てるボスの部位(登場中・飾り・まだ開いていない部位・隠れた部位・ヒナのカプセルは除く。
+ * 除かないと、効かない部位が 8 つの枠を埋め、撃てる敵がロックされなかった) */
 static u8 lockable(u8 id)
 {
-    u8 t = obj[id].t;
-    return t >= T_E01 && t <= T_E08 || t == T_PART;
+    const Obj *o = &obj[id];
+    if (o->t >= T_E01 && o->t <= T_E08) return 1;
+    return o->t == T_PART && !boss_intro && o->group == boss_grp && !(o->flags & (OF_CAPSULE | OF_DECOR | OF_HIDDEN));
 }
 
 static void lock_drop(u8 i)
@@ -366,8 +369,15 @@ static void lock_scan(void)
         id = h->id;
         if (!lockable(id)) continue;
         for (k = 0; k < lock_n && lock_id[k] != id; k++) ;
-        if (k < lock_n) lock_t[k] = LOCK_HOLD;
-        else if (lock_n < MAX_LOCK) { lock_id[lock_n] = id; lock_t[lock_n++] = LOCK_HOLD; se_play(SE_LOCK); }
+        if (k < lock_n) { lock_t[k] = LOCK_HOLD; continue; }
+        if (lock_n == MAX_LOCK) {
+            /* 満杯なら、枠を出て残っているだけのロックのうち一番古いものを譲る(枠の中の敵は lock_t が LOCK_HOLD - 8 以上) */
+            u8 j = 0;
+            for (k = 1; k < MAX_LOCK; k++) if (lock_t[k] < lock_t[j]) j = k;
+            if (lock_t[j] >= LOCK_HOLD - 8) continue;
+            lock_drop(j);
+        }
+        lock_id[lock_n] = id; lock_t[lock_n++] = LOCK_HOLD; se_play(SE_LOCK);
     }
 }
 
