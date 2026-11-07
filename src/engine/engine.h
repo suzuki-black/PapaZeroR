@@ -111,8 +111,7 @@ extern const i16 sin_tab[320];      /* 8.8。cos は sin_tab[a + 64] */
 #define COS(a) (sin_tab[(u8)(a) + 64])
 extern const u8 font35[];           /* 3×5 ブロックフォント。1 文字 5 バイト(下位 3bit) */
 extern const u8 font35_map[96];     /* ASCII 0x20-0x7F → font35 の文字番号(0xFF = 無し) */
-extern const u8 spr_patterns[];     /* 16×16 スプライトパターン(32 バイトずつ) */
-#define SPR_PAT_BYTES 128
+#define SPR_PAT_BYTES (17 * 32)    /* 照準など 4 + 敵の名前 10 + 引き出し線 3(tools/gen_data.py) */
 extern const u16 recip9[256];      /* round(2^24 / m)、m = 256..511 */
 
 #endif

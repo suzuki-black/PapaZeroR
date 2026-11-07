@@ -57,6 +57,9 @@ def main(out, preview=None):
     for y in range(H):
         for x in range(0, W, 2):
             data.append((px[x, y] << 4) | px[x + 1, y])
+    # 後ろにスプライトの絵(照準・敵の名前の札・引き出し線)を付ける。cockpit_load が VRAM 1800h へ送る(ページ0を空けるため)
+    for s in gen_data.SPRITES:
+        data += bytes(gen_data.sprite_bytes(s))
     with open(out, 'wb') as f:
         f.write(data)
     if preview:

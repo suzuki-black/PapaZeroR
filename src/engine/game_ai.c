@@ -319,3 +319,43 @@ void lasers_draw(void)
     }
 }
 
+
+/* 自動プレイ(デモと試験)の入力。ページ0に空きが無いので game.c からこちらへ */
+u8 auto_input(u8 in_prev)
+{
+    /* 自動プレイ: 一番手前の敵を狙い、指示が出たら B を押す */
+    u8 i, best = 0xFF, in_cur = 0;
+    i16 bz = 0x7FFF;
+    HitRect *h = hits;
+    for (i = 0; i < n_hits; i++, h++) {
+        const Obj *o = &obj[h->id];
+        if (o->t == T_PART && (o->flags & OF_CAPSULE)) continue;
+        if (o->t == T_PART && o->group != boss_grp) continue;
+        if (h->z < bz) { bz = h->z; best = i; }
+    }
+    if (best != 0xFF) {
+        h = &hits[best];
+        aim_x = (u16)(h->x0 + h->x1) * 2;
+        aim_y = (u16)(h->y0 + h->y1) * 2;
+        if (aim_x < 12) aim_x = 12;
+        if (aim_y < 12) aim_y = 12;
+        if (aim_y > 148) aim_y = 148;
+        in_cur = IN_A;
+    }
+    if (pr_kind && pr_t < 20) in_cur |= IN_B;
+    else if (!pr_kind && lock_n && !(in_prev & IN_B) && !(g_anim & 3)) in_cur |= IN_B;   /* ロックがあれば誘導弾も撃つ(デモと試験) */
+    return in_cur;
+}
+
+/* 照準が重なっている一番手前の物体(当たり矩形の id)。無ければ 0xFF。ページ0に空きが無いので game.c からこちらへ */
+u8 aim_target(void)
+{
+    u8 ax = (u8)(aim_x >> 2), ay = (u8)(aim_y >> 2), i, best = 0xFF;
+    i16 bz = 0x7FFF;
+    HitRect *h = hits;
+    for (i = 0; i < n_hits; i++, h++) {
+        /* 照準の 3×3 ブロックが矩形に重なれば当たる(1 ブロックだけだと遠くの敵に当たらなかった) */
+        if (ax + 1 >= h->x0 && ax < h->x1 + 1 && ay + 1 >= h->y0 && ay < h->y1 + 1 && h->z < bz) { bz = h->z; best = h->id; }
+    }
+    return best;
+}

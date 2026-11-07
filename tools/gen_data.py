@@ -5,7 +5,7 @@
 
 - sin_tab     : 256 分割の sin(8.8 固定小数点)。cos 用に 64 要素多く持つ
 - font35      : 3×5 ブロックフォント(仕様書 3.5 / 5.3)
-- spr_patterns: 16×16 スプライト(照準・ヒットマーク・撃った閃光)
+- スプライトの絵(SPRITES)は gen_cockpit.py がコクピットの絵の後ろに付ける
 - recip9      : 9bit 仮数の逆数表(多角形の辺の傾きを割り算なしで求める)
 """
 import math
@@ -139,6 +139,31 @@ SPRITES = [
     ],
 ]
 
+# 4〜: 敵の名前の札(零戦の画像認識が付ける、という体裁)。物体の種類 T_E01〜T_MEDIC の順。
+# 3×5 の字を 1 ドットあけて 1 行 4 字、2 行まで(拡大で 30×22 ドット)。game.c の marks_draw が敵の印の外側に出す
+LABELS = ['BIKE', 'TANK', 'LASR/TANK', 'P-51', 'AIR/SHIP', 'P-51/RKT', 'MINE', 'LASR/SAT', 'AMMO', 'MED']
+
+
+def label_rows(text):
+    rows = [['.'] * 16 for _ in range(16)]
+    for ln, word in enumerate(text.split('/')):
+        assert len(word) <= 4, word
+        for k, ch in enumerate(word):
+            for y, row in enumerate(FONT[ch]):
+                for x, c in enumerate(row):
+                    rows[ln * 6 + y][k * 4 + x] = c
+    return [''.join(r) for r in rows]
+
+
+SPRITES += [label_rows(t) for t in LABELS]
+
+# 14〜16: 札の引き出し線(横・「/」・「\」。拡大で 32×32 ドット)。game.c の PAT_H, PAT_UP, PAT_DN
+SPRITES += [
+    ['#' * 16 if y == 7 else '.' * 16 for y in range(16)],
+    [''.join('#' if x == 15 - y else '.' for x in range(16)) for y in range(16)],
+    [''.join('#' if x == y else '.' for x in range(16)) for y in range(16)],
+]
+
 
 def sprite_bytes(rows):
     # 16×16 は 8×8 を 左上・左下・右上・右下 の順に並べる
@@ -176,17 +201,12 @@ def main(out):
     # 逆数表: m = 256..511 について round(2^24 / m)(m=256 は 65535 に丸める)。raster.s の傾き計算
     rtab = [min(65535, round((1 << 24) / m)) for m in range(256, 512)]
 
-    spr = []
-    for s in SPRITES:
-        spr += sprite_bytes(s)
-
     with open(out, 'w') as f:
         f.write('/* tools/gen_data.py が生成。手で編集しない */\n')
         f.write('#include "engine.h"\n\n')
         f.write(carray('sin_tab', 'i16', sin) + '\n\n')
         f.write(carray('font35', 'u8', font) + '\n\n')
         f.write(carray('font35_map', 'u8', fmap) + '\n\n')
-        f.write(carray('spr_patterns', 'u8', spr) + '\n\n')
         f.write(carray('recip9', 'u16', rtab) + '\n\n')
 
 

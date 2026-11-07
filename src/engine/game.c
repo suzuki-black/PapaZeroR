@@ -278,43 +278,7 @@ static void aim_poll(void)
     g_spr0_req = 1;
 }
 
-static u8 aim_target(void)
-{
-    u8 ax = (u8)(aim_x >> 2), ay = (u8)(aim_y >> 2), i, best = 0xFF;
-    i16 bz = 0x7FFF;
-    HitRect *h = hits;
-    for (i = 0; i < n_hits; i++, h++) {
-        /* 照準の 3×3 ブロックが矩形に重なれば当たる(1 ブロックだけだと遠くの敵に当たらなかった) */
-        if (ax + 1 >= h->x0 && ax < h->x1 + 1 && ay + 1 >= h->y0 && ay < h->y1 + 1 && h->z < bz) { bz = h->z; best = h->id; }
-    }
-    return best;
-}
 
-static void auto_input(void)
-{
-    /* 自動プレイ: 一番手前の敵を狙い、指示が出たら B を押す */
-    u8 i, best = 0xFF;
-    i16 bz = 0x7FFF;
-    HitRect *h = hits;
-    in_cur = 0;
-    for (i = 0; i < n_hits; i++, h++) {
-        const Obj *o = &obj[h->id];
-        if (o->t == T_PART && (o->flags & OF_CAPSULE)) continue;
-        if (o->t == T_PART && o->group != boss_grp) continue;
-        if (h->z < bz) { bz = h->z; best = i; }
-    }
-    if (best != 0xFF) {
-        h = &hits[best];
-        aim_x = (u16)(h->x0 + h->x1) * 2;
-        aim_y = (u16)(h->y0 + h->y1) * 2;
-        if (aim_x < 12) aim_x = 12;
-        if (aim_y < 12) aim_y = 12;
-        if (aim_y > 148) aim_y = 148;
-        in_cur = IN_A;
-    }
-    if (pr_kind && pr_t < 20) in_cur |= IN_B;
-    else if (!pr_kind && lock_n && !(in_prev & IN_B) && !(g_anim & 3)) in_cur |= IN_B;   /* ロックがあれば誘導弾も撃つ(デモと試験) */
-}
 
 static void man_start(u8 kind, u8 len)
 {
@@ -546,32 +510,103 @@ static u8 is_foe(const Obj *o)
     return o->t == T_PART && o->group == boss_grp && !(o->flags & (OF_CAPSULE | OF_DECOR | OF_HIDDEN));
 }
 
-static void marks_draw(void)
-{
-    u8 i, tgt = aim_target();
-    HitRect *h = hits;
-    aim_foe = tgt != 0xFF && is_foe(&obj[tgt]);
-    for (i = 0; i < n_hits; i++, h++) {
-        const Obj *o = &obj[h->id];
-        if (!o->t) continue;
-        if (is_foe(o)) {                   /* 照準が重なっているか、ロックしている敵は赤 */
-            u8 k;
-            for (k = 0; k < lock_n && lock_id[k] != h->id; k++) ;
-            g_color = h->id == tgt || k < lock_n ? C_RED : C_WHITE;
-        }
-        else if (o->t == T_SUPPLY || o->t == T_MEDIC) g_color = C_GREEN;
-        else continue;
-        g_rx = (u8)(h->x0 - 1); g_ry = (u8)(h->y0 - 1); g_rw = h->x1; g_rh = h->y1;
-        marks4();
-    }
-}
-
 static void spr_set(u8 n, i16 x, i16 y, u8 pat, u8 col)
 {
     u8 *a = &g_spr_attr[n * 4];
     if (y < -16 || y > 143) { a[0] = 209; return; }
     a[0] = (u8)(y - 1); a[1] = (u8)x; a[2] = (u8)(pat * 4); a[3] = col;
 }
+
+/* 敵の名前の札と引き出し線(零戦の画像認識が付ける、という体裁。背景との前後は気にしない)。
+ * SCREEN 3 のスプライトは横に 4 枚までで、5 枚目からは番号の大きいものが消える。
+ * 札(スプライト 1〜)は、上下 32 ドット以内に札が 3 枚以上あれば置かない(どの走査線でも照準と合わせて 4 枚以下)。
+ * 置けなければ敵の高さから ±32・±64 ドットずらし、ずらした分だけ斜めの線をつなぐ。
+ * 線は札のあとの番号で、毎フレーム順番を回す。線が 4 枚を超えた行では線だけが交代で消え(ちらつき)、札は消えない */
+#define N_LABEL 6
+#define N_LINE (N_SPR - 1 - N_LABEL)
+#define PAT_H 14                               /* 線の絵: 横・「/」・「\」(tools/gen_data.py) */
+#define PAT_UP 15
+#define PAT_DN 16
+static u8 lb_x[N_LABEL], lb_y[N_LABEL];        /* 置いた札の左上(ドット) */
+static u8 ln_x[N_LINE], ln_y[N_LINE], ln_p[N_LINE], ln_c[N_LINE];
+static u8 line_n, line_rot;
+static u16 hk[MAX_HIT];                        /* 札の候補の強さ(小さいほど強い。0xFFFF = 付けない) */
+
+/* 札 n を、敵の当たり矩形 h の横に置く。置けなければ 0 */
+static u8 label_place(u8 n, const HitRect *h, u8 col)
+{
+    static const i8 dys[5] = { 0, -1, 1, -2, 2 };   /* ずらす段(32 ドット単位) */
+    u8 cy = (u8)((h->y0 + h->y1) * 2), i, j;
+    i16 xr = (i16)h->x1 * 4, xl = (i16)h->x0 * 4;
+    if (cy < 16) return 0;
+    for (i = 0; i < 5; i++) {
+        i8 d = dys[i];
+        u8 k = d < 0 ? (u8)-d : d ? (u8)d : 1, right, c;   /* k = 線の本数(横 32 ドットずつ) */
+        i16 y = cy + d * 32 - 10, x;                         /* 字の真ん中(上から 10 ドット)を線の先に合わせる */
+        right = xr + k * 32 + 30 <= 255;
+        x = right ? xr + k * 32 : xl - k * 32 - 32;
+        if (x < 0 || y < 0 || y > 160 - 22) continue;
+        for (c = 0, j = 0; j < n; j++) {
+            i16 dy = lb_y[j] - y, dx = lb_x[j] - x;
+            if (dy > -32 && dy < 32) { c++; if (dx > -32 && dx < 32) c = 9; }   /* 字が重なるなら置かない */
+        }
+        if (c >= 3) continue;
+        lb_x[n] = (u8)x; lb_y[n] = (u8)y;
+        spr_set(1 + n, x, y, 3 + obj[h->id].t, col);   /* 札の絵は 4 番から T_E01 の順 */
+        for (j = 0; j < k && line_n < N_LINE; j++, line_n++) {
+            ln_x[line_n] = (u8)(right ? xr + j * 32 : xl - (j + 1) * 32);
+            ln_y[line_n] = !d ? cy - 15 : d < 0 ? cy - (j + 1) * 32 : cy + j * 32;
+            ln_p[line_n] = !d ? PAT_H : (d < 0) == right ? PAT_UP : PAT_DN;
+            ln_c[line_n] = col;
+        }
+        return 1;
+    }
+    return 0;
+}
+
+static void marks_draw(void)
+{
+    u8 i, tgt = aim_target(), np;
+    HitRect *h = hits;
+    aim_foe = tgt != 0xFF && is_foe(&obj[tgt]);
+    for (i = 0; i < n_hits; i++, h++) {
+        const Obj *o = &obj[h->id];
+        u8 pr = 2;
+        hk[i] = 0xFFFF;
+        if (!o->t) continue;
+        if (is_foe(o)) {                   /* 照準が重なっているか、ロックしている敵は赤 */
+            u8 k;
+            for (k = 0; k < lock_n && lock_id[k] != h->id; k++) ;
+            if (h->id == tgt) pr = 0; else if (k < lock_n) pr = 1;
+            g_color = pr < 2 ? C_RED : C_WHITE;
+        }
+        else if (o->t == T_SUPPLY || o->t == T_MEDIC) g_color = C_GREEN;
+        else continue;
+        g_rx = (u8)(h->x0 - 1); g_ry = (u8)(h->y0 - 1); g_rw = h->x1; g_rh = h->y1;
+        marks4();
+        if (o->t <= T_MEDIC) hk[i] = ((u16)pr << 14) | ((u16)h->z >> 2 & 0x3FFF);   /* 名前は敵と補給だけ */
+    }
+    /* 強い順(照準 → ロック → 近い)に置く。先に置いた札ほど敵のすぐ横に来る */
+    line_n = 0;
+    for (np = 0; np < N_LABEL; ) {
+        u8 b = 0xFF;
+        u16 bk = 0xFFFF;
+        for (i = 0; i < n_hits; i++) if (hk[i] < bk) { bk = hk[i]; b = i; }
+        if (b == 0xFF) break;
+        hk[b] = 0xFFFF;
+        h = &hits[b];
+        if (label_place(np, h, obj[h->id].t >= T_SUPPLY ? C_GREEN : bk >> 14 < 2 ? C_RED : C_WHITE)) np++;
+    }
+    for (i = np; i < N_LABEL; i++) g_spr_attr[(1 + i) * 4] = 209;
+    /* 線は毎フレーム番号を回す(4 枚を超えた行で、消える線が毎回変わる) */
+    line_rot++;
+    for (i = 0; i < N_LINE; i++) {
+        u8 n = 1 + N_LABEL + i;
+        if (i < line_n) { u8 k = (u8)((i + line_rot) % line_n); spr_set(n, ln_x[k], ln_y[k], ln_p[k], ln_c[k]); }
+        else g_spr_attr[n * 4] = 209;
+    }
+}
+
 
 static void overlay_draw(void)
 {
@@ -596,24 +631,11 @@ static void overlay_draw(void)
     }
     if (!scene && g_scene == 1) lock_box_draw();
     /* 照準(スプライト 0) */
-    if (scene) { spr_set(0, 0, 200, 0, 2); g_spr_attr[0] = 209; }
+    if (scene) { u8 n; for (n = 0; n < N_SPR; n++) g_spr_attr[n * 4] = 209; }
     else spr_set(0, (i16)aim_x - 16, (i16)aim_y - 16, 0,
                  over_t ? ((g_anim & 1) ? C_RED : C_WHITE) : aim_foe ? C_RED : C_WHITE);   /* 敵に重なると赤(撃てば当たる・ロックできる) */
-    g_spr_attr[4] = 209; g_spr_attr[8] = 209; g_spr_attr[12] = 209;   /* スプライト 1〜3 は使わない(ロックは敵の印を赤くして示す) */
 }
 
-static void lerp_pal(const u8 *a, const u8 *b, u8 k, u8 *o)   /* k = 0..16 */
-{
-    u8 i;
-    for (i = 0; i < 14; i += 2) {
-        u8 r0 = a[i] >> 4, b0 = a[i] & 7, g0 = a[i + 1], r1 = b[i] >> 4, b1 = b[i] & 7, g1 = b[i + 1];
-        u8 r = (u8)(r0 + (((i16)r1 - r0) * k >> 4));
-        u8 bl = (u8)(b0 + (((i16)b1 - b0) * k >> 4));
-        u8 g = (u8)(g0 + (((i16)g1 - g0) * k >> 4));
-        o[i] = (u8)((r << 4) | bl);
-        o[i + 1] = g;
-    }
-}
 
 /* ---- 1 面 ---- */
 static void stage_reset(void)
@@ -683,7 +705,7 @@ static u8 stage_body(u8 mod)
         if (g_scene == 3) {
             if ((in_cur & IN_A) && !(in_prev & IN_A) && mod == 0) { bgm_stop(); return 1; }
         } else {
-            if (g_auto) auto_input();
+            if (g_auto) in_cur = auto_input(in_prev);
             aim_poll();
             fire_step(dt);
         }
@@ -792,7 +814,7 @@ void seam_run(u8 from, u8 to)
     cam_x = cam_y = cam_z = 0; cam_yaw = 0; cam_pitch = 0; cam_roll = 0;
     cam_update();
     n_hits = 0;
-    g_spr_attr[0] = 209; g_spr_attr[4] = 209; g_spr_attr[8] = 209; g_spr_attr[12] = 209;
+    for (i = 0; i < N_SPR; i++) g_spr_attr[i * 4] = 209;
     bgm_play(SONG_BRIDGE);
     for (t = 0; t < 300; t++) {   /* 15 秒 */
         g_frames++;

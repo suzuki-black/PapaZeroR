@@ -75,7 +75,7 @@ skip:
 	or	a, b
 	out	(0xA8), a
 	.endm
-SPR_BYTES = 17			; スプライト 4 枚分 + 終端(Y=208)
+SPR_BYTES = 19 * 4 + 1		; スプライト 19 枚分 + 終端(Y=208)。game.h の N_SPR と合わせる
 
 	.area	_DATA
 _g_tick::	.ds	2	; 60Hz ごとに +1

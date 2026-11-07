@@ -97,7 +97,8 @@ void mod_load_now(u8 n);         /* モジュール n を読み込んで使う(1
 void mod_next_begin(u8 n);       /* 裏のセグメントへ読み始める */
 u8   mod_next_step(void);        /* 1KB 読む。読み終わったら 1 */
 void mod_next_use(void);         /* 読み終えたモジュールへ切り替える */
-extern u8 g_spr_attr[17];
+#define N_SPR 19          /* 照準 1 + 敵の名前の札 6 + 引き出し線 12(game.c の marks_draw) */
+extern u8 g_spr_attr[N_SPR * 4 + 1];
 extern u8 g_mod;
 extern const u8 pal_fixed[];
 

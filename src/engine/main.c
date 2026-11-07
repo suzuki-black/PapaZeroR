@@ -7,7 +7,7 @@
 #include "sound.h"
 #include "pcm.h"
 
-u8 g_spr_attr[17];
+u8 g_spr_attr[N_SPR * 4 + 1];
 u8 g_mod;
 u8 g_scene;
 u16 g_perf_frame;               /* 直前のフレームの時間(テストが読む。タイマ値 ≒ 3.9µs) */
@@ -121,10 +121,8 @@ void screen3_init(void)
         for (c = 0; c < 32; c++) row[c] = (u8)((r >> 2) * 32 + c);
         vdp_out(row, 32);
     }
-    vdp_set_write(0x1800);
-    vdp_out(spr_patterns, SPR_PAT_BYTES);
-    for (i = 0; i < 16; i += 4) g_spr_attr[i] = 209;
-    g_spr_attr[16] = 208;
+    for (i = 0; i < N_SPR * 4; i += 4) g_spr_attr[i] = 209;
+    g_spr_attr[N_SPR * 4] = 208;
     vdp_set_write(0x1400);
     vdp_out(g_spr_attr, sizeof(g_spr_attr));
     vdp_set_palette(0, pal_fixed);

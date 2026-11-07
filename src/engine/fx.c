@@ -43,3 +43,17 @@ void fx_draw(u8 dt)
         }
     }
 }
+
+/* パレットの補間(ページ0に空きが無いので game.c からこちらへ) */
+void lerp_pal(const u8 *a, const u8 *b, u8 k, u8 *o)   /* k = 0..16 */
+{
+    u8 i;
+    for (i = 0; i < 14; i += 2) {
+        u8 r0 = a[i] >> 4, b0 = a[i] & 7, g0 = a[i + 1], r1 = b[i] >> 4, b1 = b[i] & 7, g1 = b[i + 1];
+        u8 r = (u8)(r0 + (((i16)r1 - r0) * k >> 4));
+        u8 bl = (u8)(b0 + (((i16)b1 - b0) * k >> 4));
+        u8 g = (u8)(g0 + (((i16)g1 - g0) * k >> 4));
+        o[i] = (u8)((r << 4) | bl);
+        o[i + 1] = g;
+    }
+}

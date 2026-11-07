@@ -35,6 +35,11 @@ void fx_add(i16 x, i16 y, i16 z, u8 big);
 typedef struct { i16 x, y, z; u8 t, big; } Fx;
 extern Fx fx[MAX_FX];
 void fx_draw(u8 dt);
+void lerp_pal(const u8 *a, const u8 *b, u8 k, u8 *o);   /* fx.c。k = 0..16 */
+u8 auto_input(u8 in_prev);
+u8 aim_target(void);                                       /* game_ai.c */                                /* game_ai.c。自動プレイの入力を返す */
+extern u16 aim_x, aim_y;
+extern u8 lock_n;
 void caption(const char *s, u8 color, u8 t);
 void damage(u8 n);
 Obj *obj_new(u8 t);

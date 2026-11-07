@@ -107,7 +107,7 @@ void gameover_run(void)
 {
     u8 t;
     bgm_play(SONG_GAMEOVER);
-    g_spr_attr[0] = 209;
+    for (t = 0; t < N_SPR; t++) g_spr_attr[t * 4] = 209;   /* 照準と敵の名前の札・線 */
     for (t = 0; t < 120; t++) {
         buf_fill(C_BLACK);
         text_center(10, "ENGINE FIRE", C_RED, 1);

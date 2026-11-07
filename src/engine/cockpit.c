@@ -85,6 +85,8 @@ void cockpit_load(void)
     rom_load(COCKPIT_BANK);
     vdp_set_write_hi(3, 0x1000);                  /* 8000h + 160 × 128 = D000h */
     vdp_out((const u8 *)0x8000, 6656);
+    vdp_set_write(0x1800);                        /* スプライトの絵(tools/gen_cockpit.py が後ろに付けた) */
+    vdp_out((const u8 *)(0x8000 + 6656), SPR_PAT_BYTES);
     rom_load(MOD_BANK0 + 2 * g_mod);
     /* 黒帯(4 ページ目の 160〜211 ライン) */
     bot_hi = 6;
