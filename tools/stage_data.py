@@ -182,9 +182,10 @@ def s1():
 
 def s2():
     s = Mod(2, 'STAGE 2 / THE HARBOR', NOON, 'STAGE2', clock=0x40, radio='THEY HAVE LASERS, PAPA.', line='CRABS GO IN THE POT.')
-    s.y0 = 9
+    # 追っ手との空中戦が主なので、前半は高く(24)飛ぶ。後半に港の基地(レーザー戦車)へ降りて叩き、そのままボスへ
+    s.y0 = 24
     sp = 22
-    s.segs((104, 0, 0, sp), (24, 0, 6, sp), (40, 25, 0, sp), *lap_segs(sp), (48, -25, 0, sp), (32, 0, -5, sp), *lap_segs(sp), (32, 0, 0, sp), *lap_segs(16))
+    s.segs((104, 0, 0, sp), (24, 0, 0, sp), (40, 25, 0, sp), *lap_segs(sp), (48, -25, -8, sp), (32, 0, -6, sp), *lap_segs(sp), (32, 0, 0, sp), *lap_segs(16))
     q = strip(Mesh(), -40, -5, IRON)
     strip(q, 5, 60, CLOUD, y=0, detail=True)
     a = Mesh(); strip(a, -40, -5, IRON); a.tbox((-14, 2.5, 0), (9, 5, 7), TER1, side=TER2, top=IRON, skip='bk')
@@ -194,13 +195,14 @@ def s2():
     pats = [q, a, c, q, b, a, d, c]
     s.finish(lambda k: pats[(k * 3 + k // 5) % len(pats)])
     s.lap(0); s.lap(1); s.lap(2)
-    s.text(40, 'LASER TANK!')
-    for at in (16, 48, 80, 112, 148):
-        s.spawn(at, E02, at + 50, -9, .8, P_HOLD); s.spawn(at, E03, at + 60, -12, .8, P_HOLD)
+    s.text(40, 'BANDITS!')
+    for at in (16, 48, 80, 112):
+        s.spawn(at, E04, at + 70, -6, 25, P_PASS, 128); s.spawn(at, E04, at + 76, 5, 22, P_PASS, 128)
     for at in (130, 170, 200, 226):
-        s.spawn(at, E04, at + 80, 2, 12, P_PASS, 128); s.spawn(at, E04, at + 84, -6, 14, P_PASS, 128)
+        s.spawn(at, E04, at + 80, 2, 24, P_PASS, 128); s.spawn(at, E04, at + 84, -6, 27, P_PASS, 128)
+    s.text(286, 'LASER TANK!')
     s.prompt(88, PR_ROLL, 60)
-    s.item(150, SUPPLY, 190, 2, 11); s.item(250, MEDIC, 300, -3, 12)
+    s.item(150, SUPPLY, 190, 2, 24); s.item(250, MEDIC, 300, -3, 22)
     for at in (272, 298, 324, 350, 376):
         s.spawn(at, E03, at + 56, -10, .8, P_HOLD); s.spawn(at, E04, at + 80, 3, 12, P_PASS, 128)
     s.prompt(300, PR_ROLL, 60)
@@ -216,9 +218,10 @@ def s2():
 
 def s3():
     s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', clock=0x30, radio='PAPA, HURRY!', line='THREE FOR ONE.')
-    s.y0 = 7
+    # 前半は谷の上(28。壁は 24 まで)で追っ手と空中戦。後半に谷へ降り、谷底の基地(戦車)を叩いてボスへ
+    s.y0 = 28
     sp = 24
-    s.segs((80, 0, 0, sp), (40, 35, 0, sp), (40, -70, 0, sp), (40, 35, 0, sp), *lap_segs(sp), (56, 30, 0, sp), (56, -30, 0, sp), *lap_segs(sp), (24, 0, 0, sp), *lap_segs(18))
+    s.segs((80, 0, 0, sp), (40, 35, 0, sp), (40, -70, 0, sp), (40, 35, 0, sp), *lap_segs(sp), (56, 30, -10, sp), (56, -30, -11, sp), *lap_segs(sp), (24, 0, 0, sp), *lap_segs(18))
     def wall(rock):
         # 壁は 16 単位ずつ。偶数の区画だけ描き、2 区画に 1 枚で済ませる(谷の壁は大きいので、枚数を減らさないと 12fps を割る)
         m = Mesh()
@@ -238,15 +241,15 @@ def s3():
     s.lap(0); s.lap(1); s.lap(2)
     s.text(36, 'BEHIND YOU!')
     for at in (16, 44, 76, 108):
-        s.spawn(at, E03, at + 56, -6, .8, P_HOLD); s.spawn(at, E04, at + 80, 3, 9, P_PASS, 128)
+        s.spawn(at, E04, at + 70, -6, 30, P_PASS, 128); s.spawn(at, E04, at + 80, 3, 27, P_PASS, 128)
     s.roll(120, 30, 3); s.roll(170, 30, -3)      # S 字で傾く
     s.roll(205, 20, 0)
     for at in (140, 176, 212, 240, 270):
-        s.spawn(at, E04, at + 80, -3, 9, P_TAIL, 128)
+        s.spawn(at, E04, at + 80, -3, 28, P_TAIL, 128)
     s.prompt(180, PR_ROLL, 60)
-    s.item(216, SUPPLY, 250, 0, 8)
+    s.item(216, SUPPLY, 250, 0, 28)
     for at in (310, 340, 370, 400):
-        s.spawn(at, E04, at + 80, 2, 8, P_PASS, 128); s.spawn(at, E03, at + 60, -6, .8, P_HOLD)
+        s.spawn(at, E04, at + 80, 2, None, P_PASS, 128); s.spawn(at, E03, at + 60, -6, .8, P_HOLD)    # 降りながら。高さは経路に合わせる
     s.item(420, MEDIC, 460, 0, 8)
     for at in (440, 470, 496):
         s.spawn(at, E04, at + 80, -2, 9, P_TAIL, 128)
@@ -257,7 +260,8 @@ def s3():
 
 def s4():
     s = Mod(4, 'STAGE 4 / THE CLOUD SEA', NIGHT, 'STAGE4', clock=0x20, radio='THEY ARE ON YOUR TAIL!', line='TOO MUCH GAS.')
-    s.y0 = 12
+    # 雲の峰(18 まで)の上を飛ぶ(前は 12 で、雲の海の中に沈んで見えた)
+    s.y0 = 20
     sp = 20
     s.segs((104, 0, 0, sp), (32, 20, 0, sp), *lap_segs(sp), (32, -20, 2, sp), (80, 0, 0, sp), *lap_segs(sp), (24, 0, 0, sp), *lap_segs(16))
     a = strip(Mesh(), -60, 60, CLOUD, detail=True)
@@ -269,31 +273,31 @@ def s4():
     s.lap(0); s.lap(1); s.lap(2)
     s.text(36, 'AIRSHIPS!')
     for at in (16, 48, 84, 120):
-        s.spawn(at, E05, at + 60, -24, 20, P_CROSS); s.spawn(at, E05, at + 76, -30, 16, P_CROSS)
+        s.spawn(at, E05, at + 60, -24, 28, P_CROSS); s.spawn(at, E05, at + 76, -30, 24, P_CROSS)
     s.prompt(96, PR_ROLL, 60)
     s.roll(150, 42, 3)                  # 艦隊の下をくぐる 180°
     s.roll(240, 42, 3)
     for at in (170, 200, 226):
-        s.spawn(at, E04, at + 80, 4, 12, P_TAIL, 128)
-    s.item(190, SUPPLY, 240, 0, 13)
+        s.spawn(at, E04, at + 80, 4, 20, P_TAIL, 128)
+    s.item(190, SUPPLY, 240, 0, 21)
     for at in (262, 292, 322, 352):
-        s.spawn(at, E05, at + 60, -24, 18, P_CROSS); s.spawn(at, E04, at + 80, -3, 13, P_PASS, 128)
+        s.spawn(at, E05, at + 60, -24, 26, P_CROSS); s.spawn(at, E04, at + 80, -3, 21, P_PASS, 128)
     s.prompt(300, PR_ROLL, 60)
-    s.item(360, MEDIC, 400, 2, 14)
+    s.item(360, MEDIC, 400, 2, 22)
     for at in (384, 412, 440):
-        s.spawn(at, E04, at + 80, 3, 14, P_TAIL, 128)
+        s.spawn(at, E04, at + 80, 3, 22, P_TAIL, 128)
     parts = [('B_HULL', 0, 8, 10, 1, 9, 8, 0)]
     for k, (x, z) in enumerate(((-9, -12), (0, -8), (9, -12))):
         parts.append(('B_GONDOLA', x, -2, z, 15, 0, 0, CLR_FIBER))
     for x in (-6, -2, 2, 6):
         parts.append(('B_CORE', x, 2, -22, 10, 1, 2, 0))
-    s.setboss(480, 0, 58, parts, s.at(520, 0, 18))
+    s.setboss(480, 0, 58, parts, s.at(520, 0, 26))
     s.end()
     return s
 
 def s5():
     s = Mod(5, 'STAGE 5 / THE STRATOSPHERE', TWILIGHT, 'STAGE5', clock=0x10, radio='PAPA, HURRY!', line='NICE WINGS.')
-    s.y0 = 14
+    s.y0 = 22
     sp = 26
     s.segs((80, 0, 8, sp), (48, 15, 8, sp), *lap_segs(sp), (48, -15, 8, sp), (64, 0, 6, sp), *lap_segs(sp), (24, 0, 2, sp), *lap_segs(18))
     a = strip(Mesh(), -60, 60, CLOUD, detail=True)
@@ -304,20 +308,20 @@ def s5():
     s.lap(0); s.lap(1); s.lap(2)
     s.text(36, 'MISSILES!')
     for at in (16, 44, 76, 108, 136):
-        s.spawn(at, E06, at + 70, 3, 22, P_BOUNCE, 128); s.spawn(at, E04, at + 84, -4, 24, P_PASS, 128)
+        s.spawn(at, E06, at + 70, 3, 30, P_BOUNCE, 128); s.spawn(at, E04, at + 84, -4, 32, P_PASS, 128)
     s.prompt(64, PR_LOOP, 60); s.prompt(120, PR_ROLL, 60)
     for at in (160, 190, 220):
-        s.spawn(at, E06, at + 70, -3, 34, P_PASS, 128); s.spawn(at, E04, at + 80, 3, 34, P_TAIL, 128)
-    s.item(180, SUPPLY, 220, 0, 36)
+        s.spawn(at, E06, at + 70, -3, 42, P_PASS, 128); s.spawn(at, E04, at + 80, 3, 42, P_TAIL, 128)
+    s.item(180, SUPPLY, 220, 0, 44)
     for at in (250, 280, 310, 340, 370):
-        s.spawn(at, E06, at + 70, 4, 44, P_BOUNCE, 128); s.spawn(at, E06, at + 76, -4, 46, P_PASS, 128)
+        s.spawn(at, E06, at + 70, 4, 52, P_BOUNCE, 128); s.spawn(at, E06, at + 76, -4, 54, P_PASS, 128)
     s.prompt(300, PR_ROLL, 60)
-    s.item(350, MEDIC, 400, 0, 52)
+    s.item(350, MEDIC, 400, 0, 60)
     for at in (392, 420, 448):
-        s.spawn(at, E04, at + 80, 3, 56, P_TAIL, 128)
+        s.spawn(at, E04, at + 80, 3, 64, P_TAIL, 128)
     s.setboss(480, 0, 34, [
         ('B_DOPPEL', 0, 0, 0, 60, 1, 0, 0x13),
-        ('B_NOZZLE', -3, 0, -8, 15, 0, 0, 2), ('B_NOZZLE', 3, 0, -8, 15, 0, 0, 2)], s.at(520, 0, 50))     # カメラ(高さ 46)の少し上。60 だと画面の上の端に張り付いた
+        ('B_NOZZLE', -3, 0, -8, 15, 0, 0, 2), ('B_NOZZLE', 3, 0, -8, 15, 0, 0, 2)], s.at(520, 0, 58))     # カメラ(高さ 54)の少し上。カメラより 14 上だと画面の上の端に張り付いた
     s.end()
     return s
 
