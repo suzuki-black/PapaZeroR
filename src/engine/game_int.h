@@ -39,6 +39,8 @@ void lerp_pal(const u8 *a, const u8 *b, u8 k, u8 *o);   /* fx.c。k = 0..16 */
 u8 auto_input(u8 in_prev);
 u8 aim_target(void);                                       /* game_ai.c */                                /* game_ai.c。自動プレイの入力を返す */
 extern u16 aim_x, aim_y;
+extern i16 shot_tx, shot_ty, shot_tz;
+#define SHOT_AHEAD 0x0400                                  /* 敵弾の狙う先: 自機の前 4 単位 */
 extern u8 lock_n;
 void caption(const char *s, u8 color, u8 t);
 void damage(u8 n);

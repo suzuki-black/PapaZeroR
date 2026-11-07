@@ -44,6 +44,7 @@ u8  boss_intro;
 static u8  scr_end;
 /* 入力・照準 */
 u16 aim_x, aim_y;
+i16 shot_tx, shot_ty, shot_tz;     /* 敵弾の狙う先(game_ai.c の obj_step が使う) */
 static u8 in_cur, in_prev, aim_hold;
 static u8 fire_t, heat_t, over_t;
 #define MAX_LOCK 8
@@ -490,11 +491,12 @@ static void objs_draw(void)
         if (!mesh) continue;
         g_obj_yaw = o->yaw;
         g_lod_min = o->t == T_PART;        /* ボスの部位は常に細部を省く(大きい面が多く、1 面のボスで 10fps まで落ちた) */
+        if (o->t == T_MYMIS) id = 0xFF;    /* 自分の誘導弾は当たり矩形を作らない(バルカンが手前の誘導弾に当たって壊していた) */
         if (o->t == T_PART && !o->yaw && !o->roll) {
-            mesh_draw(mesh, &ord_c[id], 0, o->flash ? C_WHITE : 0, id);
+            mesh_draw(mesh, &ord_c[ord[k]], 0, o->flash ? C_WHITE : 0, id);
         } else {
             mat_yaw(o->yaw, o->roll);
-            mesh_draw(mesh, &ord_c[id], g_mm, o->flash ? C_WHITE : 0, id);
+            mesh_draw(mesh, &ord_c[ord[k]], g_mm, o->flash ? C_WHITE : 0, id);
         }
     }
 }
@@ -742,6 +744,10 @@ static u8 stage_body(u8 mod)
         }
         if (inv_t) inv_t = inv_t > dt ? inv_t - dt : 0;
         if (cap_t) cap_t = cap_t > dt ? cap_t - dt : 0;
+        /* 敵弾の狙う先: 自機の少し前(SHOT_AHEAD)。自機そのものを狙うと、近づくほど画面の端へ流れて外へ出てしまい、
+         * 撃ち落とせなかった(1 面のボスの弾は、映るのが撃たれた直後の 0.2 秒ほどで、全弾が当たっていた)。
+         * 前の点を狙えば、弾は画面の真ん中へ向かって大きくなりながら飛んでくる(Starblade と同じ見せ方) */
+        shot_tx = cam_x + fmul(g_fx, SHOT_AHEAD); shot_ty = cam_y; shot_tz = cam_z + fmul(g_fz, SHOT_AHEAD);
         obj_step(dt);
         if (boss_on) boss_step(dt);
         {

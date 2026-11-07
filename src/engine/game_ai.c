@@ -153,8 +153,8 @@ void obj_step(u8 dt)
         if (!t) continue;
         o->flash = o->flash > g_an ? o->flash - g_an : 0;
         if (t == T_FLAK || t == T_MISSILE || t == T_MYMIS) {
-            /* 残りティックで目標へ近づく。弾はカメラへ、誘導弾は目標へ */
-            i16 tx = cam_x, ty = cam_y, tz = cam_z;
+            /* 残りティックで目標へ近づく。敵弾は自機の少し前(game.c の shot_tx)へ、誘導弾は目標へ */
+            i16 tx = shot_tx, ty = shot_ty, tz = shot_tz;
             u8 rem = o->tm;
             if (t == T_MYMIS) {
                 Obj *g;
