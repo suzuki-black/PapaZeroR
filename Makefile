@@ -28,8 +28,12 @@ CP0 = game scene cockpit
 SND = modhead_snd sndfm
 RELS = $(patsubst %,$(BUILD)/%.rel,$(ASM) $(CRES) $(CP0) game_ai gen_data)
 HDRS = $(wildcard $(ENG)/*.h) $(BUILD)/songs.h $(BUILD)/title.h $(BUILD)/ids.h
-MODS = $(foreach n,0 1 2 3 4 5 6 7,$(BUILD)/mod$(n).bin)
-OP_BASE = 0x93C0     # オープニングの演出のコード(op.c)の置き場所。モジュール 0 の中身の後ろ(tools/gen_stage.py の OP_BASE と同じ値)
+MODS = $(foreach n,0 1 2 3 4 5 6 7 15,$(BUILD)/mod$(n).bin)
+# 映像の場面(オープニング = 0、1 面の後の継ぎ目 = 15)の演出のコード(op.c)の置き場所。モジュールの中身の後ろ
+# (tools/stage_data.py の op_base と同じ値。mkrom.py が重なりを確かめる)
+OP0_BASE = 0x9400
+OP15_BASE = 0x9000
+FILMS = 0 15
 ROM = $(BUILD)/$(ROMNAME).rom
 
 .PHONY: all fpsrom clean
@@ -57,7 +61,7 @@ $(BUILD)/cockpit.bin: $(TOOLS)/gen_cockpit.py $(TOOLS)/gen_data.py | $(BUILD)
 $(BUILD)/ids.h: $(TOOLS)/gen_stage.py $(TOOLS)/stage_data.py $(TOOLS)/content.py $(TOOLS)/meshlib.py src/sound/songs.mml | $(BUILD)
 	$(PYTHON) $(TOOLS)/gen_stage.py $(BUILD)
 $(MODS): $(BUILD)/ids.h
-$(BUILD)/film.h: $(BUILD)/ids.h
+$(patsubst %,$(BUILD)/film%.h,$(FILMS)): $(BUILD)/ids.h
 
 $(patsubst %,$(BUILD)/%.rel,$(CP0)): $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) $(P0FLAGS) -c -o $@ $<
@@ -84,11 +88,12 @@ $(BUILD)/ressyms.s: $(BUILD)/engine.ihx $(TOOLS)/ressyms.py
 $(BUILD)/ressyms.rel: $(BUILD)/ressyms.s
 	$(AS) -l -o $@ $<
 
-# オープニングの演出: モジュール 0 の後ろに重ねる(常駐部・ページ0の関数と変数は ressyms で番地を引く。変数は持たない)
-$(BUILD)/op.rel: $(ENG)/op.c $(HDRS) $(BUILD)/film.h | $(BUILD)
-	$(CC) $(CFLAGS) --opt-code-size -c -o $@ $<
-$(BUILD)/op.ihx: $(BUILD)/op.rel $(BUILD)/ressyms.rel
-	$(CC) $(MODFLAGS) --code-loc $(OP_BASE) -o $@ $^
+# 映像の場面の演出: モジュール n の後ろに重ねる(常駐部・ページ0の関数と変数は ressyms で番地を引く。変数は持たない)。
+# コードは同じ op.c で、台本 filmN.h だけが違う
+$(BUILD)/op%.rel: $(ENG)/op.c $(HDRS) $(BUILD)/film%.h | $(BUILD)
+	$(CC) $(CFLAGS) --opt-code-size -DFILM_H='"film$*.h"' -c -o $@ $<
+$(BUILD)/op%.ihx: $(BUILD)/op%.rel $(BUILD)/ressyms.rel
+	$(CC) $(MODFLAGS) --code-loc $(OP$*_BASE) -o $@ $^
 
 $(BUILD)/sndtick.rel: $(ENG)/sndtick.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --max-allocs-per-node 100000 -c -o $@ $<
@@ -96,10 +101,11 @@ $(BUILD)/sndtick.rel: $(ENG)/sndtick.c $(HDRS) | $(BUILD)
 $(BUILD)/sndmod.ihx: $(BUILD)/modhead_snd.rel $(BUILD)/sndtick.rel $(BUILD)/sndfm.rel $(BUILD)/ressyms.rel
 	$(CC) $(MODFLAGS) --code-loc 0x8009 -o $@ $^
 
-$(ROM): $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/sndmod.ihx $(MODS) $(BUILD)/songs.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin src/sound/voicemod.bin $(BUILD)/op.ihx
+OPS = $(patsubst %,$(BUILD)/op%.ihx,$(FILMS))
+$(ROM): $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/sndmod.ihx $(MODS) $(BUILD)/songs.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin src/sound/voicemod.bin $(OPS)
 	$(PYTHON) $(TOOLS)/mkrom.py $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/engine.noi $@ $(MODS) \
 	  $(BUILD)/sndmod.ihx $(BUILD)/sndmod.noi $(BUILD)/songs.bin src/sound/voicemod.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin \
-	  $(BUILD)/op.ihx $(BUILD)/op.noi
+	  $(OPS)
 	cp $@ "$(BUILD)/$(ROMNAME) [ASCII8].rom"
 
 fpsrom:

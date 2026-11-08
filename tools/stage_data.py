@@ -26,7 +26,8 @@ class Mod:
         self.bgm = SONG.get(bgm, 0)
         self.path, self.sections, self.events = [], [], []
         self.strs = [radio, line]       # 0 = 継ぎ目の無線、1 = ボスを倒したときの父の一言
-        self.film = None                # オープニングの映画(Film)
+        self.film = None                # 映像の場面(Film。オープニングと継ぎ目)
+        self.op_base = 0                # 演出のコードの置き場所(Makefile の OPn_BASE と同じ値)
         self.models = ['FLAK', 'ROCKET', 'SUPPLY', 'MEDIC']
         self.boss = None
         self._p = []          # 点ごとの (x, y, z, yaw_rad, spd)
@@ -411,19 +412,24 @@ class Film:
             if mesh_is_c:
                 c = ids[c] if c else 0
             return '{%d,%d,%d,%d,%d,%d,%d,%d}' % (t, fx(p[0]), fx(p[1]), fx(p[2]), a, b, c, fl)
-        def check(keys, what):
+        def check(keys, what, actor=False):
             for i in range(len(keys) - 1):
                 if keys[i + 1][0] < keys[i][0]:
                     raise SystemExit('Film: %s のキーの時刻が戻っている (%d → %d)' % (what, keys[i][0], keys[i + 1][0]))
                 if 0 < keys[i + 1][0] - keys[i][0] < 2 and not keys[i][5] & self.FL_STEP:
                     raise SystemExit('Film: %s のキーの間が短すぎる (%d)' % (what, keys[i][0]))
+                # 補間は 16 ビットの差で行うので、1 区間で 128 単位以上動くと回り込んで逆へ動く(継ぎ目でカメラが後ろへ下がった)
+                hidden = actor and (keys[i][4] == 0 or keys[i + 1][4] == 0)   # 隠れている間の移動は見えない
+                if keys[i + 1][0] > keys[i][0] and not keys[i][5] & self.FL_STEP and not hidden and \
+                        max(abs(keys[i + 1][1][j] - keys[i][1][j]) for j in range(3)) >= 120:
+                    raise SystemExit('Film: %s のキー %d → %d で 120 単位以上動く。間にキーを足す' % (what, keys[i][0], keys[i + 1][0]))
         check(self.cam, 'カメラ')
         out = ['/* tools/stage_data.py の opening() が生成。src/engine/op.c が読む */']
         out.append('#define N_CAMK %d' % len(self.cam))
         out.append('static const Key cam_k[] = {' + ','.join(key(k, False) for k in self.cam) + '};')
         flat, idx = [], [0]
         for i, keys in enumerate(self.acts):
-            check(keys, '役者 %d' % i)
+            check(keys, '役者 %d' % i, True)
             flat += keys
             idx.append(len(flat))
         if len(flat) > 255 or len(self.acts) > 30:
@@ -583,6 +589,70 @@ def opening():
     f.key(ship, OUT, 'SHIP', (6, 34, 184), 270, cut=True)
     f.ev(2260, F.FE_END)
     s.film = f
+    s.op_base = 0x9400
+    return s
+
+def seam1():
+    """1 面の後の継ぎ目(モジュール 15)。曲 BRIDGE(t128、8 小節 = 900 ティック。1 小節 112.5)に合わせる。
+    海の上を外から見た零戦が北へ飛ぶ → 操縦席から、遠くに誘拐犯の戦闘機(ヒナのカプセル)と、無線のヒナの声 →
+    水平線に港が現れ、港から空へレーザーが伸びる(2 面の港の基地のレーザー戦車の前振り)"""
+    s = Mod(15, 'SEAM 1', SEA, 'BRIDGE', flags=SF_SCENE)
+    s.models = ['ZEROF', 'CRANE', 'DEPOT', 'BEAM', 'CLOUDP']
+    s.y0 = 0
+    s.segs((16, 0, 0, 0))
+    s.finish(lambda k: None)
+    del s.path[3:]
+    f = Film()
+    F = Film
+    B = 112.5
+    HIDE = 0
+    zero, jet = f.actor(), f.actor()
+    clouds = [f.actor() for _ in range(3)]
+    crane1, crane2, depot, beam = f.actor(), f.actor(), f.actor(), f.actor()
+    for a in [zero, jet, crane1, crane2, depot, beam] + clouds:
+        f.key(a, 0, HIDE, (0, 0, 0))
+    # 1〜2 小節: 海の上。外から見た零戦が左をかすめて北へ(カメラは振り返って追う)
+    cam = (5, 4, 10)
+    f.cam_key(0, cam, -160, 6)
+    f.cam_key(110, cam, -95, 10, fl=F.FL_EASE)
+    f.cam_key(225, cam, 0, 6)
+    f.key(zero, 0, 'ZEROF', (-6, 5, -30), 0, roll=10)
+    f.key(zero, 110, 'ZEROF', (-1, 7, 12), 0, roll=-10)
+    f.key(zero, 224, 'ZEROF', (3, 10, 60), 0)
+    f.key(zero, 226, HIDE)
+    f.key(clouds[0], 0, 'CLOUDP', (-14, 12, 30))
+    f.key(clouds[1], 0, 'CLOUDP', (16, 16, 70))
+    # 3〜5 小節: 操縦席。遠くに誘拐犯の戦闘機。無線でヒナの声
+    T = int(2 * B)
+    f.ev(T, F.FE_COCKPIT, 0)
+    v = .3                                     # 1 ティックに進む単位
+    end = 900
+    for t in range(T, end, 150):               # 1 区間で 120 単位を超えないよう、150 ティックごとにキーを置く
+        f.cam_key(t, (3, 10, 60 + v * (t - T)), 0, 2)
+    f.cam_key(end, (3, 10, 60 + v * (end - T)), 0, 2)
+    f.key(jet, T, 'RAIDER', (8, 17, 112), 0)                       # 正面のやや上(高すぎると画面の上へ外れた)
+    f.key(jet, int(5 * B), 'RAIDER', (6, 17, 212), 0)
+    f.key(jet, end, 'RAIDER', (2, 19, 325), 0)
+    # そばを流れる雲(速さを見せる)
+    zc = lambda t: 60 + v * (t - T)
+    f.key(clouds[0], T, 'CLOUDP', (-10, 13, zc(T) + 60), cut=True); f.key(clouds[0], T + 200, 'CLOUDP', (-10, 13, zc(T) + 60))
+    f.key(clouds[1], T, 'CLOUDP', (14, 6, zc(T) + 110), cut=True); f.key(clouds[1], T + 360, 'CLOUDP', (14, 6, zc(T) + 110))
+    f.key(clouds[2], T + 150, 'CLOUDP', (-6, 8, zc(T + 150) + 100)); f.key(clouds[2], T + 450, 'CLOUDP', (-6, 8, zc(T + 150) + 100))
+    f.ev(int(3 * B) + 20, F.FE_VOICE, 6)                            # 「Papa, hurry!」(VOICE_HURRY)
+    f.ev(int(3 * B) + 20, F.FE_CAP, 2, 'PAPA, HURRY!')
+    # 6〜8 小節: 水平線に港。港から空へレーザーが伸びて光る(戦闘機はその上を越えていく)
+    H = 300                                    # 港の z(カメラは最後に 60 + 0.3 × 675 ≒ 262。座標は 256 で回り込むので、カメラから 120 以内に置く)
+    f.key(crane1, int(5 * B), 'CRANE', (-14, 0, H), 90)
+    f.key(crane2, int(5 * B), 'CRANE', (10, 0, H + 8), 270)
+    f.key(depot, int(5 * B), 'DEPOT', (-2, 0, H - 4), 180)
+    for i, t0 in enumerate((int(6 * B), int(6.6 * B), int(7.2 * B))):
+        f.key(beam, t0, 'BEAM', ((-5, -1, -3)[i], 12, H + 2))
+        f.key(beam, t0 + 40, HIDE)
+        f.ev(t0, F.FE_SE, 11)                                          # SE_LASER
+    f.ev(int(6 * B) + 20, F.FE_CAP, 3, 'THEY HAVE LASERS')           # 赤(水色は青空に溶けた)
+    f.ev(end, F.FE_END)
+    s.film = f
+    s.op_base = 0x9000
     return s
 
 def ending():
@@ -603,4 +673,4 @@ def ending():
     s.end()
     return s
 
-MODS = [opening(), s1(), s2(), s3(), s4(), s5(), s6(), ending()]
+MODS = [opening(), s1(), s2(), s3(), s4(), s5(), s6(), ending(), seam1()]

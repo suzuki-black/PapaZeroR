@@ -163,7 +163,8 @@ void main(void)
         for (n = g_cfg.stage; n <= 6; n++) {
             if (n == 1 && !stage_run(0)) break;     /* オープニング(飛ばしてもよい) */
             if (!stage_run(n)) { gameover_run(); n = 0xFF; break; }
-            if (n < 6) seam_run(n, (u8)(n + 1));
+            if (n == 1) stage_run(15);              /* 1 面の後の継ぎ目は映像の場面(モジュール 15、src/engine/op.c) */
+            else if (n < 6) seam_run(n, (u8)(n + 1));
         }
         if (n == 7) { stage_run(7); ending_run(); }
     }

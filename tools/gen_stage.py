@@ -16,7 +16,6 @@ from stage_data import MODS
 BASE = 0x8000
 LIMIT = 0x4000
 DATA_LIMIT = 0x2400   # 0xA400- は全モジュール共通のコード(game_ai.c)
-OP_BASE = 0x93C0      # オープニングだけは、その後ろにオープニングの演出のコード(op.c と台本 film.h)を置く(Makefile・mkrom.py と同じ値)
 
 
 def main(out):
@@ -30,7 +29,7 @@ def main(out):
     for mod in MODS:
         build(mod, ids, len(names) + 1, out)
         if mod.film:
-            with open(os.path.join(out, 'film.h'), 'w') as f:
+            with open(os.path.join(out, 'film%d.h' % mod.n), 'w') as f:
                 f.write(mod.film.header(ids))
 
 
@@ -107,7 +106,7 @@ def build(mod, ids, nids, out):
     hdr = struct.pack('<HHHHHHHHHHHBBBBHH', pa, len(mod.path), sa, len(mod.sections), ea, len(mod.events), pal, meshes, st, ba, name,
                       mod.bgm, mod.flags, mod.clock, 0, pal2, 0)
     b.b[:len(hdr)] = hdr
-    limit = OP_BASE - BASE if mod.film else DATA_LIMIT
+    limit = mod.op_base - BASE if mod.film else DATA_LIMIT
     if len(b.b) > limit:
         sys.exit('gen_stage: モジュール %s が %d バイトで %d を超えた' % (mod.name, len(b.b), limit))
     with open(os.path.join(out, 'mod%d.bin' % mod.n), 'wb') as f:
