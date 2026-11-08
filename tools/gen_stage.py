@@ -16,18 +16,22 @@ from stage_data import MODS
 BASE = 0x8000
 LIMIT = 0x4000
 DATA_LIMIT = 0x2400   # 0xA400- は全モジュール共通のコード(game_ai.c)
+OP_BASE = 0x93C0      # オープニングだけは、その後ろにオープニングの演出のコード(op.c と台本 film.h)を置く(Makefile・mkrom.py と同じ値)
 
 
 def main(out):
     names = sorted(M)
     ids = {n: i + 1 for i, n in enumerate(names)}
-    with open(os.path.join(out, 'ids.h'), 'w') as f:
-        f.write('/* tools/gen_stage.py が生成 */\n')
-        for n in names:
-            f.write('#define M_%s %d\n' % (n, ids[n]))
-        f.write('#define M_COUNT %d\n' % (len(names) + 1))
+    text = '/* tools/gen_stage.py が生成 */\n' + ''.join('#define M_%s %d\n' % (n, ids[n]) for n in names) + '#define M_COUNT %d\n' % (len(names) + 1)
+    path = os.path.join(out, 'ids.h')
+    if not os.path.exists(path) or open(path).read() != text:      # 変わらなければ書かない(本体を全部コンパイルし直さずに済む)
+        with open(path, 'w') as f:
+            f.write(text)
     for mod in MODS:
         build(mod, ids, len(names) + 1, out)
+        if mod.film:
+            with open(os.path.join(out, 'film.h'), 'w') as f:
+                f.write(mod.film.header(ids))
 
 
 class Blob:
@@ -54,6 +58,7 @@ def mesh_bytes(blob, m, cache):
 
 
 HDR = 2 * 6 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 4 + 4
+HOOK_OFS = 28          # 見出しの中の、場面の演出のコードの番地(0 のまま書き、mkrom.py がオープニングにだけ入れる)
 
 
 def build(mod, ids, nids, out):
@@ -99,11 +104,12 @@ def build(mod, ids, nids, out):
             a0 = ids[a0]
         ev += struct.pack('<HBBBBhhh', at, cmd, a0 & 255, a1 & 255, a2 & 255, x, y, z)
     ea = b.add(ev)
-    hdr = struct.pack('<HHHHHHHHHHHBBBBH', pa, len(mod.path), sa, len(mod.sections), ea, len(mod.events), pal, meshes, st, ba, name,
-                      mod.bgm, mod.flags, mod.clock, 0, pal2)
+    hdr = struct.pack('<HHHHHHHHHHHBBBBHH', pa, len(mod.path), sa, len(mod.sections), ea, len(mod.events), pal, meshes, st, ba, name,
+                      mod.bgm, mod.flags, mod.clock, 0, pal2, 0)
     b.b[:len(hdr)] = hdr
-    if len(b.b) > DATA_LIMIT:
-        sys.exit('gen_stage: モジュール %s が %d バイトで %d を超えた' % (mod.name, len(b.b), DATA_LIMIT))
+    limit = OP_BASE - BASE if mod.film else DATA_LIMIT
+    if len(b.b) > limit:
+        sys.exit('gen_stage: モジュール %s が %d バイトで %d を超えた' % (mod.name, len(b.b), limit))
     with open(os.path.join(out, 'mod%d.bin' % mod.n), 'wb') as f:
         f.write(b.b + bytes(LIMIT - len(b.b)))
     print('gen_stage: mod%d %-24s %5d B  区画 %d 経路 %d 命令 %d メッシュ %d' % (mod.n, mod.name, len(b.b), len(mod.sections), len(mod.path), len(mod.events), len(cache)))

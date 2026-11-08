@@ -111,7 +111,7 @@ extern const i16 sin_tab[320];      /* 8.8。cos は sin_tab[a + 64] */
 #define COS(a) (sin_tab[(u8)(a) + 64])
 extern const u8 font35[];           /* 3×5 ブロックフォント。1 文字 5 バイト(下位 3bit) */
 extern const u8 font35_map[96];     /* ASCII 0x20-0x7F → font35 の文字番号(0xFF = 無し) */
-#define SPR_PAT_BYTES (17 * 32)    /* 照準など 4 + 敵の名前 10 + 引き出し線 3(tools/gen_data.py) */
+#define SPR_PAT_BYTES (63 * 32)     /* 照準など 4 + 敵の名前 10 + 引き出し線 3 + オープニングの人物・機体・戦車 46(tools/gen_data.py)。cockpit_load が 4 回に分けて送る */
 extern const u16 recip9[256];      /* round(2^24 / m)、m = 256..511 */
 
 #endif

@@ -36,12 +36,12 @@ static u8 pal_w[14];
 i16 cam_vx, cam_vy, cam_vz;   /* 1 ティックの移動(8.8) */
 u16 loop_b, loop_len;    /* 周回区間の終わりと長さ(単位)。0 = なし。長さを引き算で毎回出すと SDCC が番地を読み違えるので持っておく */
 /* 台本 */
-static u16 ev_i;
+u16 ev_i;                       /* 静的にしない(オープニングの演出 op.c が出来事の番号に使う) */
 u8  boss_on, boss_dead;
 i16 boss_x, boss_y, boss_z;
 u8  boss_t, boss_mov, boss_dist, boss_grp;
 u8  boss_intro;
-static u8  scr_end;
+u8  scr_end;                    /* 静的にしない(op.c が場面を終える) */
 /* 入力・照準 */
 u16 aim_x, aim_y;
 i16 shot_tx, shot_ty, shot_tz;     /* 敵弾の狙う先(game_ai.c の obj_step が使う) */
@@ -633,7 +633,7 @@ static void overlay_draw(void)
     }
     if (!scene && g_scene == 1) lock_box_draw();
     /* 照準(スプライト 0) */
-    if (scene) { u8 n; for (n = 0; n < N_SPR; n++) g_spr_attr[n * 4] = 209; }
+    if (scene) { u8 n; if (!MOD->hook) for (n = 0; n < N_SPR; n++) g_spr_attr[n * 4] = 209; }   /* 演出のある場面(オープニング)は op.c が人物をスプライトで描く */
     else spr_set(0, (i16)aim_x - 16, (i16)aim_y - 16, 0,
                  over_t ? ((g_anim & 1) ? C_RED : C_WHITE) : aim_foe ? C_RED : C_WHITE);   /* 敵に重なると赤(撃てば当たる・ロックできる) */
 }
@@ -674,7 +674,7 @@ u8 stage_run(u8 mod)
 
 static u8 stage_body(u8 mod)
 {
-    u16 t0, t_demo;
+    u16 t0, t_demo, ts;
     mod_load_now(mod);
     stage_reset();
     g_scene = (MOD->flags & SF_SCENE) ? 3 : 1;
@@ -686,7 +686,7 @@ static u8 stage_body(u8 mod)
     if (g_scene == 1) {
         caption(MOD->name + 10, C_WHITE, 120);   /* 「STAGE n / 」を除く。字幕は 16 文字まで */
     }
-    t0 = g_tick;
+    ts = t0 = g_tick;
     ap_tick = t0;
     g_poll = aim_poll;
     t_demo = g_anim;
@@ -750,6 +750,7 @@ static u8 stage_body(u8 mod)
         shot_tx = cam_x + fmul(g_fx, SHOT_AHEAD); shot_ty = cam_y; shot_tz = cam_z + fmul(g_fz, SHOT_AHEAD);
         obj_step(dt);
         if (boss_on) boss_step(dt);
+        if (MOD->hook) MOD->hook(g_tick - ts);   /* オープニング: カメラと人物・機体を時刻で動かす(曲と同じ時計) */
         {
             extern u16 g_perf_frame;
             u16 t = timer_read();

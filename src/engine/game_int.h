@@ -42,6 +42,8 @@ extern u16 aim_x, aim_y;
 extern i16 shot_tx, shot_ty, shot_tz;
 #define SHOT_AHEAD 0x0400                                  /* 敵弾の狙う先: 自機の前 4 単位 */
 extern u8 lock_n;
+extern u8 sect_i, scr_end;                                /* op.c(オープニングの演出)が書く */
+extern u16 ev_i;
 void caption(const char *s, u8 color, u8 t);
 void damage(u8 n);
 Obj *obj_new(u8 t);

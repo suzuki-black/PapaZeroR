@@ -33,6 +33,7 @@ typedef struct {
     const char *name;
     u8 bgm, flags, clock, pad;     /* flags: bit0 = 宇宙、bit1 = 場面(操作なし、下は黒帯) */
     const u8 *pal2;                /* EV_FADE で移る色(エンディング) */
+    void (*hook)(u16 t);           /* 場面の演出(モジュールの中のコード。t = 場面の始めからのティック。0 = なし) */
 } Stage;
 #define MOD ((const Stage *)0x8000)
 #define SF_SPACE 1

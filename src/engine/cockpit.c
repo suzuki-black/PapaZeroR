@@ -85,8 +85,13 @@ void cockpit_load(void)
     rom_load(COCKPIT_BANK);
     vdp_set_write_hi(3, 0x1000);                  /* 8000h + 160 × 128 = D000h */
     vdp_out((const u8 *)0x8000, 6656);
-    vdp_set_write(0x1800);                        /* スプライトの絵(tools/gen_cockpit.py が後ろに付けた) */
-    vdp_out((const u8 *)(0x8000 + 6656), SPR_PAT_BYTES);
+    /* スプライトの絵(tools/gen_cockpit.py が後ろに付けた)。約 1KB 以上を一度に送ると分割画面の切り替えがずれ、
+     * 数秒のあいだ上の画面が下の画面のモードで出た(タイトルの絵が化けて見えた)。帰線の直後に 4 回に分けて送る */
+    for (i = 0; i < 4; i++) {
+        wait_tick();
+        vdp_set_write(0x1800 + i * (SPR_PAT_BYTES / 4));
+        vdp_out((const u8 *)(0x8000 + 6656) + i * (SPR_PAT_BYTES / 4), SPR_PAT_BYTES / 4);
+    }
     rom_load(MOD_BANK0 + 2 * g_mod);
     /* 黒帯(4 ページ目の 160〜211 ライン) */
     bot_hi = 6;

@@ -145,7 +145,7 @@ class Mesh:
                     continue
                 dr.polygon(pp, fill=col)
             lists.append(rects_of(img, scale))
-        count = max(1, min(5, max(len(r) for r in lists)))
+        count = max(1, min(getattr(self, 'max_rects', 5), max(len(r) for r in lists)))   # 遠くで描く矩形の数(細いものは少なくてよい)
         for r in lists:
             r = r[:count]
             while len(r) < count:

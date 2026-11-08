@@ -26,6 +26,7 @@ class Mod:
         self.bgm = SONG.get(bgm, 0)
         self.path, self.sections, self.events = [], [], []
         self.strs = [radio, line]       # 0 = 継ぎ目の無線、1 = ボスを倒したときの父の一言
+        self.film = None                # オープニングの映画(Film)
         self.models = ['FLAK', 'ROCKET', 'SUPPLY', 'MEDIC']
         self.boss = None
         self._p = []          # 点ごとの (x, y, z, yaw_rad, spd)
@@ -361,29 +362,227 @@ def s6():
     s.end()
     return s
 
+class Film:
+    """オープニングの映画(src/engine/op.c が時刻 t[ティック] で再生する)。曲 OPENING と同じ時計。
+    座標は単位(8.8 にして 16bit で回り込む。カメラから 128 単位より遠いものは描かない)。
+    向き: 方位 h は度(0 = 北 = +z、90 = 東 = +x)。カメラのヨー = h、役者のヨー = h + 180(モデルの正面は -z)"""
+    FL_EASE, FL_BOB, FL_C, FL_SHAKE, FL_STEP = 1, 2, 4, 8, 16
+    FE_SUB, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE = range(1, 8)
+
+    def __init__(self):
+        self.cam, self.acts, self.evs = [], [], []
+
+    @staticmethod
+    def ang(d):
+        return int(round(d * 256 / 360)) & 255
+
+    def cam_key(self, t, p, h, pitch=0, roll=0, fl=0, sect=0):
+        self.cam.append((t, p, self.ang(h), self.ang(pitch), self.ang(roll), fl | self.FL_C | (sect << 5)))
+
+    def actor(self):
+        self.acts.append([])
+        return len(self.acts) - 1
+
+    def key(self, a, t, mesh, p=None, h=None, roll=0, fl=0, cut=False):
+        """役者 a のキー。p・h を省くと前のキーのまま。cut = その時刻で切り替える(前のキーに FL_STEP を付けて動かさない)。
+        mesh = 0(隠す)のときは必ず切り替え、場所は前のまま"""
+        keys = self.acts[a]
+        prev = keys[-1] if keys else None
+        if prev is not None:
+            if p is None or mesh == 0:
+                p = p if mesh else prev[1]
+            if h is None:
+                h = (prev[2] * 360 / 256) - 180
+            if cut or mesh == 0:
+                keys[-1] = prev[:5] + (self.FL_STEP,)
+        if h is None:
+            h = 180
+        keys.append((t, p, self.ang(h + 180), self.ang(roll), mesh, fl))
+
+    def ev(self, t, kind, arg=0, s=None):
+        self.evs.append((t, kind, arg, s))
+
+    def header(self, ids):
+        def fx(v):
+            v = int(round(v * 256)) & 0xFFFF
+            return v - 0x10000 if v >= 0x8000 else v
+        def key(k, mesh_is_c):
+            t, p, a, b, c, fl = k
+            if mesh_is_c:
+                c = ids[c] if c else 0
+            return '{%d,%d,%d,%d,%d,%d,%d,%d}' % (t, fx(p[0]), fx(p[1]), fx(p[2]), a, b, c, fl)
+        def check(keys, what):
+            for i in range(len(keys) - 1):
+                if keys[i + 1][0] < keys[i][0]:
+                    raise SystemExit('Film: %s のキーの時刻が戻っている (%d → %d)' % (what, keys[i][0], keys[i + 1][0]))
+                if 0 < keys[i + 1][0] - keys[i][0] < 2 and not keys[i][5] & self.FL_STEP:
+                    raise SystemExit('Film: %s のキーの間が短すぎる (%d)' % (what, keys[i][0]))
+        check(self.cam, 'カメラ')
+        out = ['/* tools/stage_data.py の opening() が生成。src/engine/op.c が読む */']
+        out.append('#define N_CAMK %d' % len(self.cam))
+        out.append('static const Key cam_k[] = {' + ','.join(key(k, False) for k in self.cam) + '};')
+        flat, idx = [], [0]
+        for i, keys in enumerate(self.acts):
+            check(keys, '役者 %d' % i)
+            flat += keys
+            idx.append(len(flat))
+        if len(flat) > 255 or len(self.acts) > 30:
+            raise SystemExit('Film: 役者のキーが多すぎる')
+        out.append('#define N_ACT %d' % len(self.acts))
+        out.append('static const Key act_k[] = {' + ','.join(key(k, True) for k in flat) + '};')
+        out.append('static const u8 act_i[] = {' + ','.join(map(str, idx)) + '};')
+        evs = sorted(self.evs, key=lambda e: e[0])
+        out.append('#define N_FEV %d' % len(evs))
+        out.append('static const FilmEv film_ev[] = {' + ','.join('{%d,%d,%d,%s}' % (t, k, a, '"%s"' % s if s is not None else '0') for t, k, a, s in evs) + '};')
+        return '\n'.join(out) + '\n'
+
+
 def opening():
+    """オープニング: 制圧された町 → 朝の農場 → 父が目を離した隙にヒナがさらわれる → 魔改造の戦闘機が飛び立つ →
+    父は格納庫の零戦へ走り、乗り込み、追って飛び立つ。字幕に頼らず絵でわかるように作る。
+    時刻は曲 OPENING の小節に合わせる(t90 の 1 小節 = 160 ティック、t180 の 1 小節 = 80 ティック。11 小節目 = 1600 から速くなる)"""
     s = Mod(0, 'OPENING', MORNING, 'OPENING', flags=SF_SCENE)
-    s.y0 = 3
-    s.models += ['HINA', 'BIKE', 'SHIP', 'ZERO']
-    s.segs((48, 0, 0, 9), (40, 40, 2, 8), (40, -40, 0, 11), (16, 0, 0, 11))
-    h = Mesh(); house(h, -9, 2, 7, 4, 7, wall=TER1, roof=TER2); h.tbox((11, 3, 2), (9, 6, 10), TER2, top=RED, skip='b')
-    g = strip(Mesh(), -2, 2, TER1)
-    s.finish(lambda k: h if k in (3, 7, 11) else g)
-    s.sub(4, 'MORNING.')
-    s.ev(4, EV_PROP, 'HINA', P_LIFT, 0, *[s.wrap(v) for v in s.at(26, 1, .9)])
-    s.ev(8, EV_VOICE, V_PAPA)
-    s.sub(16, 'PAPA, BREAKFAST!')
-    s.ev(22, EV_PROP, 'SHIP', 0, 0, *[s.wrap(v) for v in s.at(30, 1, 11)])
-    s.spawn(20, E01, 42, 3, .6, P_PARALLEL); s.spawn(20, E01, 44, -2, .6, P_PARALLEL); s.spawn(20, E01, 48, 1, .6, P_PARALLEL)
-    s.ev(30, EV_VOICE, V_PAPA)
-    s.sub(30, 'PAPA!')
-    s.sub(40, 'SIX HOURS.')
-    s.sub(52, 'THEN SHE RIDES THE ROCKET.')
-    s.sub(62, '06:00')
-    s.sub(76, 'HE DID NOT CALL THE POLICE.')
-    s.ev(74, EV_PROP, 'ZERO', 0, 0, *[s.wrap(v) for v in s.at(146, 0, 3.5)])   # 道の終わりのすぐ先、目の高さの少し下。走り寄って乗り込むところで場面が終わる
-    s.sub(130, "LET'S GO.")
-    s.end()
+    # 人物(HINA・TERROR)・誘拐の戦闘機(RAIDER)・戦車(TANK)はモデルを入れず、op.c がスプライトで描く(役者のメッシュの番号で見分ける)
+    s.models = ['ZERO', 'ZEROF', 'ZEROHANGAR', 'FARMHOUSE', 'TREE', 'SMOKE', 'SHIP', 'RAIDERM']
+    # 地形: 北(+z)へまっすぐの道。0〜11 区画は農場の道、12 区画からは制圧された町(1 面と同じ町並み)。速さは 0(カメラは op.c が動かす)
+    s.y0 = 0
+    s.segs((224, 0, 0, 0))
+    farm = strip(Mesh(), -2.5, 2.5, TER2)
+    pats, over = towns()
+    s.finish(lambda k: farm if k < 12 else pats[(k * 5) % len(pats)])
+    del s.path[3:]                            # 経路は進まないので、初めの点だけ(区画の置き場所は finish で決まっている)
+    f = Film()
+    F = Film
+    TOWN = 3                                  # 町の区画(3 × 4 = 12 から)
+    BAR, T2 = 160, 1600                       # 前半の 1 小節、速くなる時刻
+    HIDE = 0
+
+    # ---- 役者 ----
+    hina, t1, t2, raider, zero = f.actor(), f.actor(), f.actor(), f.actor(), f.actor()
+    hangar, house, tree1, tree2 = f.actor(), f.actor(), f.actor(), f.actor()
+    smoke1, smoke2, ship, tank1, tank2, tank3 = f.actor(), f.actor(), f.actor(), f.actor(), f.actor(), f.actor()
+
+    # 1〜2 小節: 制圧された町(戦車が通りを進み、飛行船が浮かび、黒煙が上がる)。高いところからゆっくり降りる
+    f.cam_key(0, (0, 11, 84), 0, -14, sect=TOWN)
+    f.cam_key(2 * BAR, (0, 7, 100), 0, -8, sect=TOWN)
+    f.key(smoke1, 0, 'SMOKE', (-12, 0, 132)); f.key(smoke2, 0, 'SMOKE', (13, 0, 146))
+    f.key(ship, 0, 'SHIP', (12, 17, 130), 270); f.key(ship, 2 * BAR - 2, 'SHIP', (5, 17, 130), 270)
+    f.key(tank1, 0, 'TANK', (-1.5, 0, 116), 180); f.key(tank1, 2 * BAR - 2, 'TANK', (-1.5, 0, 108), 180)
+    f.key(tank2, 0, 'TANK', (2, 0, 128), 180); f.key(tank2, 2 * BAR - 2, 'TANK', (2, 0, 120), 180)
+    f.key(tank3, 0, 'TANK', (-2, 0, 142), 180); f.key(tank3, 2 * BAR - 2, 'TANK', (-2, 0, 134), 180)
+    for a in (tank1, tank2, tank3):
+        f.key(a, 2 * BAR, HIDE, (0, 0, 0))
+    # 町は農場から北へ約 110 単位(遠景の黒煙と飛行船だけを置き直す)
+    f.key(smoke1, 2 * BAR, 'SMOKE', (26, 0, 108), cut=True); f.key(smoke2, 2 * BAR, 'SMOKE', (40, 0, 98), cut=True)
+    f.key(ship, 2 * BAR, 'SHIP', (34, 24, 104), 270, cut=True)
+    f.ev(20, F.FE_SUB, 0, 'THE TOWN FELL AT DAWN.')
+    f.ev(2 * BAR, F.FE_SUB, 0, '')
+
+    # 農場の配置: 父は庭(2, -2)。家は東、格納庫(赤い納屋)は南西で北へ開き、中に零戦が北を向いて止まる
+    for a in (hina, t1, t2, raider, zero, hangar, house, tree1, tree2):
+        f.key(a, 0, HIDE, (0, 0, 0))
+    f.key(house, 2 * BAR, 'FARMHOUSE', (17, 0, 1), 270)
+    # 零戦は納屋の前の外に止める(格納庫の中だと、目の高さの真正面からしか見えず、主翼が線にしか見えなかった)
+    f.key(hangar, 2 * BAR, 'ZEROHANGAR', (7, 0, -27), 180)        # 零戦の向こうに重ならないよう、南東に
+    f.key(zero, 2 * BAR, 'ZERO', (-8, 0, -14), 0)
+    f.key(tree1, 2 * BAR, 'TREE', (-21, 0, 8)); f.key(tree2, 2 * BAR, 'TREE', (11, 0, 22))
+
+    # 3〜4 小節: 朝の農場。ヒナが庭で跳ねて遊ぶ。父は家のほうへ目をやる(のどかな旋律)
+    eye = 1.6
+    p0 = (2, eye, -2)
+    f.cam_key(2 * BAR, p0, 0, -12)
+    f.cam_key(3 * BAR, p0, 0, -12, fl=F.FL_EASE)
+    f.cam_key(3 * BAR + 50, p0, 70, 0)                              # 家を見る(目を離す)
+    f.key(hina, 2 * BAR, 'HINA', (2.3, 0, 1.8), 180, fl=F.FL_BOB)
+    f.key(hina, 3 * BAR + 70, 'HINA', (2.3, 0, 1.8), 180)
+    # 父が目を離している間に、戦闘機が道に降り、テロリストがヒナをつかむ
+    CAR = 3 * BAR + 80
+    f.ev(CAR - 20, F.FE_SE, 10)                                          # 轟音(SE_BOSS)
+    # 父が家を見ている間に、轟音とともに戦闘機が家の上をかすめ、北の道へ降りていく(横から見えるので 3D で描く)
+    f.key(raider, CAR - 30, 'RAIDERM', (34, 14, -22), -32, roll=-25)
+    f.key(raider, CAR + 30, 'RAIDERM', (14, 4.5, 10), -32, roll=-15)
+    f.key(raider, CAR + 60, 'RAIDERM', (5, 2, 21), -20)
+    f.key(raider, CAR + 80, 'RAIDER', (0, 0, 24), 0, cut=True)
+    # 5〜6 小節(暗い主題): 振り返ると、黒ずくめの男がヒナを肩に担いで戦闘機へ走っている。もう一人が銃を構えて父を止める
+    BACK = 4 * BAR - 20
+    f.cam_key(BACK, p0, 70, 0, fl=F.FL_EASE)
+    f.cam_key(BACK + 30, p0, 0, 0)
+    run0, run1 = (2.6, 0, 4.5), (1.2, 0, 21.4)
+    f.key(t1, CAR, 'TERROR', run0, 0, fl=F.FL_BOB)
+    f.key(t1, 4 * BAR + 220, 'TERROR', run1, 0)
+    carry = lambda p: p                     # 担がれたヒナのスプライトは誘拐犯と同じ足もとに置く(絵が肩の上にある)
+    f.key(hina, CAR, 'HINA', carry(run0), 0, roll=90, fl=F.FL_BOB, cut=True)
+    f.key(hina, 4 * BAR + 220, 'HINA', carry(run1), 0, roll=90)
+    f.key(hina, 4 * BAR + 240, 'HINA', (0, .5, 22.6), 0, roll=90)  # カプセルへ入れられる
+    f.key(hina, 4 * BAR + 250, HIDE, (0, 0, 0))
+    f.ev(4 * BAR + 40, F.FE_VOICE, 9)                               # 「Papa!」(VOICE_PAPA)
+    f.key(t1, 4 * BAR + 250, 'TERROR', run1, 0)
+    f.key(t1, 4 * BAR + 290, 'TERROR', (-1.6, 0, 25), 0, fl=F.FL_BOB)
+    f.key(t1, 4 * BAR + 300, HIDE, (0, 0, 0))                        # 乗り込む
+    f.key(t2, CAR, 'TERROR', (-.6, 0, 4.5), 180)                    # 2 人目は父の前に立ちはだかり、銃を向ける
+    f.key(t2, 4 * BAR + 262, 'TERROR', (-.6, 0, 4.5), 180)
+    f.key(t2, 4 * BAR + 270, 'TERROR', (-.6, 0, 4.5), 0, fl=F.FL_BOB)
+    f.key(t2, 4 * BAR + 310, 'TERROR', (-1.8, 0, 23), 0)
+    f.key(t2, 4 * BAR + 320, HIDE, (0, 0, 0))
+    # 父は追おうとするが、2 人目に銃を向けられて数歩で止まる(5 小節目〜6 小節目)
+    p1 = (1.8, eye, 1.2)
+    f.cam_key(4 * BAR + 20, p0, 0, 0, fl=F.FL_BOB)
+    f.cam_key(4 * BAR + 300, p1, 0, 0)
+    # 7〜8 小節: 戦闘機は道を滑って飛び立ち、右へ傾いて町のほうへ消える。父は見上げる
+    TO = 6 * BAR
+    f.key(raider, TO, 'RAIDER', (0, 0, 24), 0)
+    f.key(raider, TO + 50, 'RAIDER', (0, 0, 30), 0)
+    f.key(raider, TO + 100, 'RAIDER', (0, 0, 48), 0)
+    f.key(raider, TO + 140, 'RAIDER', (0, 2.5, 68), 0)
+    f.key(raider, TO + 190, 'RAIDER', (3, 9, 90), 8, roll=-20)
+    f.key(raider, TO + 260, 'RAIDER', (14, 20, 110), 20, roll=-30)
+    f.key(raider, TO + 300, 'RAIDER', (22, 26, 120), 25, roll=-30)
+    f.key(raider, TO + 302, HIDE, (0, 0, 0))
+    f.ev(TO, F.FE_SE, 10)
+    f.cam_key(TO + 100, p1, 0, 0, fl=F.FL_EASE)
+    f.cam_key(TO + 220, p1, 6, 12, fl=F.FL_EASE)
+    f.cam_key(TO + 300, p1, 10, 10)
+    # 9 小節: 振り返り、格納庫へ走る
+    TURN = 8 * BAR
+    f.cam_key(TURN, p1, 10, 10, fl=F.FL_EASE)
+    f.cam_key(TURN + 40, p1, -157, 0, fl=F.FL_BOB)
+    p2 = (-2.5, 2.5, -8.5)                                           # 零戦の右斜め前。横顔(長い風防・丸い尾翼・黒いカウリング)と主翼の上面が見えるよう、目線を少し上げる
+    f.cam_key(9 * BAR - 20, p2, -135, -12, fl=F.FL_EASE)
+    f.cam_key(9 * BAR + 20, p2, -132, -12, fl=F.FL_EASE)
+    # 10 小節(スネアのロール): 零戦の左へ回り、翼から乗り込み、前を向いて座る
+    f.cam_key(9 * BAR + 60, (-5.8, eye, -11), -120, 0, fl=F.FL_EASE)
+    f.cam_key(9 * BAR + 110, (-6.8, 2.5, -13), -60, 8, fl=F.FL_EASE)
+    cock = (-8, 2.9, -13.4)
+    f.cam_key(10 * BAR - 12, cock, 0, 9)
+    # 11〜12 小節(速くなる): 計器盤が見え、エンジンがかかる。13〜16 小節: 格納庫から出て滑走し、離陸
+    f.ev(T2, F.FE_COCKPIT, 0)
+    f.ev(T2, F.FE_SHAKE, 24)
+    f.key(zero, T2, HIDE, (0, 0, 0))
+    f.cam_key(T2, cock, 0, 9, fl=F.FL_SHAKE)
+    f.cam_key(T2 + 80, cock, 0, 9, fl=F.FL_SHAKE)
+    f.cam_key(T2 + 140, (-8, 2.85, 0), 0, 9, fl=F.FL_SHAKE)
+    f.cam_key(T2 + 190, (-8, 2.5, 20), 0, 2, fl=F.FL_SHAKE)
+    f.cam_key(T2 + 225, (-8, 4, 44), 0, 8)
+    f.cam_key(T2 + 260, (-8, 10, 66), 0, 12)
+    # 17〜18 小節: 外から。零戦が頭上を越え、黒煙の上がる町へ向かって小さくなる(最後の和音)
+    OUT = T2 + 260
+    f.ev(OUT, F.FE_COCKPIT, 1)
+    f.ev(OUT + 2, F.FE_SUB, 0, "LET'S GO.")
+    f.ev(OUT + 150, F.FE_SUB, 0, 'THEY LAUNCH HER IN 6 HOURS.')
+    f.ev(OUT, F.FE_SE, 10)
+    f.key(zero, OUT, 'ZEROF', (-8, 9, 62), 0, roll=0)
+    f.key(zero, OUT + 70, 'ZEROF', (-6, 17, 90), 10, roll=-15)
+    f.key(zero, OUT + 140, 'ZEROF', (-1, 25, 115), 8, roll=-5)
+    f.key(zero, 2250, 'ZEROF', (6, 38, 170), 5)
+    camx = (6, 1.4, 76)
+    f.cam_key(OUT, camx, -126, 10)
+    f.cam_key(OUT + 70, camx, -40, 38)
+    f.cam_key(OUT + 140, camx, -14, 30, fl=F.FL_EASE)
+    f.cam_key(2250, camx, -1, 20)
+    f.key(smoke1, OUT, 'SMOKE', (-6, 0, 180), cut=True); f.key(smoke2, OUT, 'SMOKE', (14, 0, 188), cut=True)
+    f.key(ship, OUT, 'SHIP', (6, 34, 184), 270, cut=True)
+    f.ev(2260, F.FE_END)
+    s.film = f
     return s
 
 def ending():

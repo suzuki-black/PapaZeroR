@@ -21,6 +21,7 @@ DATA_BASE, DATA_LIMIT = 0xCC00, 0xDE00
 CODE_LIMIT = 0x8000
 P0D_BASE, P0D_LIMIT = 0x0200, 0x4000
 SONG_BASE = 0x8B00
+HOOK_OFS = 28        # モジュールの見出しの中の、場面の演出のコードの番地(tools/gen_stage.py の HOOK_OFS)
 MOD_BANK0, SND_BANK, VOICE_BANK, COCKPIT_BANK, TITLE_BANK = 5, 21, 23, 25, 27
 
 
@@ -55,7 +56,7 @@ def read_noi(path):
 
 def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     mods = args[:8]
-    snd_ihx, snd_noi, songs_bin, voice_bin, cockpit_bin, title_bin = args[8:]
+    snd_ihx, snd_noi, songs_bin, voice_bin, cockpit_bin, title_bin, op_ihx, op_noi = args[8:]
     rom = bytearray(b'\xFF' * (ROM_BANKS * BANK))
     boot = read_ihx(boot_ihx)
     if min(boot) < 0x4000 or max(boot) >= 0x6000:
@@ -86,10 +87,23 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
         rom[BANK + a - P0D_BASE] = eng[a]
     for a in code:
         rom[3 * BANK + a - 0x4000] = eng[a]
+    # オープニングの演出(op.c): モジュール 0 の中身の後ろ、0xA400 の手前に重ね、見出しに入口の番地を書く
+    op = read_ihx(op_ihx)
+    osyms = read_noi(op_noi)
+    if min(op) < 0x8000 or max(op) >= 0xA400:
+        sys.exit('mkrom: オープニングの演出が 0x%04X-0x%04X で、0xA400 を超えた' % (min(op), max(op)))
+    if osyms.get('l__DATA', 0) or osyms.get('l__INITIALIZED', 0):
+        sys.exit('mkrom: オープニングの演出に変数がある(モジュールは ROM のまま見えるので持てない)')
     for i, m in enumerate(mods):
         d = bytearray(open(m, 'rb').read())
         for a, b in hi.items():
             d[a] = b
+        if i == 0:
+            if any(d[a - 0x8000] for a in op):
+                sys.exit('mkrom: オープニングの演出がモジュール 0 の中身に重なった')
+            for a, b in op.items():
+                d[a - 0x8000] = b
+            d[HOOK_OFS:HOOK_OFS + 2] = osyms['_op_hook'].to_bytes(2, 'little')
         rom[(MOD_BANK0 + 2 * i) * BANK:(MOD_BANK0 + 2 * i) * BANK + len(d)] = d
     snd = read_ihx(snd_ihx)
     ssyms = read_noi(snd_noi)
@@ -109,7 +123,7 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     rom[TITLE_BANK * BANK:TITLE_BANK * BANK + len(t)] = t
     with open(out_path, 'wb') as f:
         f.write(rom)
-    print('mkrom: HICODE %d B / 7168' % len(hi))
+    print('mkrom: HICODE %d B / 7168、オープニングの演出 %d B(0x%04X-0x%04X)' % (len(hi), len(op), min(op), max(op)))
     print('mkrom: 常駐部 %d B / 16384、ページ0 %d B / 15872、変数 %d B、曲 %d B / %d' % (
         max(code) - 0x4000 + 1, plen, syms['s__HEAP'] - syms['s__DATA'], len(songs), 0xBC00 - SONG_BASE))
 
