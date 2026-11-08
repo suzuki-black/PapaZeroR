@@ -321,6 +321,28 @@ def _():      # 海の上の雲(継ぎ目。そばを流れて速さを見せる
     m.box((2, 1.4, 0), (5, 1.6, 4), WHITE, top=WHITE)
     return m
 
+@model('MESA')
+def _():      # 谷の手前の台地(継ぎ目 2。半径が大きいと遠くで描かれないので 12 単位に収める)
+    m = Mesh()
+    m.box((0, 4, 0), (16, 8, 12), TER1, top=TER2, skip='b')
+    m.box((3, 9, 1), (8, 3, 7), TER1, top=TER2, skip='b', detail=True)
+    return m
+
+@model('ROCKETL')
+def _():      # ヒナを宇宙へ運ぶロケット(継ぎ目 4)。白い胴、赤い先、根もとに炎
+    m = Mesh()
+    m.prism_y((0, 0, 0), 1.3, 10, 6, WHITE, top=RED)
+    m.box((0, -6, 0), (2, 2.2, 2), ORANGE, top=ORANGE)
+    for sx in (-1, 1):
+        m.plate([(sx * 1.3, -5, 0), (sx * 2.8, -5, 0), (sx * 1.3, -2.2, 0)], RED, detail=True)
+    return m
+
+@model('PUFF')
+def _():      # ロケットの残す白い煙(継ぎ目 4)
+    m = Mesh()
+    m.box((0, 0, 0), (3, 3, 3), WHITE, top=WHITE)
+    return m
+
 @model('SMOKE')
 def _():      # 町から上がる黒煙(上ほど太く、風で流れる)。根もとに炎
     m = Mesh()

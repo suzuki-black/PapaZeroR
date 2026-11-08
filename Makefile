@@ -28,12 +28,16 @@ CP0 = game scene cockpit
 SND = modhead_snd sndfm
 RELS = $(patsubst %,$(BUILD)/%.rel,$(ASM) $(CRES) $(CP0) game_ai gen_data)
 HDRS = $(wildcard $(ENG)/*.h) $(BUILD)/songs.h $(BUILD)/title.h $(BUILD)/ids.h
-MODS = $(foreach n,0 1 2 3 4 5 6 7 15,$(BUILD)/mod$(n).bin)
-# 映像の場面(オープニング = 0、1 面の後の継ぎ目 = 15)の演出のコード(op.c)の置き場所。モジュールの中身の後ろ
+MODS = $(foreach n,0 1 2 3 4 5 6 7 15 16 17 18 19,$(BUILD)/mod$(n).bin)
+# 映像の場面(オープニング = 0、n 面の後の継ぎ目 = 14 + n)の演出のコード(op.c)の置き場所。モジュールの中身の後ろ
 # (tools/stage_data.py の op_base と同じ値。mkrom.py が重なりを確かめる)
 OP0_BASE = 0x9400
 OP15_BASE = 0x9000
-FILMS = 0 15
+OP16_BASE = 0x9000
+OP17_BASE = 0x9000
+OP18_BASE = 0x9000
+OP19_BASE = 0x9000
+FILMS = 0 15 16 17 18 19
 ROM = $(BUILD)/$(ROMNAME).rom
 
 .PHONY: all fpsrom clean

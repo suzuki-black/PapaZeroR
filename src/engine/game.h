@@ -85,7 +85,6 @@ extern u8 g_r18_top;            /* sys.s: 上の画面の R#18(被弾の揺れ�
 
 /* game.c */
 u8 stage_run(u8 mod);           /* 1 = クリア、0 = ゲームオーバー */
-void seam_run(u8 from, u8 to);
 void game_reset(void);
 
 /* main.c */
