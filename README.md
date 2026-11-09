@@ -115,9 +115,9 @@ src/engine/    engine: VDP and raster split, 3D transform and polygon fill, game
                op.c (the film player for the opening and the scenes between stages)
 src/sound/     songs.mml (all music) and the voice module
 tools/         generators: stage_data.py / content.py (stages, models, films), gen_stage.py, gen_music.py,
-               gen_data.py (fonts, sprites), gen_cockpit.py, gen_title*.py, mkrom.py (MegaROM packer),
+               gen_data.py (fonts, sprites), gen_cockpit.py, gen_title.py / gen_title_text.py, mkrom.py (MegaROM packer),
                test_flow.tcl (openMSX autoplay test)
-data/          title illustration source
+data/          title illustration (title_art.webp) and its lettering (title_text.png)
 docs/          development notes
 ```
 
@@ -133,7 +133,9 @@ test runs from the opening to the staff roll, but difficulty is not tuned yet an
 ### Credits
 - **Original Concept / Direction:** suzuki-black
 - **Program / Graphics / Music:** Claude Code (Anthropic Claude) — all music is original
-- **Title illustration:** Claude Code (Anthropic Claude), drawn procedurally (`tools/gen_title_art.py`)
+- **Title illustration:** Microsoft Copilot (from a brief written with Claude Code: [docs/タイトル画像の依頼.md](docs/タイトル画像の依頼.md))
+- **Title lettering font:** [Anton](https://fonts.google.com/specimen/Anton) — SIL Open Font License 1.1 (the font file is not
+  included in this repository; `tools/gen_title_text.py` renders the lettering once into `data/title_text.png`)
 - **Voices:** [Flite](http://www.festvox.org/flite/) (Carnegie Mellon University)
 
 ### License
@@ -227,9 +229,9 @@ src/engine/    エンジン: VDP と走査線での画面分割、3D の変換�
                op.c(オープニングと面の間の映像の再生)
 src/sound/     songs.mml(全曲)と声のモジュール
 tools/         生成ツール: stage_data.py / content.py(面・モデル・映像の台本)、gen_stage.py、gen_music.py、
-               gen_data.py(字・スプライト)、gen_cockpit.py、gen_title*.py、mkrom.py(メガROM の組み立て)、
+               gen_data.py(字・スプライト)、gen_cockpit.py、gen_title.py / gen_title_text.py、mkrom.py(メガROM の組み立て)、
                test_flow.tcl(openMSX の自動プレイの試験)
-data/          タイトルの絵の元
+data/          タイトルの絵(title_art.webp)と、その文字(title_text.png)
 docs/          開発ノート
 ```
 
@@ -245,7 +247,9 @@ docs/          開発ノート
 ### クレジット
 - **原案・監督:** suzuki-black
 - **プログラム・グラフィック・音楽:** Claude Code (Anthropic Claude)。曲はすべてオリジナル
-- **タイトルの絵:** Claude Code (Anthropic Claude)。手続きで描画（`tools/gen_title_art.py`）
+- **タイトルの絵:** Microsoft Copilot（依頼書は Claude Code と作成: [docs/タイトル画像の依頼.md](docs/タイトル画像の依頼.md)）
+- **タイトルの文字の書体:** [Anton](https://fonts.google.com/specimen/Anton) — SIL Open Font License 1.1（書体のファイルはリポジトリに入れていません。
+  `tools/gen_title_text.py` が一度だけ `data/title_text.png` に描き出します）
 - **声:** [Flite](http://www.festvox.org/flite/)（Carnegie Mellon University）
 
 ### ライセンス

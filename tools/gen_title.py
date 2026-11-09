@@ -1,128 +1,52 @@
 #!/usr/bin/env python3
 """タイトル画面の絵を SCREEN 11(V9958 の YJK + YAE。自然画にパレットの色の文字を重ねる)の VRAM の並びにする。
 
-  gen_title.py art.png out.bin title.h [preview.png]
+  gen_title.py art out.bin title.h [preview.png]
 
-- 絵(data/title_art.png)を 4:3 に切って 256×212 に縮め、YJK で表す(横 4 ドットで色 J・K を共有し、明るさ Y は 1 ドットごと。
+- 絵(data/title_art.webp)を 4:3 に切って 256×212 に縮め、YJK で表す(横 4 ドットで色 J・K を共有し、明るさ Y は 1 ドットごと。
   YAE なので Y は 4 ビット)。明るさは誤差拡散でならす。
-- 文字は絵に書き込まず、パレットの色のドット(A = 1)にする。YJK の色の共有でにじまない。
-    上: PAPA / ZERO(2 行で大きく。今までのタイトルと同じ 3×5 のブロックフォントを、立体感のあるタイルにして)
+- 文字は絵と同じ所にある title_text.png(tools/gen_title_text.py が書体 Anton で描いた、パレットの番号の絵)を、
+  パレットの色のドット(A = 1)として重ねる。YJK の色の共有でにじまない。
+    上: PAPA ZERO(金から赤茶のグラデーション、黒い縁取りと影)
     中: PUSH SPACE KEY(点滅させる。文字の無い 2 ページ目を作り、表示するページを切り替える)
     下: © 2026 suzuki-black
 - out.bin = 1 ページ目(文字あり、256×212 = 54272 バイト)+ 文字の無い PUSH SPACE KEY の帯(2 ページ目の同じ行に書く)。
   title.h = 帯の行と大きさ、パレット(16 色、0RRR0BBB / 00000GGG)。
 - preview.png は VRAM の値を V9958 と同じ式で色に戻した絵(4:3 に引き伸ばして)。
 """
+import os
 import sys
 from PIL import Image
 
 W, H = 256, 212
-TILE_FONT = {   # tools/gen_data.py の FONT(3×5)と同じ形
-    'A': ['.#.', '#.#', '###', '#.#', '#.#'], 'C': ['.##', '#..', '#..', '#..', '.##'],
-    'E': ['###', '#..', '##.', '#..', '###'], 'H': ['#.#', '#.#', '###', '#.#', '#.#'],
-    'K': ['#.#', '#.#', '##.', '#.#', '#.#'], 'M': ['#.#', '###', '###', '#.#', '#.#'],
-    'N': ['##.', '#.#', '#.#', '#.#', '#.#'], 'O': ['.#.', '#.#', '#.#', '#.#', '.#.'],
-    'P': ['##.', '#.#', '##.', '#..', '#..'], 'R': ['##.', '#.#', '##.', '#.#', '#.#'],
-    'S': ['.##', '#..', '.#.', '..#', '##.'], 'T': ['###', '.#.', '.#.', '.#.', '.#.'],
-    'Z': ['###', '..#', '.#.', '#..', '###'], 'U': ['#.#', '#.#', '#.#', '#.#', '###'], 'Y': ['#.#', '#.#', '.#.', '.#.', '.#.'],
-    '0': ['###', '#.#', '#.#', '#.#', '###'], '2': ['##.', '..#', '.#.', '#..', '###'],
-    '6': ['.##', '#..', '###', '#.#', '###'], '-': ['...', '...', '###', '...', '...'],
-    ' ': ['...', '...', '...', '...', '...'],
-    # 小文字(タイトルの著作権表示のためだけ。同じ 3×5 の調子で)
-    's': ['...', '.##', '#..', '..#', '##.'], 'u': ['...', '#.#', '#.#', '#.#', '.##'],
-    'z': ['...', '###', '.#.', '#..', '###'], 'k': ['#..', '#.#', '##.', '#.#', '#.#'],
-    'i': ['.#.', '...', '.#.', '.#.', '.#.'], 'b': ['#..', '#..', '##.', '#.#', '##.'],
-    'l': ['##.', '.#.', '.#.', '.#.', '###'], 'a': ['...', '.##', '#.#', '#.#', '.##'],
-    'c': ['...', '.##', '#..', '#..', '.##'],
-}
-COPY_MARK = ['..#####..', '.#.....#.', '#..###..#', '#.#.....#', '#.#.....#',
-             '#.#.....#', '#..###..#', '.#.....#.', '..#####..']
-
-# パレット(YAE の文字の色。0RRR0BBB, 00000GGG)。0 は使わない
+# パレット(YAE の文字の色。0RRR0BBB, 00000GGG)。0 は使わない。番号は tools/gen_title_text.py と同じ
 PAL = {
-    1: (0, 0, 0),       # 縁取り
-    2: (7, 7, 1),       # PAPA の面(黄)
-    3: (6, 4, 0),       # PAPA のタイルの影
-    4: (7, 4, 0),       # ZERO の面(橙)
-    5: (5, 1, 0),       # ZERO のタイルの影
-    6: (7, 7, 7),       # PUSH SPACE KEY・著作権表示の面(白)
-    7: (4, 4, 5),       # 白い文字のタイルの影
+    1: (0, 0, 0),       # 縁取り・影
+    2: (7, 7, 5),       # PAPA ZERO の上(淡い金)
+    3: (7, 7, 2),       # 金
+    4: (7, 5, 0),       # 琥珀
+    5: (7, 3, 0),       # 橙
+    9: (4, 1, 0),       # 下(赤茶)
+    6: (7, 7, 7),       # PUSH SPACE KEY(白)
     8: (5, 5, 6),       # 著作権表示(明るい灰色。タイトルより目立たせない)
 }
+PUSH = 6
 
 
-def text_width(s, t):
-    return (len(s) * 4 - 1) * t
-
-
-def draw_tiles(mask, s, x0, y0, t, face, shade):
-    """3×5 の文字を t×t のタイルで。タイルの右と下の 1 ドットは影の色(t >= 3 のとき)"""
-    x = x0
-    for ch in s:
-        g = TILE_FONT[ch]
-        for gy, row in enumerate(g):
-            for gx, c in enumerate(row):
-                if c != '#':
-                    continue
-                for yy in range(t):
-                    for xx in range(t):
-                        px, py = x + gx * t + xx, y0 + gy * t + yy
-                        edge = t >= 3 and (xx == t - 1 or yy == t - 1)
-                        mask[py][px] = shade if edge else face
-        x += 4 * t
-
-
-def draw_bitmap(mask, rows, x0, y0, color):
-    for gy, row in enumerate(rows):
-        for gx, c in enumerate(row):
-            if c == '#':
-                mask[y0 + gy][x0 + gx] = color
-
-
-def outline(mask, x0, y0, x1, y1, w):
-    """文字の外側 w ドットを縁取りの色(1)に"""
-    src = [r[:] for r in mask]
-    for y in range(max(0, y0 - w), min(H, y1 + w)):
-        for x in range(max(0, x0 - w), min(W, x1 + w)):
-            if src[y][x]:
-                continue
-            near = any(src[yy][xx] not in (0, 1)
-                       for yy in range(max(0, y - w), min(H, y + w + 1))
-                       for xx in range(max(0, x - w), min(W, x + w + 1)))
-            if near:
-                mask[y][x] = 1
-
-
-def layout():
+def layout(text_png):
     """文字の配置。戻り値: 1 ページ目の文字(各ドットのパレット番号、0 = 絵)、2 ページ目(PUSH SPACE KEY 無し)、帯の行"""
-    m = [[0] * W for _ in range(H)]
-    # タイトルは 2 行で大きく(2026-10-23 ユーザー: 「タイトルはドンと」)。COASTER は黄、HOME RUN は橙。
-    # 2 行の間をあけて主人公の顔(絵の 31〜60 行目。目は 44〜49 行目)を見せる(ユーザー: 「間あけたら主人公の顔はいるよね」)
-    t = 7
-    s1, s2 = 'PAPA', 'ZERO'
-    y1 = 3
-    draw_tiles(m, s1, (W - text_width(s1, t)) // 2, y1, t, 2, 3)
-    y2 = 84
-    draw_tiles(m, s2, (W - text_width(s2, t)) // 2, y2, t, 4, 5)
-    outline(m, 0, y1, W, y1 + 5 * t, 2)
-    outline(m, 0, y2, W, y2 + 5 * t, 2)
-    # 著作権表示(一番下)
-    cs = ' 2026 suzuki-black'
-    ct = 2
-    cw = 9 + 2 + text_width(cs.strip(), ct) + 4 * ct
-    cx = (W - cw) // 2
-    cy = H - 5 * ct - 6
-    draw_bitmap(m, COPY_MARK, cx, cy + (5 * ct - 9) // 2, 8)
-    draw_tiles(m, '2026 suzuki-black', cx + 9 + 2 + 4 * ct - ct, cy, ct, 8, 8)
-    outline(m, 0, cy - 1, W, cy + 5 * ct + 1, 1)
-    page2 = [r[:] for r in m]
-    # PUSH SPACE KEY(中段。HOME RUN の下と著作権表示の間の中ほど)
-    ps = 'PUSH SPACE KEY'
-    pt = 3
-    py = 160
-    draw_tiles(m, ps, (W - text_width(ps, pt)) // 2, py, pt, 6, 7)
-    outline(m, 0, py, W, py + 5 * pt, 1)
-    band = (py - 2, py + 5 * pt + 2)
+    t = Image.open(text_png)
+    if t.size != (W, H) or t.mode != 'P':
+        sys.exit('gen_title: %s は 256×212 のパレットの番号の絵(P)にする' % text_png)
+    px = t.load()
+    m = [[px[x, y] for x in range(W)] for y in range(H)]
+    for row in m:
+        for v in row:
+            if v and v not in PAL:
+                sys.exit('gen_title: 文字の絵にパレットに無い番号 %d がある' % v)
+    rows = [y for y in range(H) if PUSH in m[y]]
+    band = (rows[0] - 2, rows[-1] + 3)                 # 縁取りを含めた PUSH SPACE KEY の帯
+    page2 = [r[:] if not band[0] <= y < band[1] else [0] * W for y, r in enumerate(m)]
     return m, page2, band
 
 
@@ -206,7 +130,7 @@ def main(art, out_bin, out_h, preview=None):
     cw = sh * 4 // 3                                   # 4:3 に切る(左右を同じだけ)
     x0 = (sw - cw) // 2
     img = src.crop((x0, 0, x0 + cw, sh)).resize((W, H), Image.LANCZOS)
-    mask, mask2, band = layout()
+    mask, mask2, band = layout(os.path.join(os.path.dirname(art), 'title_text.png'))
     page1 = encode(img, mask)
     page2 = encode(img, mask2)
     b0, b1 = band

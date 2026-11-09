@@ -55,8 +55,9 @@ $(BUILD)/songs.h: src/sound/songs.mml $(TOOLS)/gen_music.py | $(BUILD)
 	$(PYTHON) $(TOOLS)/gen_music.py src/sound/songs.mml $(BUILD)/songs.bin $(BUILD)/songs.h
 $(BUILD)/songs.bin: $(BUILD)/songs.h
 
-$(BUILD)/title.h: data/title_art.png $(TOOLS)/gen_title.py | $(BUILD)
-	$(PYTHON) $(TOOLS)/gen_title.py data/title_art.png $(BUILD)/title.bin $(BUILD)/title.h
+# タイトルの絵(data/title_art.webp)に、文字の絵(data/title_text.png。tools/gen_title_text.py が書体 Anton で描いたもの)を重ねる
+$(BUILD)/title.h: data/title_art.webp data/title_text.png $(TOOLS)/gen_title.py | $(BUILD)
+	$(PYTHON) $(TOOLS)/gen_title.py data/title_art.webp $(BUILD)/title.bin $(BUILD)/title.h
 $(BUILD)/title.bin: $(BUILD)/title.h
 
 $(BUILD)/cockpit.bin: $(TOOLS)/gen_cockpit.py $(TOOLS)/gen_data.py | $(BUILD)
