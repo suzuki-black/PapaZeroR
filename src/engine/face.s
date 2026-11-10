@@ -53,7 +53,7 @@ fd_m:		.ds	4
 
 ; ---------------------------------------------------------------------------
 ; void faces_draw(const Face *f)   HL = f。数と細部と色は g_fd_nf / g_fd_lod / g_fd_flash
-;   ニアクリップ面より手前の頂点を含む面は face_near(f)(C)へ。ほかは画面上の向きで裏を捨てて raster
+;   ニアクリップ面より手前の頂点を含む面は face_near(f)(C)へ(全部が手前なら捨てる)。ほかは画面上の向きで裏を捨てて raster
 ; ---------------------------------------------------------------------------
 _faces_draw::
 	ld	(fd_f), hl
@@ -92,6 +92,9 @@ fd_loop:
 	ld	a, (fd_near)
 	or	a, a
 	jr	z, 3$
+	ld	hl, #fd_n
+	cp	a, (hl)
+	jp	z, fd_next		; 頂点が全部ニア面より手前なら見えない(手前の面の 3 分の 2 はこれ)
 	ld	hl, (fd_f)
 	call	_face_near
 	jp	fd_next
@@ -194,7 +197,7 @@ fd_next:
 	pop	ix
 	ret
 
-; HL = 頂点番号の番地 → DE = XV の記録、HL は次の番号へ。sy が 0x7FFF(ニア面より手前)なら fd_near = 1
+; HL = 頂点番号の番地 → DE = XV の記録、HL は次の番号へ。sy が 0x7FFF(ニア面より手前)なら fd_near を 1 増やす
 vrec:
 	ld	a, (hl)
 	inc	hl
@@ -217,7 +220,8 @@ vrec:
 	dec	hl
 	cp	a, #0x7F
 	jr	nz, 1$
-	ld	a, #1
+	ld	a, (fd_near)
+	inc	a
 	ld	(fd_near), a
 1$:
 	dec	hl
