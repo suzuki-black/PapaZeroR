@@ -27,6 +27,7 @@ class Mod:
         self.path, self.sections, self.events = [], [], []
         self.strs = [radio, line]       # 0 = 継ぎ目の無線、1 = ボスを倒したときの父の一言
         self.film = None                # 映像の場面(Film。オープニングと継ぎ目)
+        self.ahead = 8                  # 道中に描く区画の数(1 区画 8 単位)。多いほど遠くまで見えるが重い
         self.op_base = 0                # 演出のコードの置き場所(Makefile の OPn_BASE と同じ値)
         self.models = ['FLAK', 'ROCKET', 'SUPPLY', 'MEDIC']
         self.boss = None
@@ -220,6 +221,7 @@ def s2():
 
 def s3():
     s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', clock=0x30, radio='PAPA, HURRY!', line='THREE FOR ONE.')
+    s.ahead = 11                        # 谷の壁を遠くまで見せる(8 区画だと、高く飛ぶ前半に遠くの壁が消えて平地に見えた)
     # 前半は谷の上(28。壁は 24 まで)で追っ手と空中戦。後半に谷へ降り、谷底の基地(戦車)を叩いてボスへ
     s.y0 = 28
     sp = 24

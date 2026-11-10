@@ -104,7 +104,7 @@ def build(mod, ids, nids, out):
         ev += struct.pack('<HBBBBhhh', at, cmd, a0 & 255, a1 & 255, a2 & 255, x, y, z)
     ea = b.add(ev)
     hdr = struct.pack('<HHHHHHHHHHHBBBBHH', pa, len(mod.path), sa, len(mod.sections), ea, len(mod.events), pal, meshes, st, ba, name,
-                      mod.bgm, mod.flags, mod.clock, 0, pal2, 0)
+                      mod.bgm, mod.flags, mod.clock, mod.ahead - 1, pal2, 0)
     b.b[:len(hdr)] = hdr
     limit = mod.op_base - BASE if mod.film else DATA_LIMIT
     if len(b.b) > limit:

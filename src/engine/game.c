@@ -452,7 +452,9 @@ static void sects_draw(void)
     i8 k;
     u8 base = sect_i;
     V3 c;
-    for (k = boss_on ? 4 : 10; k >= 0; k--) {   /* 背後の区画は描かない。ボス戦は地形を減らす(8.1) */
+    /* 背後の区画は描かない。道中は面ごとの数(ふつう 8 区画 = 64 単位先まで。11 区画だと地形が道中の 1 フレームの大半を使った)、
+     * ボス戦は 5 区画(8.1) */
+    for (k = boss_on ? 4 : (i8)MOD->ahead; k >= 0; k--) {
         i16 si = (i16)base + k;
         const Sect *s;
         if (si < 0) continue;

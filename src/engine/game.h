@@ -31,7 +31,7 @@ typedef struct {
     const char * const *str;       /* 字幕 */
     const u8 *boss;                /* ボスの定義 */
     const char *name;
-    u8 bgm, flags, clock, pad;     /* flags: bit0 = 宇宙、bit1 = 場面(操作なし、下は黒帯) */
+    u8 bgm, flags, clock, ahead;   /* flags: bit0 = 宇宙、bit1 = 場面(操作なし、下は黒帯)。ahead = 道中に描く区画の数 - 1 */
     const u8 *pal2;                /* EV_FADE で移る色(エンディング) */
     void (*hook)(u16 t);           /* 場面の演出(モジュールの中のコード。t = 場面の始めからのティック。0 = なし) */
 } Stage;
