@@ -11,7 +11,7 @@
 	.module	sndfm
 	.globl	_fm_write, _g_drm, _g_hha
 
-SONG_TAB = 0x8B00		; 曲の表(tools/gen_music.py の BASE。ドライバのコードはその手前まで。tools/mkrom.py が確かめる)
+SONG_TAB = 0x8D00		; 曲の表(tools/gen_music.py の BASE。ドライバのコードはその手前まで。tools/mkrom.py が確かめる)
 FMC_P	= 0			; チャンネル: 今読んでいる所(0 = 止まっている)
 FMC_TOP	= 2			; 頭
 FMC_LOOP = 4			; ループで戻る所(0 = 頭)
@@ -38,6 +38,7 @@ _g_bgm_on::	.ds	1	; 1 = 鳴らしている
 _g_psg_top::	.ds	2	; 曲の PSG のパート(無ければ 0)
 
 	.area	_CODE
+
 
 ; 音程の表: MIDI 24〜107 の (F ナンバーの下位 8 ビット, F ナンバーの bit8 | ブロック << 1)。
 ; F ナンバー = 周波数 × 2^(19 - ブロック) / (3579545 / 72)、512 未満になる一番小さいブロック

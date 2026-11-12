@@ -32,6 +32,7 @@ _g_dm_n::	.ds	1
 _g_dm_flash::	.ds	1
 _g_dm_id::	.ds	1
 _g_dm_hit::	.ds	1
+dm_h1:		.ds	1	; 1 = この物体の矩形をまだ当たり判定の表に入れていない
 _g_dm_grow::	.ds	1
 _g_dm_thin::	.ds	1
 _g_dm_deco::	.ds	1	; 0 以外なら飾り(部位 3)も描く(game.c が近い敵だけ 1 にする)
@@ -190,6 +191,7 @@ _draw_model::
 	ld	a, (_g_dm_hit)
 	or	a, a
 	jr	z, 52$
+	ld	(dm_h1), a
 	ld	a, (_n_hits)
 	ld	l, a
 	ld	h, #0
@@ -338,18 +340,24 @@ _draw_model::
 2$:
 	ld	(_g_color), a
 	call	_rect_fill
-	; 当たり判定の表へ(x0, y0, x1, y1, z, id)。飾りは足さない(ほかの矩形の内側なので、当たりは変わらない)
+	; 当たり判定の表へ(x0, y0, x1, y1, z, id)。飾りは足さない(ほかの矩形の内側なので、当たりは変わらない)。
+	; 1 体につき 1 つ: 2 枚目からは最初の矩形を広げる(矩形ごとに足すと、1 体に名前の札と印が 3〜4 個付いた)
 	ld	a, (_g_dm_hit)
 	or	a, a
 	jr	z, 8$
 	ld	a, 5 (ix)
 	cp	a, #3
 	jr	z, 8$
+	ld	a, (dm_h1)
+	or	a, a
+	jr	z, 70$
 	ld	a, (_n_hits)
 	cp	a, #MAX_HIT
 	jr	nc, 8$
 	inc	a
 	ld	(_n_hits), a
+	xor	a, a
+	ld	(dm_h1), a
 	exx
 	ld	0 (iy), b
 	ld	1 (iy), d
@@ -362,8 +370,30 @@ _draw_model::
 	ld	5 (iy), #0		; z の上位
 57$:
 	ld	6 (iy), #0		; 番号
-	ld	de, #7
-	add	iy, de
+	jr	8$
+70$:	; 広げる(座標は 0〜64 のブロックなので符号なしで比べる)
+	exx
+	ld	a, b
+	cp	a, 0 (iy)
+	jr	nc, 71$
+	ld	0 (iy), a
+71$:
+	ld	a, d
+	cp	a, 1 (iy)
+	jr	nc, 72$
+	ld	1 (iy), a
+72$:
+	ld	a, c
+	cp	a, 2 (iy)
+	jr	c, 73$
+	ld	2 (iy), a
+73$:
+	ld	a, e
+	cp	a, 3 (iy)
+	jr	c, 74$
+	ld	3 (iy), a
+74$:
+	exx
 8$:
 	ld	de, #6
 	add	ix, de

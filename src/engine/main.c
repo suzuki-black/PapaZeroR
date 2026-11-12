@@ -151,6 +151,7 @@ void main(void)
     g_cfg.damage = 1;
     g_cfg.stage = 1;
     g_cfg.life = 8;
+    g_cfg.lockbox = 3;
 #ifdef DEBUG_FPS
     g_cfg.fps = 1;
 #endif
@@ -160,11 +161,11 @@ void main(void)
         title_run();
         game_reset();
         if (g_auto) { stage_run(1); continue; }      /* デモ: 1 面の自動プレイ */
-        for (n = g_cfg.stage; n <= 6; n++) {
+        for (n = g_cfg.stage; n <= 7; n++) {
             if (n == 1 && !stage_run(0)) break;     /* オープニング(飛ばしてもよい) */
-            if (!stage_run(n)) { gameover_run(); n = 0xFF; break; }
-            if (n < 6) stage_run((u8)(14 + n));     /* n 面の後の継ぎ目: 映像の場面(モジュール 15〜19、src/engine/op.c) */
+            if (!stage_run(n == 7 ? MOD_FINAL : n)) { gameover_run(); n = 0xFF; break; }
+            if (n < 7) stage_run((u8)(14 + n));     /* n 面の後の継ぎ目: 映像の場面(モジュール 15〜20、src/engine/op.c) */
         }
-        if (n == 7) { stage_run(7); ending_run(); }
+        if (n == 8) { stage_run(7); ending_run(); }
     }
 }

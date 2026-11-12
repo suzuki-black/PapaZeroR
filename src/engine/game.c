@@ -15,13 +15,14 @@ u8 life;
 u16 mis_left;
 u16 g_score, g_hiscore;
 u8 g_clock;
+u8 g_stg[16];                   /* 面のモジュールのコード(stg.c)が使う値。モジュールは変数を持てない */
 u16 g_frames;
 u16 g_anim;
 u8 g_an;
 static u8 an_acc;
 
 /* 経路 */
-u16 path_s;                     /* 位置(1/64 単位) */
+u16 path_s;                     /* 位置(1/32 単位。2047 単位まで) */
 static u16 path_max;
 u8  sect_i;
 static u8  spd_cur;             /* 単位/秒 × 4 */
@@ -31,10 +32,12 @@ i16 g_fx, g_fz;
 u8  boss_yaw;
 i16 boss_y0;
 u8  g_shake;
-static u8 g_space, g_fade;
+static u8 g_space;
+u8 g_fade;                      /* 静的にしない(エンディングの映像 op.c が宇宙から夕焼けへ移す) */
 static u8 pal_w[14];
 i16 cam_vx, cam_vy, cam_vz;   /* 1 ティックの移動(8.8) */
 u16 loop_b, loop_len;    /* 周回区間の終わりと長さ(単位)。0 = なし。長さを引き算で毎回出すと SDCC が番地を読み違えるので持っておく */
+static i16 loop_dx, loop_dz;   /* 周回で区間の初めへ戻るときの、カメラの動き(世界ごと同じだけずらす) */
 /* 台本 */
 u16 ev_i;                       /* 静的にしない(オープニングの演出 op.c が出来事の番号に使う) */
 u8  boss_on, boss_dead;
@@ -68,6 +71,7 @@ const ObjDef odef[T_COUNT] = {
     { 0, 0, 0 },
     { M_BIKE, 1, 10 }, { M_TANK, 4, 40 }, { M_LTANK, 4, 40 }, { M_MUSTANG, 2, 20 },
     { M_SHIP, 6, 60 }, { M_RMUSTANG, 3, 30 }, { M_MINE, 2, 20 }, { M_LSAT, 5, 50 },
+    { M_BATTLESHIP, 30, 120 }, { M_PTBOAT, 3, 30 },
     { M_SUPPLY, 1, 0 }, { M_MEDIC, 1, 0 },
     { M_FLAK, 1, 5 }, { M_ROCKET, 2, 5 }, { M_FLAK, 0, 0 }, { M_ROCKET, 0, 0 }, { 0, 1, 0 }, { 0, 1, 20 },
 };
@@ -125,7 +129,7 @@ void obj_kill(Obj *o, u8 scored)
 {
     u8 t = o->t;
     if (scored) g_score += odef[t].score;
-    fx_add(o->x, o->y, o->z, t >= T_E01 && t <= T_E08);
+    fx_add(o->x, o->y, o->z, t >= T_E01 && t <= T_ELAST);
     if (t == T_SUPPLY) { mis_left = mis_left + 50 > MIS_MAX ? MIS_MAX : mis_left + 50; se_play(SE_HEAL); }
     else if (t == T_MEDIC) { life = (u8)(life + 2 > 8 ? 8 : life + 2); se_play(SE_HEAL); }
     else se_play(t == T_PART ? SE_BOSS : SE_KILL);
@@ -149,48 +153,72 @@ void obj_damage(Obj *o, u8 n)
     obj_kill(o, 1);
 }
 
+/* ニアクリップ面より手前の頂点を含む面を切って塗る(face.s の faces_draw から。常駐部に空きが無いのでページ0に置く) */
+extern u8 g_fd_flash;
+static const V3 *fp[4];
+void face_near(const Face *f)
+{
+    u8 i, n = f->hdr & 7;
+    for (i = 0; i < n; i++) fp[i] = (const V3 *)&XR[f->v[i]].x;
+    poly3p(fp, n, g_fd_flash ? g_fd_flash : f->color);
+}
+
 /* ---- 経路 ---- */
 static void path_step(u8 dt)
 {
-    const PathPt *p;
-    u16 s, idx;
+    const Sect *p;
+    u16 s;
+    u8 idx;
     i16 f;
     i16 x0, y0, z0;
-    s = path_s + (u16)(((u32)spd_cur * dt * 546u) >> 10);    /* 速度 20 で 1 秒に 10 単位(前は 5。揚力で飛ぶにしては遅すぎた) */
-    if (loop_b && (s >> 6) >= loop_b) s -= loop_len << 6;
+    s = path_s + (u16)(((u32)spd_cur * dt * 546u) >> 11);    /* 速度 20 で 1 秒に 10 単位(前は 5。揚力で飛ぶにしては遅すぎた) */
+    x0 = cam_x; y0 = cam_y; z0 = cam_z;
+    if (loop_b && (s >> 5) >= loop_b) {
+        /* 周回: まっすぐな区間の初めへ戻る。物体・爆発・ボスも同じだけずらすので、見た目は前へ進み続ける
+         * (前は経路の円を回っていて、同じ所を旋回しているように見えた) */
+        u8 i;
+        s -= loop_len << 5;
+        x0 += loop_dx; z0 += loop_dz;
+        for (i = 0; i < MAX_OBJ; i++) { obj[i].x += loop_dx; obj[i].z += loop_dz; }
+        for (i = 0; i < MAX_FX; i++) { fx[i].x += loop_dx; fx[i].z += loop_dz; }
+        boss_x += loop_dx; boss_z += loop_dz;
+    }
     if (s >= path_max) { s = path_max - 1; scr_end |= 2; }
     path_s = s;
-    idx = s >> 7;
-    f = (i16)(s & 127);
-    p = &MOD->path[idx];
-    x0 = cam_x; y0 = cam_y; z0 = cam_z;
-    /* 点の間は 2 単位(512)あるので、差 × f を 16bit で掛けると f >= 64 で桁があふれ、カメラが点の中ほどで後ろへ飛んでいた。
-     * fmul(差, 2f) = 差 × f / 128 を 32bit の途中結果で求める */
-    cam_x = p->x + fmul(p[1].x - p->x, f << 1);
-    cam_y = p->y + fmul(p[1].y - p->y, f << 1);
-    cam_z = p->z + fmul(p[1].z - p->z, f << 1);
-    cam_yaw_path = (u8)(p->yaw + (i8)(((i16)(i8)(p[1].yaw - p->yaw) * f) >> 7));
-    cam_pitch_path = (i8)(p->pitch + (i8)(((i16)(i8)(p[1].pitch - p->pitch) * f) >> 7));
+    idx = (u8)(s >> 8);
+    f = (i16)(s & 255);
+    p = &MOD->sect[idx];
+    /* 点の間は 8 単位(2048)。fmul(差, f) = 差 × f / 256 を 32bit の途中結果で求める */
+    cam_x = p->x + fmul(p[1].x - p->x, f);
+    cam_y = p->py + fmul(p[1].py - p->py, f);
+    cam_z = p->z + fmul(p[1].z - p->z, f);
+    cam_yaw_path = (u8)(p->yaw + (i8)(((i16)(i8)(p[1].yaw - p->yaw) * f) >> 8));
+    cam_pitch_path = (i8)(p->pitch + (i8)(((i16)(i8)(p[1].pitch - p->pitch) * f) >> 8));
     if (dt) { cam_vx = (cam_x - x0) / dt; cam_vy = (cam_y - y0) / dt; cam_vz = (cam_z - z0) / dt; }
     g_fx = SIN(cam_yaw_path);
     g_fz = COS(cam_yaw_path);
-    sect_i = (u8)(idx >> 2);
-    spd_cur = MOD->sect[sect_i].spd;
+    sect_i = idx;
+    spd_cur = p->spd;
 }
 
 /* ---- 台本 ---- */
 static void script_step(void)
 {
-    u16 at = path_s >> 6;
+    u16 at = path_s >> 5;
     const Stage *m = MOD;
     while (ev_i < m->nev) {
         const Event *e = &m->ev[ev_i];
         if (e->cmd != EV_END && e->at > at) break;
         if (e->cmd == EV_LOOP) {      /* 敵が残っていれば周回。a = 始まり[単位 / 2] */
             u8 i, alive = 0;
-            for (i = 0; i < MAX_OBJ; i++) if (obj[i].t >= T_E01 && obj[i].t <= T_E08) alive = 1;
+            for (i = 0; i < MAX_OBJ; i++) if (obj[i].t >= T_E01 && obj[i].t <= T_ELAST) alive = 1;
             if (boss_on || alive) {
-                loop_b = e->at + 2; loop_len = loop_b - (u16)e->x;
+                if (!loop_b) {
+                    const Sect *q = MOD->sect;
+                    loop_b = e->at + 2; loop_len = loop_b - (u16)e->x;
+                    loop_dx = q[e->x >> 3].x - q[loop_b >> 3].x;
+                    loop_dz = q[e->x >> 3].z - q[loop_b >> 3].z;
+                }
                 return;
             }
             loop_b = 0;
@@ -291,7 +319,7 @@ static void man_start(u8 kind, u8 len)
 static u8 lockable(u8 id)
 {
     const Obj *o = &obj[id];
-    if (o->t >= T_E01 && o->t <= T_E08) return 1;
+    if (o->t >= T_E01 && o->t <= T_ELAST) return 1;
     return o->t == T_PART && !boss_intro && o->group == boss_grp && !(o->flags & (OF_CAPSULE | OF_DECOR | OF_HIDDEN));
 }
 
@@ -316,19 +344,18 @@ static u8 lock_keep(u8 id)
     return lockable(id) && fmul(g_fx, o->x - cam_x) + fmul(g_fz, o->z - cam_z) > 0;
 }
 
-/* ロックの枠(ブロック。照準を中心に横 LB_W × 縦 LB_H、画面の中に切る)。描くのは overlay_draw */
-#define LB_W 24
-#define LB_H 16
+/* ロックの枠(ブロック。照準を中心に、隠しコンフィグの LOCKBOX で横 8・16・24・32 × 縦はその約 2/3。画面の中に切る)。描くのは overlay_draw */
 static u8 lb_x0, lb_y0, lb_x1, lb_y1;
 
 static void lock_scan(void)
 {
     u8 ax = (u8)(aim_x >> 2), ay = (u8)(aim_y >> 2), i, k, id;
     HitRect *h = hits;
-    lb_x0 = ax > LB_W / 2 ? ax - LB_W / 2 : 0;
-    lb_x1 = ax + LB_W / 2 - 1 < 63 ? ax + LB_W / 2 - 1 : 63;
-    lb_y0 = ay > LB_H / 2 ? ay - LB_H / 2 : 0;
-    lb_y1 = ay + LB_H / 2 - 1 < 39 ? ay + LB_H / 2 - 1 : 39;
+    u8 hw = (u8)(g_cfg.lockbox << 2), hh = (u8)(hw - (hw >> 2) - (hw >> 3));   /* 枠の半分の幅と高さ(3 なら 12 と 8) */
+    lb_x0 = ax > hw ? ax - hw : 0;
+    lb_x1 = ax + hw - 1 < 63 ? ax + hw - 1 : 63;
+    lb_y0 = ay > hh ? ay - hh : 0;
+    lb_y1 = ay + hh - 1 < 39 ? ay + hh - 1 : 39;
     for (i = 0; i < n_hits; i++, h++) {
         if (h->x1 < lb_x0 || h->x0 > lb_x1 || h->y1 < lb_y0 || h->y0 > lb_y1) continue;
         id = h->id;
@@ -435,6 +462,7 @@ static void fire_step(u8 dt)
             else { o->tgt = 0xFF; o->tm = 60; }
             mis_left--;
             /* ほかの声(ヒナの台詞など)が鳴っている間は割り込まない。Fire! どうしは差し替える */
+            se_play(SE_MISSILE);
             if (!pcm_mode || (u16)(g_tick - fire_tick) < 24) { pcm_say(VOICE_FIRE); fire_tick = g_tick; }
         }
     }
@@ -458,11 +486,15 @@ static void sects_draw(void)
         i16 si = (i16)base + k;
         const Sect *s;
         if (si < 0) continue;
-        if (loop_b && (u16)si >= (loop_b >> 3)) si -= (i16)(loop_len >> 3);
-        if (si >= n) continue;
-        s = &s0[si];
-        if (!s->mesh) continue;
-        pt_cam(s->x, s->y, s->z, &c);
+        {
+            i16 ox = 0, oz = 0;
+            /* 周回の終わりより先は、区間の初めの区画を、戻る分だけ先へずらして描く(戻った後と同じ絵になる) */
+            if (loop_b && (u16)si >= (loop_b >> 3)) { si -= (i16)(loop_len >> 3); ox = loop_dx; oz = loop_dz; }
+            if (si >= n) continue;
+            s = &s0[si];
+            if (!s->mesh) continue;
+            pt_cam(s->x - ox, s->y, s->z - oz, &c);
+        }
         mat_yaw(s->yaw, 0);
         g_lod_min = boss_on ? k > 1 : k > 3;
         mesh_draw(s->mesh, &c, g_mm, 0, 0xFF);
@@ -509,7 +541,7 @@ static u8 aim_foe;      /* 照準の下に攻撃してくるものがいる(照�
 
 static u8 is_foe(const Obj *o)
 {
-    if (o->t >= T_E01 && o->t <= T_E08) return 1;
+    if (o->t >= T_E01 && o->t <= T_ELAST) return 1;
     if (o->t >= T_FLAK && o->t <= T_MINE) return 1;
     return o->t == T_PART && o->group == boss_grp && !(o->flags & (OF_CAPSULE | OF_DECOR | OF_HIDDEN));
 }
@@ -528,9 +560,10 @@ static void spr_set(u8 n, i16 x, i16 y, u8 pat, u8 col)
  * 線は札のあとの番号で、毎フレーム順番を回す。線が 4 枚を超えた行では線だけが交代で消え(ちらつき)、札は消えない */
 #define N_LABEL 6
 #define N_LINE (N_SPR - 1 - N_LABEL)
-#define PAT_H 14                               /* 線の絵: 横・「/」・「\」(tools/gen_data.py) */
-#define PAT_UP 15
-#define PAT_DN 16
+#define PAT_H 13                               /* 線の絵: 横・「/」・「\」(tools/gen_data.py) */
+#define PAT_UP 14
+#define PAT_DN 15
+#define PAT_BOSS 16                            /* ボスの部位の札 */
 static u8 lb_x[N_LABEL], lb_y[N_LABEL];        /* 置いた札の左上(ドット) */
 static u8 ln_x[N_LINE], ln_y[N_LINE], ln_p[N_LINE], ln_c[N_LINE];
 static u8 line_n, line_rot;
@@ -556,7 +589,7 @@ static u8 label_place(u8 n, const HitRect *h, u8 col)
         }
         if (c >= 3) continue;
         lb_x[n] = (u8)x; lb_y[n] = (u8)y;
-        spr_set(1 + n, x, y, 3 + obj[h->id].t, col);   /* 札の絵は 4 番から T_E01 の順 */
+        { u8 t = obj[h->id].t; spr_set(1 + n, x, y, t == T_PART ? PAT_BOSS : t, col); }   /* 札の絵は 1 番から T_E01 の順。ボスの部位は「BOSS」 */
         for (j = 0; j < k && line_n < N_LINE; j++, line_n++) {
             ln_x[line_n] = (u8)(right ? xr + j * 32 : xl - (j + 1) * 32);
             ln_y[line_n] = !d ? cy - 15 : d < 0 ? cy - (j + 1) * 32 : cy + j * 32;
@@ -584,11 +617,11 @@ static void marks_draw(void)
             if (h->id == tgt) pr = 0; else if (k < lock_n) pr = 1;
             g_color = pr < 2 ? C_RED : C_WHITE;
         }
-        else if (o->t == T_SUPPLY || o->t == T_MEDIC) g_color = C_GREEN;
+        else if ((u8)(o->t - T_SUPPLY) < 2) g_color = C_GREEN;
         else continue;
         g_rx = (u8)(h->x0 - 1); g_ry = (u8)(h->y0 - 1); g_rw = h->x1; g_rh = h->y1;
         marks4();
-        if (o->t <= T_MEDIC) hk[i] = ((u16)pr << 14) | ((u16)h->z >> 2 & 0x3FFF);   /* 名前は敵と補給だけ */
+        if (o->t <= T_MEDIC || o->t == T_PART) hk[i] = ((u16)pr << 14) | ((u16)h->z >> 2 & 0x3FFF);   /* 名前は敵・補給・ボスの部位(弾には付けない) */
     }
     /* 強い順(照準 → ロック → 近い)に置く。先に置いた札ほど敵のすぐ横に来る */
     line_n = 0;
@@ -599,7 +632,7 @@ static void marks_draw(void)
         if (b == 0xFF) break;
         hk[b] = 0xFFFF;
         h = &hits[b];
-        if (label_place(np, h, obj[h->id].t >= T_SUPPLY ? C_GREEN : bk >> 14 < 2 ? C_RED : C_WHITE)) np++;
+        if (label_place(np, h, (u8)(obj[h->id].t - T_SUPPLY) < 2 ? C_GREEN : bk >> 14 < 2 ? C_RED : C_WHITE)) np++;
     }
     for (i = np; i < N_LABEL; i++) g_spr_attr[(1 + i) * 4] = 209;
     /* 線は毎フレーム番号を回す(4 枚を超えた行で、消える線が毎回変わる) */
@@ -627,6 +660,8 @@ static void overlay_draw(void)
         if (g_rx < 64 && g_ry < 40) pset();
     }
     if (scene && g_mod == 0 && (g_anim & 8)) text_center(1, "SPACE: SKIP", C_WHITE, 1);   /* オープニングは飛ばせる */
+    /* ボスを倒した後: 連続爆発が終わったら(stg.c の g_stg[10])、次の場面まで真ん中に大きく「STAGE CLEAR!」 */
+    if (boss_dead && !g_stg[10]) { text_center(9, "STAGE", C_WHITE, 2); text_center(21, "CLEAR!", (g_anim & 4) ? C_ORANGE : C_WHITE, 2); }
     if (g_cfg.fps) {
         extern u16 g_perf_frame;
         extern u8 g_perf_ticks;
@@ -649,14 +684,14 @@ static void stage_reset(void)
     for (i = 0; i < MAX_LASER; i++) laser[i].kind = 0xFF;
     for (i = 0; i < MAX_FX; i++) fx[i].t = 0;
     path_s = 0; ev_i = 0; scr_end = 0; loop_b = 0;
-    g_space = MOD->flags & SF_SPACE; g_fade = 0; g_shake = 0;
+    g_space = MOD->flags & (SF_SPACE | SF_DEEP); g_fade = 0; g_shake = 0;
     boss_on = 0; boss_dead = 0; boss_grp = 0;
     mis_left = MIS_MAX;                /* 誘導弾は面ごとに満タン */
     pr_kind = 0; man_t = 0; man_len = 0; inv_t = 0; env_rt = 0; env_roll = 0; lock_n = 0; cam_spin = 0;
     cap_t = 0; heat_t = 0; over_t = 0;
     n_hits = 0;
     aim_x = 128; aim_y = 80;
-    path_max = (u16)(MOD->npath - 2) << 7;
+    path_max = (u16)(MOD->nsect - 2) << 8;
     spd_cur = MOD->sect[0].spd;
 }
 
@@ -683,7 +718,6 @@ static u8 stage_body(u8 mod)
     set_stage_palette(MOD->pal);
     cockpit_mode(g_scene == 3);
     cockpit_reset();
-    if (MOD->clock) g_clock = MOD->clock;
     if (MOD->bgm) bgm_play(MOD->bgm);
     if (g_scene == 1) {
         caption(MOD->name + 10, C_WHITE, 120);   /* 「STAGE n / 」を除く。字幕は 16 文字まで */
@@ -718,7 +752,9 @@ static u8 stage_body(u8 mod)
         if (g_fade) {                      /* エンディング: 再突入の色へ移り、白く光って朝の町へ */
             lerp_pal(MOD->pal, MOD->pal2, g_fade >> 1, pal_w);
             vdp_set_palette(9, pal_w);
-            if ((g_fade += g_an) > 32) { g_fade = 0; g_space = 0; set_stage_palette(MOD->pal2); }
+            /* 足すのと比べるのを 1 つの式に書くと、SDCC 4.x は足した値を書き戻さず(32 を超えたときの 0 だけを書く)、色が移らなかった */
+            g_fade += g_an;
+            if (g_fade > 32) { g_fade = 0; g_space = 0; set_stage_palette(MOD->pal2); }
         }
         /* カメラの向き: 経路 + 機動 + 演出のロール */
         {
@@ -777,7 +813,7 @@ static u8 stage_body(u8 mod)
             g_last_polys = g_perf_polys; g_last_verts = g_perf_verts;
         }
         g_spd_show = (u8)(spd_cur + 30);
-        g_alt_show = (u8)(cam_y >> 8);
+        g_alt_show = g_space ? 0xFF : (u8)(cam_y >> 8);   /* 宇宙には高さが無い(計器は「---」) */
         g_min_ticks = 2;                   /* ゲームの本体だけ 30fps まで(ほかの場面はフレームで数えるので 20fps のまま) */
         present();
         g_min_ticks = 3;
@@ -800,10 +836,6 @@ static u8 stage_body(u8 mod)
             return 0;
         }
         if (scr_end & 1 || (scr_end & 2 && !boss_on)) break;
-        if (boss_dead == 1) {
-            boss_dead = 2;
-            caption("STAGE CLEAR!", C_WHITE, 120);
-        }
     }
     g_hiscore = g_score > g_hiscore ? g_score : g_hiscore;
     return 1;

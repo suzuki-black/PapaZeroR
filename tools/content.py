@@ -68,6 +68,30 @@ def _():      # 小型ツェッペリン
     m.plate([(0, 2.6, 4), (0, 4, 6), (0, 2.6, 6)], IRON, detail=True)
     return m
 
+@model('BATTLESHIP')
+def _():      # 戦艦(港の沖に浮かぶ)。灰色の長い船体、艦橋、前後の砲塔。原点は水面
+    m = Mesh()
+    m.box((0, .7, 0), (3.2, 1.4, 16), IRON, top=WHITE)
+    m.plate([(-1.6, 1.4, -8), (0, 1.4, -10.5), (1.6, 1.4, -8)], WHITE)                 # 艦首の甲板
+    m.plate([(-1.6, 0, -8), (0, 0, -10.5), (0, 1.4, -10.5), (-1.6, 1.4, -8)], IRON)
+    m.plate([(1.6, 1.4, -8), (0, 1.4, -10.5), (0, 0, -10.5), (1.6, 0, -8)], IRON)
+    m.box((0, 3, 1), (1.8, 3.2, 3.5), IRON, top=WHITE)                                # 艦橋
+    m.box((0, 5.1, 1.6), (.8, 1.2, .8), BLACK, detail=True)                            # 煙突
+    for z, d in ((-5, -1), (5.5, 1)):                                                   # 前後の砲塔と砲身
+        m.box((0, 1.9, z), (1.8, 1, 2), IRON, top=BLACK)
+        m.box((-.4, 2.1, z + d * 2), (.25, .25, 2.4), RED, detail=True)
+        m.box((.4, 2.1, z + d * 2), (.25, .25, 2.4), RED, detail=True)
+    return m
+
+@model('PTBOAT')
+def _():      # 魚雷艇(海面を速く走る小さな船)。原点は水面
+    m = Mesh()
+    m.box((0, .35, 0), (1.4, .7, 4.4), WHITE, top=IRON)
+    m.plate([(-.7, .7, -2.2), (0, .7, -3.4), (.7, .7, -2.2)], IRON)
+    m.box((0, 1.1, .4), (.9, .8, 1.2), IRON, top=BLACK)
+    m.box((0, .9, 1.8), (.3, .3, 1.2), RED, detail=True)
+    return m
+
 @model('MINE')
 def _():
     m = Mesh()
@@ -441,6 +465,34 @@ def _():
 def _():
     m = Mesh()
     m.prism_z((0, 0, 0), 1.6, .6, 6, WHITE, cap=CYAN)
+    return m
+
+@model('B_ARK')
+def _():     # 方舟: ヒナを乗せて深宇宙へ向かうロケット(7 面のボスの船体。飾り)。白い胴、赤い先、4 枚の翼
+    m = Mesh()
+    m.prism_z((0, 0, 0), 3.5, 18, 6, WHITE, cap=IRON)
+    m.prism_z((0, 0, -11), 2, 4, 6, RED, cap=RED, detail=True)
+    for sx, sy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        m.plate([(sx * 3.5, sy * 3.5, 6), (sx * 8, sy * 8, 10), (sx * 3.5, sy * 3.5, 10)], RED, detail=True)
+    return m
+
+@model('PAD')
+def _():     # 雲の上の発射台(継ぎ目 4)。灰色の台と、ロケットの横の塔
+    m = Mesh()
+    m.box((0, -.5, 0), (18, 1, 14), IRON, top=WHITE, skip='b')
+    m.box((8, 6, 4), (1.2, 12, 1.2), RED, detail=True)
+    return m
+
+@model('SUN')
+def _():     # 夕日(エンディング)。カメラを向く橙の円盤
+    m = Mesh()
+    m.prism_z((0, 0, 0), 14, .5, 8, ORANGE, cap=ORANGE)
+    return m
+
+@model('ZEROS')
+def _():     # 夕日の前を飛ぶ零戦の影(エンディング)。形は飛んでいる零戦のまま、全部を黒に
+    m = zero(False)
+    m.f = [(idx, BLACK, d) for idx, c, d in m.f]
     return m
 
 @model('B_KEYHOLE')

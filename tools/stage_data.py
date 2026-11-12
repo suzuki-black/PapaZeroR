@@ -6,11 +6,11 @@ from content import *
 
 EV_SPAWN, EV_BOSS, EV_ROLL, EV_PROMPT, EV_TEXT, EV_SUB, EV_VOICE, EV_BGM, EV_PAL, EV_LOOP, EV_END, EV_CAM, EV_ITEM, EV_PROP, EV_FADE = range(15)
 PR_ROLL, PR_LOOP, PR_DIVE = 1, 2, 3
-E01, E02, E03, E04, E05, E06, E07, E08, SUPPLY, MEDIC = range(1, 11)
-P_PARALLEL, P_HOLD, P_PASS, P_TAIL, P_CROSS, P_DRIFT, P_BOUNCE, P_FALL, P_LIFT = range(1, 10)
+E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, SUPPLY, MEDIC = range(1, 13)
+P_PARALLEL, P_HOLD, P_PASS, P_TAIL, P_CROSS, P_DRIFT, P_BOUNCE, P_FALL, P_LIFT, P_WEAVE, P_ORBIT, P_SWOOP = range(1, 13)
 V_ROLL, V_LOOP, V_DIVE, V_FIRE, V_WARNING, V_HURRY, V_SEE, V_NOPAPA, V_PAPA, V_GIVE = range(1, 11)
-SF_SPACE, SF_SCENE = 1, 2
-ENEMY_MODELS = {E01: 'BIKE', E02: 'TANK', E03: 'LTANK', E04: 'MUSTANG', E05: 'SHIP', E06: 'RMUSTANG', E07: 'MINE', E08: 'LSAT'}
+SF_SPACE, SF_SCENE, SF_DEEP = 1, 2, 4
+ENEMY_MODELS = {E01: 'BIKE', E02: 'TANK', E03: 'LTANK', E04: 'MUSTANG', E05: 'SHIP', E06: 'RMUSTANG', E07: 'MINE', E08: 'LSAT', E09: 'BATTLESHIP', E10: 'PTBOAT'}
 SONG = {}
 with open('src/sound/songs.mml', encoding='utf8') as f:
     for line in f:
@@ -22,27 +22,34 @@ with open('src/sound/songs.mml', encoding='utf8') as f:
 class Mod:
     def __init__(self, n, name, pal, bgm='', flags=0, clock=0, radio='', line=''):
         self.n, self.name, self.pal, self.flags, self.clock = n, name, pal, flags, clock
+        self.weapon = 0                 # ボスの秘密兵器(src/engine/stg.c の W_。7 = 全部を順に)。面には stg.c を付ける
         self.pal2 = pal
         self.bgm = SONG.get(bgm, 0)
-        self.path, self.sections, self.events = [], [], []
+        self.sections, self.events = [], []
         self.strs = [radio, line]       # 0 = 継ぎ目の無線、1 = ボスを倒したときの父の一言
         self.film = None                # 映像の場面(Film。オープニングと継ぎ目)
         self.ahead = 8                  # 道中に描く区画の数(1 区画 8 単位)。多いほど遠くまで見えるが重い
-        self.op_base = 0                # 演出のコードの置き場所(Makefile の OPn_BASE と同じ値)
+        self.op_base = 0                # 演出のコードの置き場所(Makefile の OPn_BASE / STGn_BASE と同じ値)
+        self.stg = 1 <= n <= 6 or n == 21   # 面: 面のコード(stg.c)を呼ぶ(tools/mkrom.py が見出しに番地を書く)
         self.models = ['FLAK', 'ROCKET', 'SUPPLY', 'MEDIC']
         self.boss = None
         self._p = []          # 点ごとの (x, y, z, yaw_rad, spd)
 
     def segs(self, *segs):
-        """(長さ, ヨー変化[度], 高さの変化, 速度) の列。長さは 2 の倍数。stage は 4 単位ずつの量を積む"""
+        """(長さ, ヨー変化[度], 高さの変化, 速度) の列。長さは 2 の倍数(周回区間の初めは 8 の倍数)。
+        lap_segs の区間(ヨー変化が LAP)は、敵が残っている間に繰り返すまっすぐな区間"""
         x, y, z, yaw = 0.0, self.y0, 0.0, 0.0
         self.circles = []
         m = 0
-        for j, (ln, dyaw, dy, spd) in enumerate(segs):
-            if dyaw == 90 and (j == 0 or segs[j - 1][1] != 90):
-                self.circles.append(m)
-            m += ln
+        out = []
         for ln, dyaw, dy, spd in segs:
+            if dyaw == LAP:
+                assert m % 8 == 0 and ln % 8 == 0, (self.name, m)
+                self.circles.append(m)
+                dyaw = 0
+            out.append((ln, dyaw, dy, spd))
+            m += ln
+        for ln, dyaw, dy, spd in out:
             n = ln // 2
             for i in range(n):
                 self._p.append((x, y, z, yaw, spd))
@@ -50,7 +57,7 @@ class Mod:
                 x += 2 * math.sin(yaw)
                 z += 2 * math.cos(yaw)
                 y += dy / n
-        for i in range(3):
+        for i in range(3 if self.flags & SF_SCENE else 8):     # 終わりの先の余り(場面は経路を進まないので少しでよい)
             self._p.append((x, y, z, yaw, segs[-1][3]))
             x += 2 * math.sin(yaw)
             z += 2 * math.cos(yaw)
@@ -63,15 +70,19 @@ class Mod:
         return v - 0x10000 if v >= 0x8000 else v
 
     def finish(self, pat):
-        """経路の点を固定小数点にし、区画を作る。pat(k) = 区画 k のメッシュ"""
+        """区画(8 単位ごと。経路の点を兼ねる)を作る。pat(k) = 区画 k のメッシュ"""
         ps = self._p
-        for i, (x, y, z, yaw, spd) in enumerate(ps):
-            nx = ps[min(i + 1, len(ps) - 1)]
-            pitch = math.atan2(nx[1] - y, 2.0)
-            self.path.append((self.wrap(x), self.wrap(y), self.wrap(z), int(round(yaw * 128 / math.pi)) & 255, int(round(pitch * 128 / math.pi))))
-        for k in range(len(ps) // 4):
+        n = len(ps) // 4
+        if n < 3:
+            raise SystemExit('stage_data: %s の区画が %d しかない(3 つ以上ないと場面がすぐ終わる)' % (self.name, n))
+        if n > 250:
+            raise SystemExit('stage_data: %s の経路が長すぎる(%d 区画。250 まで)' % (self.name, n))
+        for k in range(n):
             x, y, z, yaw, spd = ps[k * 4]
-            self.sections.append({'mesh': pat(k), 'x': self.wrap(x), 'y': self.wrap(self.sec_y), 'z': self.wrap(z), 'spd': spd, 'yaw': int(round(yaw * 128 / math.pi)) & 255})
+            nx = ps[min(k * 4 + 4, len(ps) - 1)]
+            pitch = math.atan2(nx[1] - y, 8.0)
+            self.sections.append({'mesh': pat(k), 'x': self.wrap(x), 'y': self.wrap(self.sec_y), 'z': self.wrap(z), 'spd': spd,
+                                  'yaw': int(round(yaw * 128 / math.pi)) & 255, 'py': self.wrap(y), 'pitch': int(round(pitch * 128 / math.pi))})
 
     def at(self, m, lat=0, alt=None):
         p = self._p[min(int(m) // 2, len(self._p) - 1)]
@@ -107,9 +118,9 @@ class Mod:
         self.ev(at, EV_ROLL, frames, step)
 
     def lap(self, n):
-        """n 番目の周回区間(経路の 1 周の部分)に、敵が残っていれば回る命令を置く"""
+        """n 番目の周回区間(まっすぐ LAP_LEN 単位)に、敵が残っていれば初めへ戻る命令を置く"""
         a = self.circles[n]
-        self.ev(a + 72, EV_LOOP, x=a)
+        self.ev(a + LAP_LEN - 2, EV_LOOP, x=a)
 
     def setboss(self, at, mov, dist, parts, pos=(0, 0, 0)):
         for p in parts:
@@ -118,17 +129,23 @@ class Mod:
         # 指示書の耐久のままだとバルカン 10 発/秒で数秒で終わるので、ボスの部位は 3 倍にする(飾りと耐久 1 の部位はそのまま)
         parts = [p[:4] + (min(255, p[4] * 3) if p[4] > 1 else p[4],) + p[5:] for p in parts]
         self.boss = {'mov': mov, 'dist': dist, 'parts': parts}
-        at = self.circles[2] - 16
+        at = self.circles[-1] - 16      # 最後の周回区間の手前で現れ、その区間を回りながら戦う
         x, y, z = pos
         self.ev(at, EV_BOSS, x=self.wrap(x), y=self.wrap(y), z=self.wrap(z))
 
     def end(self):
-        self.ev(len(self._p) * 2 - 8, EV_END)
+        # 最後のまっすぐな区間(ボスを倒した後の余韻。面の速さで約 6 秒)を飛び切ったら終える
+        self.ev(len(self._p) * 2 - 24, EV_END)
+
+
+LAP = 'LAP'
+LAP_LEN = 128
 
 
 def lap_segs(spd):
-    """周回区間(120 単位): 直線 24、右へ 1 周 72、直線 24"""
-    return [(24, 0, 0, spd), (18, 90, 0, spd), (18, 90, 0, spd), (18, 90, 0, spd), (18, 90, 0, spd), (24, 0, 0, spd)]
+    """周回区間: まっすぐ LAP_LEN 単位(敵が残っている間は初めへ戻って繰り返す。前は右へ 1 周する円で、同じ所を旋回して見えた)。
+    区画の絵は 16 区画ごとに繰り返されるので、区間の中に一度きりの目印を置かない"""
+    return [(LAP_LEN, LAP, 0, spd)]
 
 
 MODS = []
@@ -150,15 +167,23 @@ def towns():
     over.tbox((0, 12, 0), (60, 1.5, 4), IRON, top=TER2, skip='b'); over.tbox((-14, 6, 0), (2, 12, 2), IRON, detail=True); over.tbox((14, 6, 0), (2, 12, 2), IRON, detail=True)
     return [a, b, a, c, a, b, m, c], over
 
+def ahead_alt(s, m, d=0.0):
+    """経路の位置 m の高さ + d(高さが変わる面で、敵を経路に合わせて置く)"""
+    return s.at(m)[1] + d
+
+
 def s1():
-    s = Mod(1, 'STAGE 1 / THE TOWN', MORNING, 'STAGE1', clock=0x50, radio='HOLD ON, HINA.', line='HOT AIR.')
+    s = Mod(1, 'STAGE 1 / THE TOWN', MORNING, 'STAGE1', radio='HOLD ON, HINA.', line='HOT AIR.')
     s.y0 = 6
+    s.weapon = 1                        # 秘密兵器: 気球の爆弾
     sp = 14     # 低く飛ぶ面なので、ほかの面(20〜26)より遅く。20 だとロックした戦車へ誘導弾が届く前に通り過ぎ、倒したか見えなかった
-    s.segs((96, 0, 0, sp), (32, 30, 0, sp), (32, -30, 0, sp), *lap_segs(sp), (64, 0, 0, sp), (32, -35, 0, sp), (32, 35, 0, sp), *lap_segs(sp), (32, 0, 0, sp), *lap_segs(13))
+    s.segs((96, 0, 0, sp), (32, 30, 0, sp), (32, -30, 0, sp), *lap_segs(sp), (64, 0, 0, sp), (32, -35, 0, sp), (32, 35, 0, sp), *lap_segs(sp),
+           (64, 0, 0, sp), (48, 25, 0, sp), (48, -25, 0, sp), (64, 0, 0, sp), (32, 20, 0, sp), (32, -20, 0, sp), *lap_segs(sp),
+           (32, 0, 0, sp), *lap_segs(13), (40, 0, 0, 13))
     pats, over = towns()
-    s.finish(lambda k: over if k == 42 else pats[(k * 5 + k // 7) % len(pats)])
-    # 周回区間 1: 136-208、2: 368-440、ボス: 496-568
-    s.lap(0); s.lap(1); s.lap(2)
+    s.finish(lambda k: over if k in (42, 78) else pats[(k * 5 + k // 7) % len(pats)])
+    # 周回区間 0: 160-288、1: 416-544、2: 832-960、ボス: 992-1120
+    s.lap(0); s.lap(1); s.lap(2); s.lap(3)
     s.text(32, 'ROOFTOPS!')
     for at in (16, 44, 72, 112, 140):
         s.spawn(at, E01, at + 30, -3 if at % 8 else 3, .6, P_PARALLEL)
@@ -172,32 +197,51 @@ def s1():
         s.spawn(at, E01, at + 30, 3, .6, P_PARALLEL); s.spawn(at, E02, at + 50, -7, .8, P_HOLD)
     s.prompt(332, PR_DIVE, 60)
     s.text(328, 'OVERPASS!')
-    for at in (350, 372, 394, 416):
+    for at in (350, 372, 394):
         s.spawn(at, E02, at + 45, 6 if at < 390 else -10, .8, P_HOLD); s.spawn(at, E02, at + 52, -6, .8, P_HOLD)
-    for at in (432, 450, 468):
+    for at in (430, 452, 474, 496):
         s.spawn(at, E01, at + 30, -3, .6, P_PARALLEL); s.spawn(at, E01, at + 30, 4, .6, P_PARALLEL)
-    s.item(470, MEDIC, 520, 2, 7)
-    s.setboss(530, 0, 34, [
+    # 後半: 町の上に P-51 が降りてくる(蛇行・後ろから追い越す)。2 つ目の高架の下をくぐる
+    s.text(548, 'P-51S!')
+    for at in (552, 586, 620):
+        s.spawn(at, E04, at + 70, -4, 9, P_WEAVE, 128); s.spawn(at, E04, at + 74, 5, 10, P_WEAVE, 128)
+    for at in (570, 604, 638):
+        s.spawn(at, E02, at + 50, -7, .8, P_HOLD); s.spawn(at, E01, at + 30, 3, .6, P_PARALLEL)
+    s.item(600, SUPPLY, 650, 0, 8)
+    s.prompt(616, PR_DIVE, 60)
+    s.text(612, 'OVERPASS!')
+    for at in (660, 700, 740):
+        s.spawn(at, E04, at - 8, 0, 12, P_SWOOP, 128)
+        s.spawn(at, E02, at + 46, 7, .8, P_HOLD); s.spawn(at, E02, at + 54, -7, .8, P_HOLD)
+    s.item(720, MEDIC, 770, -2, 7)
+    for at in (770, 796, 822, 848):
+        s.spawn(at, E01, at + 30, -4, .6, P_PARALLEL); s.spawn(at, E04, at + 60, 0, 10, P_ORBIT, 128)
+    s.item(930, MEDIC, 980, 2, 7)
+    s.setboss(0, 0, 24, [
         ('B_BALLOON', -14, 2, 0, 6, 0, 0, 1), ('B_BALLOON', -7, 5, 6, 6, 0, 0, 1), ('B_BALLOON', 0, 2, 0, 6, 0, 0, 1),
-        ('B_BALLOON', 7, 5, 6, 6, 0, 0, 1), ('B_BALLOON', 14, 2, 0, 6, 0, 0, 1)], s.at(560, 0, 16))
+        ('B_BALLOON', 7, 5, 6, 6, 0, 0, 1), ('B_BALLOON', 14, 2, 0, 6, 0, 0, 1)], s.at(1020, 0, 8))      # カメラ(6)の少し上。16 だと近づけた後は画面の上の端に寄った
     s.end()
     return s
 
 def s2():
-    s = Mod(2, 'STAGE 2 / THE HARBOR', NOON, 'STAGE2', clock=0x40, radio='THEY HAVE LASERS, PAPA.', line='CRABS GO IN THE POT.')
-    # 追っ手との空中戦が主なので、前半は高く(24)飛ぶ。後半に港の基地(レーザー戦車)へ降りて叩き、そのままボスへ
+    s = Mod(2, 'STAGE 2 / THE HARBOR', NOON, 'STAGE2', radio='THEY HAVE LASERS, PAPA.', line='CRABS GO IN THE POT.')
+    # 追っ手との空中戦が主なので、前半は高く(24)飛ぶ。中ほどで港の基地(レーザー戦車)へ降りて叩き、沖の艦隊を抜けてボスへ
     s.y0 = 24
+    s.weapon = 2                        # 秘密兵器: 左右からの誘導弾
     sp = 22
-    s.segs((104, 0, 0, sp), (24, 0, 0, sp), (40, 25, 0, sp), *lap_segs(sp), (48, -25, -8, sp), (32, 0, -6, sp), *lap_segs(sp), (32, 0, 0, sp), *lap_segs(16))
+    s.segs((104, 0, 0, sp), (24, 0, 0, sp), (40, 25, 0, sp), *lap_segs(sp), (48, -25, -8, sp), (32, 0, -6, sp), *lap_segs(sp),
+           (64, 0, 0, sp), (48, -20, 0, sp), (48, 20, 0, sp), (96, 0, 0, sp), (64, 15, 0, sp), (64, -15, 0, sp), (96, 0, 0, sp), *lap_segs(sp),
+           (32, 0, 0, sp), *lap_segs(16), (48, 0, 0, 16))
     q = strip(Mesh(), -40, -5, IRON)
     strip(q, 5, 60, CLOUD, y=0, detail=True)
     a = Mesh(); strip(a, -40, -5, IRON); a.tbox((-14, 2.5, 0), (9, 5, 7), TER1, side=TER2, top=IRON, skip='bk')
-    b = Mesh(); strip(b, -40, -5, IRON); b.tbox((-8, 7, 0), (.8, 14, .8), ORANGE); b.tbox((0, 13.5, 0), (18, .8, .8), ORANGE, detail=True)
+    b = Mesh(); strip(b, -40, -5, IRON); b.tbox((-8, 7, 0), (.8, 14, .8), ORANGE); b.tbox((-12, 13.5, 0), (10, .8, .8), ORANGE, detail=True)
     c = Mesh(); strip(c, -40, -5, IRON); c.tbox((-12, 1.2, 0), (3, 2.4, 6), RED, skip='b'); c.tbox((-8.5, 1.2, 0), (3, 2.4, 6), GREEN, skip='b'); c.tbox((-12, 3.6, 0), (3, 2.4, 6), CYAN, detail=True, skip='b')
     d = Mesh(); strip(d, -40, -5, IRON); d.tbox((22, 2, 0), (10, 4, 8), IRON, top=TER2, skip='bk'); d.tbox((22, 6, 2), (4, 4, 3), WHITE, detail=True, skip='b')
     pats = [q, a, c, q, b, a, d, c]
     s.finish(lambda k: pats[(k * 3 + k // 5) % len(pats)])
-    s.lap(0); s.lap(1); s.lap(2)
+    # 周回区間 0: 168-296、1: 376-504、2: 984-1112、ボス: 1144-1272
+    s.lap(0); s.lap(1); s.lap(2); s.lap(3)
     s.text(40, 'BANDITS!')
     for at in (16, 48, 80, 112):
         s.spawn(at, E04, at + 70, -6, 25, P_PASS, 128); s.spawn(at, E04, at + 76, 5, 22, P_PASS, 128)
@@ -209,23 +253,38 @@ def s2():
     for at in (272, 298, 324, 350, 376):
         s.spawn(at, E03, at + 56, -10, .8, P_HOLD); s.spawn(at, E04, at + 80, 3, 12, P_PASS, 128)
     s.prompt(300, PR_ROLL, 60)
-    for at in (404, 430, 456):
-        s.spawn(at, E02, at + 36, -8, .8, P_HOLD); s.spawn(at, E04, at + 80, 0, 13, P_PASS, 128)
-    s.item(470, MEDIC, 510, 2, 9)
-    s.setboss(500, 0, 34, [
+    for at in (404, 430, 456, 482):
+        s.spawn(at, E02, at + 36, -8, .8, P_HOLD); s.spawn(at, E04, at + 80, 0, 13, P_WEAVE, 128)
+    # 後半: 沖の艦隊。右の海に戦艦が並び、魚雷艇が並走して撃ってくる
+    s.text(520, 'BATTLESHIPS!')
+    for at in (520, 590, 660, 730, 800, 870):
+        s.spawn(at, E09, at + 70, 22 if at % 140 else 30, 0, P_HOLD)
+    for at in (540, 600, 660, 720, 780, 840, 900):
+        s.spawn(at, E10, at + 30, 9, .3, P_PARALLEL); s.spawn(at, E10, at + 36, 14, .3, P_PARALLEL)
+    for at in (560, 640, 720, 800, 880):
+        s.spawn(at, E04, at + 80, -4, 14, P_WEAVE, 128)
+    s.prompt(690, PR_ROLL, 60)
+    s.item(620, SUPPLY, 670, 0, 11); s.item(780, MEDIC, 830, 2, 11)
+    for at in (920, 950, 980):
+        s.spawn(at, E03, at + 56, -12, .8, P_HOLD); s.spawn(at, E04, at - 8, 0, 16, P_SWOOP, 128)
+    s.item(1100, MEDIC, 1150, 2, 9)
+    s.setboss(0, 0, 24, [
         ('B_CRAB', 0, -3, 0, 40, 9, 8, 0),
         ('B_MOUTH', -2, 4, -1, 10, 0, 0, CLR_LASER), ('B_MOUTH', 2, 4, -1, 10, 0, 0, CLR_LASER),
-        ('B_CORE', 0, 1, -6, 40, 1, 2, 1)], s.at(520, 0, 6))
+        ('B_CORE', 0, 1, -6, 40, 1, 2, 1)], s.at(1180, 0, 9))      # カメラ(10)とほぼ同じ高さ
     s.end()
     return s
 
 def s3():
-    s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', clock=0x30, radio='PAPA, HURRY!', line='THREE FOR ONE.')
+    s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', radio='PAPA, HURRY!', line='THREE FOR ONE.')
     s.ahead = 11                        # 谷の壁を遠くまで見せる(8 区画だと、高く飛ぶ前半に遠くの壁が消えて平地に見えた)
-    # 前半は谷の上(28。壁は 24 まで)で追っ手と空中戦。後半に谷へ降り、谷底の基地(戦車)を叩いてボスへ
+    s.weapon = 3                        # 秘密兵器: P-51 の群れ
+    # 前半は谷の上(28。壁は 24 まで)で追っ手と空中戦。中ほどで谷へ降り、谷底の基地(戦車)を叩きながら谷を抜けてボスへ
     s.y0 = 28
     sp = 24
-    s.segs((80, 0, 0, sp), (40, 35, 0, sp), (40, -70, 0, sp), (40, 35, 0, sp), *lap_segs(sp), (56, 30, -10, sp), (56, -30, -11, sp), *lap_segs(sp), (24, 0, 0, sp), *lap_segs(18))
+    s.segs((80, 0, 0, sp), (40, 35, 0, sp), (40, -70, 0, sp), (40, 35, 0, sp), *lap_segs(sp), (56, 30, -10, sp), (56, -30, -11, sp), *lap_segs(sp),
+           (64, 0, 0, sp), (48, 40, 0, sp), (48, -40, 0, sp), (64, 0, 0, sp), (48, -30, 0, sp), (48, 30, 0, sp), (96, 0, 0, sp), *lap_segs(sp),
+           (24, 0, 0, sp), *lap_segs(18), (56, 0, 0, 18))
     def wall(rock):
         # 壁は 16 単位ずつ。偶数の区画だけ描き、2 区画に 1 枚で済ませる(谷の壁は大きいので、枚数を減らさないと 12fps を割る)
         m = Mesh()
@@ -241,8 +300,9 @@ def s3():
     br.tbox((0, 13, 0), (40, .6, 2), IRON, top=TER1, skip='b')
     aa = Mesh(); aa.__dict__.update(wall(0).__dict__); aa.tbox((-9, 1, 0), (5, 2, 5), IRON, top=BLACK, skip='b')
     pats = [a, a, b, a, c, a, aa, a]
-    s.finish(lambda k: None if k % 2 else br if k in (24, 60) else pats[(k // 2 * 3) % len(pats)])
-    s.lap(0); s.lap(1); s.lap(2)
+    s.finish(lambda k: None if k % 2 else br if k in (24, 78, 112) else pats[(k // 2 * 3) % len(pats)])
+    # 周回区間 0: 200-328、1: 440-568、2: 984-1112、ボス: 1136-1264
+    s.lap(0); s.lap(1); s.lap(2); s.lap(3)
     s.text(36, 'BEHIND YOU!')
     for at in (16, 44, 76, 108):
         s.spawn(at, E04, at + 70, -6, 30, P_PASS, 128); s.spawn(at, E04, at + 80, 3, 27, P_PASS, 128)
@@ -255,26 +315,42 @@ def s3():
     for at in (310, 340, 370, 400):
         s.spawn(at, E04, at + 80, 2, None, P_PASS, 128); s.spawn(at, E03, at + 60, -6, .8, P_HOLD)    # 降りながら。高さは経路に合わせる
     s.item(420, MEDIC, 460, 0, 8)
-    for at in (440, 470, 496):
+    for at in (440, 470, 500):
         s.spawn(at, E04, at + 80, -2, 9, P_TAIL, 128)
-    s.setboss(528, 0, 30, [
-        ('B_HYDRA', -12, 0, 0, 20, 0, 16, 0x11), ('B_HYDRA', 6, 10, 0, 20, 0, 16, 0x11), ('B_HYDRA', 6, -10, 0, 20, 0, 16, 0x11)], s.at(560, 0, 7))
+    # 後半: 谷底を低く。前で輪を描く P-51 と、谷底の戦車
+    s.text(576, 'IN THE CANYON!')
+    s.roll(600, 24, 2); s.roll(650, 24, -2); s.roll(700, 24, 0)
+    for at in (576, 612, 648, 684):
+        s.spawn(at, E04, at + 60, 0, 9, P_ORBIT, 128); s.spawn(at, E02, at + 50, 5 if at % 72 else -5, .8, P_HOLD)
+    s.item(660, SUPPLY, 700, 0, 7)
+    for at in (720, 756, 792, 828):
+        s.spawn(at, E04, at + 80, -2, 8, P_WEAVE, 128); s.spawn(at, E03, at + 56, 6, .8, P_HOLD)
+    s.prompt(800, PR_ROLL, 60)
+    for at in (860, 900, 940):
+        s.spawn(at, E04, at - 8, 0, 12, P_SWOOP, 128); s.spawn(at, E04, at + 80, 3, 8, P_TAIL, 128)
+    s.item(960, MEDIC, 1000, 0, 7)
+    s.setboss(0, 0, 22, [
+        ('B_HYDRA', -12, 0, 0, 20, 0, 16, 0x11), ('B_HYDRA', 6, 10, 0, 20, 0, 16, 0x11), ('B_HYDRA', 6, -10, 0, 20, 0, 16, 0x11)], s.at(1180, 0, 7))
     s.end()
     return s
 
 def s4():
-    s = Mod(4, 'STAGE 4 / THE CLOUD SEA', NIGHT, 'STAGE4', clock=0x20, radio='THEY ARE ON YOUR TAIL!', line='TOO MUCH GAS.')
+    s = Mod(4, 'STAGE 4 / THE CLOUD SEA', NIGHT, 'STAGE4', radio='THEY ARE ON YOUR TAIL!', line='TOO MUCH GAS.')
     # 雲の峰(18 まで)の上を飛ぶ(前は 12 で、雲の海の中に沈んで見えた)
     s.y0 = 20
+    s.weapon = 4                        # 秘密兵器: 横一列の弾幕
     sp = 20
-    s.segs((104, 0, 0, sp), (32, 20, 0, sp), *lap_segs(sp), (32, -20, 2, sp), (80, 0, 0, sp), *lap_segs(sp), (24, 0, 0, sp), *lap_segs(16))
+    s.segs((104, 0, 0, sp), (32, 20, 0, sp), *lap_segs(sp), (32, -20, 2, sp), (80, 0, 0, sp), *lap_segs(sp),
+           (64, 0, 0, sp), (48, 25, 0, sp), (48, -25, 0, sp), (96, 0, 0, sp), (48, -15, 0, sp), (48, 15, 0, sp), (64, 0, 0, sp), *lap_segs(sp),
+           (24, 0, 0, sp), *lap_segs(16), (48, 0, 0, 16))
     a = strip(Mesh(), -60, 60, CLOUD, detail=True)
     b = Mesh(); strip(b, -60, 60, CLOUD, detail=True); b.tbox((-16, 9, 0), (10, 18, 8), CLOUD, top=WHITE, side=TER1, skip='b')
     c = Mesh(); c.tbox((18, 7, 0), (12, 14, 10), CLOUD, top=WHITE, side=TER1, skip='b')
     d = Mesh(); d.prism_y((30, 40, 40), 5, .5, 8, WHITE, detail=False)
     pats = [a, Mesh().face([(-1, 0, 0), (0, 0, 1), (1, 0, 0)], CLOUD), b, a, c, a]
     s.finish(lambda k: d if k % 16 == 3 else pats[(k * 5) % len(pats)])
-    s.lap(0); s.lap(1); s.lap(2)
+    # 周回区間 0: 136-264、1: 376-504、2: 920-1048、ボス: 1072-1200
+    s.lap(0); s.lap(1); s.lap(2); s.lap(3)
     s.text(36, 'AIRSHIPS!')
     for at in (16, 48, 84, 120):
         s.spawn(at, E05, at + 60, -24, 28, P_CROSS); s.spawn(at, E05, at + 76, -30, 24, P_CROSS)
@@ -288,28 +364,43 @@ def s4():
         s.spawn(at, E05, at + 60, -24, 26, P_CROSS); s.spawn(at, E04, at + 80, -3, 21, P_PASS, 128)
     s.prompt(300, PR_ROLL, 60)
     s.item(360, MEDIC, 400, 2, 22)
-    for at in (384, 412, 440):
+    for at in (384, 412, 440, 468):
         s.spawn(at, E04, at + 80, 3, 22, P_TAIL, 128)
+    # 後半: 雲の峰の間を、飛行船の艦隊と夜間戦闘機
+    s.text(512, 'FLEET AHEAD!')
+    for at in (512, 560, 608, 656, 704):
+        s.spawn(at, E05, at + 64, -26, 27, P_CROSS); s.spawn(at, E04, at + 70, 4, 22, P_ORBIT, 128)
+    s.roll(600, 42, 3); s.roll(690, 42, 3)
+    s.item(640, SUPPLY, 690, 0, 23)
+    for at in (740, 776, 812, 848, 884):
+        s.spawn(at, E04, at + 80, -3, 22, P_WEAVE, 128); s.spawn(at, E04, at - 8, 2, 26, P_SWOOP, 128)
+    s.prompt(800, PR_ROLL, 60)
+    s.item(900, MEDIC, 940, 2, 22)
     parts = [('B_HULL', 0, 8, 10, 1, 9, 8, 0)]
     for k, (x, z) in enumerate(((-9, -12), (0, -8), (9, -12))):
         parts.append(('B_GONDOLA', x, -2, z, 15, 0, 0, CLR_FIBER))
     for x in (-6, -2, 2, 6):
         parts.append(('B_CORE', x, 2, -22, 10, 1, 2, 0))
-    s.setboss(480, 0, 58, parts, s.at(520, 0, 26))
+    s.setboss(0, 0, 40, parts, s.at(1110, 0, 26))
     s.end()
     return s
 
 def s5():
-    s = Mod(5, 'STAGE 5 / THE STRATOSPHERE', TWILIGHT, 'STAGE5', clock=0x10, radio='PAPA, HURRY!', line='NICE WINGS.')
+    s = Mod(5, 'STAGE 5 / THE STRATOSPHERE', TWILIGHT, 'STAGE5', radio='PAPA, HURRY!', line='NICE WINGS.')
     s.y0 = 22
+    s.weapon = 5                        # 秘密兵器: 大きな誘導弾
+    s.models.append('ROCKETL')
     sp = 26
-    s.segs((80, 0, 8, sp), (48, 15, 8, sp), *lap_segs(sp), (48, -15, 8, sp), (64, 0, 6, sp), *lap_segs(sp), (24, 0, 2, sp), *lap_segs(18))
+    s.segs((80, 0, 8, sp), (48, 15, 8, sp), *lap_segs(sp), (48, -15, 8, sp), (64, 0, 6, sp), *lap_segs(sp),
+           (64, 0, 4, sp), (48, 20, 4, sp), (48, -20, 4, sp), (96, 0, 4, sp), (48, 15, 2, sp), (48, -15, 2, sp), (64, 0, 2, sp), *lap_segs(sp),
+           (24, 0, 0, sp), *lap_segs(18), (56, 0, 0, 18))
     a = strip(Mesh(), -60, 60, CLOUD, detail=True)
     b = Mesh().prism_y((-14, 40, 0), 3, 3, 8, IRON, top=WHITE)
     c = Mesh(); c.tbox((14, 34, 0), (1, 40, 1), RED); c.tbox((14, 54, 0), (5, 1, 5), IRON, detail=True)
     pats = [a, Mesh().face([(-1, 0, 0), (0, 0, 1), (1, 0, 0)], CLOUD), b, a]
     s.finish(lambda k: c if k == 66 else pats[(k * 3) % len(pats)])
-    s.lap(0); s.lap(1); s.lap(2)
+    # 周回区間 0: 128-256、1: 368-496、2: 912-1040、ボス: 1064-1192
+    s.lap(0); s.lap(1); s.lap(2); s.lap(3)
     s.text(36, 'MISSILES!')
     for at in (16, 44, 76, 108, 136):
         s.spawn(at, E06, at + 70, 3, 30, P_BOUNCE, 128); s.spawn(at, E04, at + 84, -4, 32, P_PASS, 128)
@@ -321,27 +412,41 @@ def s5():
         s.spawn(at, E06, at + 70, 4, 52, P_BOUNCE, 128); s.spawn(at, E06, at + 76, -4, 54, P_PASS, 128)
     s.prompt(300, PR_ROLL, 60)
     s.item(350, MEDIC, 400, 0, 60)
-    for at in (392, 420, 448):
+    for at in (392, 420, 448, 476):
         s.spawn(at, E04, at + 80, 3, 64, P_TAIL, 128)
-    s.setboss(480, 0, 34, [
+    # 後半: さらに昇る。ロケットを積んだ P-51 の編隊
+    s.text(504, 'ROCKET SQUADRON!')
+    for at in (504, 540, 576, 612, 648):
+        s.spawn(at, E06, at + 70, -3, ahead_alt(s, at + 70, 1), P_WEAVE, 128); s.spawn(at, E06, at + 76, 4, ahead_alt(s, at + 76, 2), P_BOUNCE, 128)
+    s.prompt(560, PR_LOOP, 60)
+    s.item(600, SUPPLY, 650, 0, ahead_alt(s, 650))
+    for at in (690, 726, 762, 798, 834, 870):
+        s.spawn(at, E04, at + 60, 0, ahead_alt(s, at + 60, 2), P_ORBIT, 128); s.spawn(at, E06, at - 8, 0, ahead_alt(s, at, 6), P_SWOOP, 128)
+    s.prompt(760, PR_ROLL, 60)
+    s.item(880, MEDIC, 930, 0, ahead_alt(s, 930))
+    s.setboss(0, 0, 24, [
         ('B_DOPPEL', 0, 0, 0, 60, 1, 0, 0x13),
-        ('B_NOZZLE', -3, 0, -8, 15, 0, 0, 2), ('B_NOZZLE', 3, 0, -8, 15, 0, 0, 2)], s.at(520, 0, 58))     # カメラ(高さ 54)の少し上。カメラより 14 上だと画面の上の端に張り付いた
+        ('B_NOZZLE', -3, 0, -8, 15, 0, 0, 2), ('B_NOZZLE', 3, 0, -8, 15, 0, 0, 2)], s.at(1120, 0, ahead_alt(s, 1120, 4)))     # カメラの少し上。カメラより 14 上だと画面の上の端に張り付いた
     s.end()
     return s
 
 def s6():
-    s = Mod(6, 'STAGE 6 / THE ORBIT', SPACE, 'STAGE6', flags=SF_SPACE, clock=0x01, radio='I CAN SEE YOU!', line='GIVE HER BACK.')
+    s = Mod(6, 'STAGE 6 / THE ORBIT', SPACE, 'STAGE6', flags=SF_SPACE, radio='SHE IS ON THAT ROCKET!', line='NOT SO FAST!')
     s.y0 = 60
+    s.weapon = 6                        # 秘密兵器: 機雷
     sp = 20
-    s.segs((104, 0, 0, sp), (32, 15, 0, sp), *lap_segs(sp), (32, -15, 0, sp), (88, 0, 0, sp), *lap_segs(sp), (24, 0, 0, sp), *lap_segs(16))
+    s.segs((104, 0, 0, sp), (32, 15, 0, sp), *lap_segs(sp), (32, -15, 0, sp), (88, 0, 0, sp), *lap_segs(sp),
+           (64, 0, 0, sp), (48, 20, 0, sp), (48, -20, 0, sp), (96, 0, 0, sp), (48, -15, 0, sp), (48, 15, 0, sp), (64, 0, 0, sp), *lap_segs(sp),
+           (24, 0, 0, sp), *lap_segs(16), (48, 0, 0, 16))
     a = Mesh(); a.tbox((-14, 2, 0), (3, 3, 3), TER2, top=TER1)
     b = Mesh(); b.plate([(12, -4, -3), (12, 4, -3), (18, 4, 3), (18, -4, 3)], CYAN)
     c = Mesh(); c.tbox((-22, 0, 0), (1, 1, 8), TER1, skip='fk'); c.tbox((-22, 6, 0), (1, 12, 1), TER1, detail=True); c.tbox((22, 0, 0), (1, 1, 8), TER1, skip='fk')
     s.sec_y = 60
     pats = [None, a, None, b, None, c]
     s.finish(lambda k: pats[(k * 5) % len(pats)])
-    s.lap(0); s.lap(1); s.lap(2)
-    s.text(36, 'THERE SHE IS!')
+    # 周回区間 0: 136-264、1: 384-512、2: 928-1056、ボス: 1080-1208
+    s.lap(0); s.lap(1); s.lap(2); s.lap(3)
+    s.text(36, 'THE ORBIT BASE!')
     s.ev(8, EV_PAL, 1)                  # 常にゆっくり回る
     for at in (16, 40, 64, 92, 120, 148):
         s.spawn(at, E07, at + 60, -6, 62, P_DRIFT); s.spawn(at, E07, at + 66, 6, 58, P_DRIFT); s.spawn(at, E08, at + 80, -3, 63, P_HOLD)
@@ -350,18 +455,77 @@ def s6():
     s.item(180, SUPPLY, 230, 0, 61)
     for at in (260, 288, 316, 344, 372):
         s.spawn(at, E08, at + 70, -2, 60, P_HOLD); s.spawn(at, E07, at + 56, 4, 60, P_DRIFT)
-    for at in (130, 300, 360, 440):
+    for at in (130, 300, 360):
         s.prompt(at, PR_ROLL, 60)
     s.item(400, MEDIC, 440, 0, 60)
-    s.ev(470, EV_VOICE, V_GIVE)
-    s.text(470, 'GIVE HER BACK.')
-    s.setboss(486, 0, 38, [
+    # 後半: 基地の守りの宇宙戦闘機(P-51 の改造)と衛星
+    s.text(520, 'SPACE FIGHTERS!')
+    for at in (520, 556, 592, 628, 664):
+        s.spawn(at, E06, at + 70, -3, 61, P_WEAVE, 128); s.spawn(at, E08, at + 60, 6, 62, P_HOLD)
+    s.item(640, SUPPLY, 690, 0, 60)
+    for at in (700, 736, 772, 808, 844, 880):
+        s.spawn(at, E04, at + 60, 0, 60, P_ORBIT, 128); s.spawn(at, E07, at + 50, -4 if at % 72 else 4, 60, P_DRIFT)
+    for at in (600, 760, 860):
+        s.prompt(at, PR_ROLL, 60)
+    s.item(900, MEDIC, 950, 0, 60)
+    s.setboss(0, 0, 28, [
         ('B_KEYHOLE', 0, 0, 6, 1, 9, 8, 0),
         ('B_LENS', -6, 0, -6, 12, 0, 0, 0x10), ('B_LENS', -2, 5, -6, 12, 0, 0, 0x11),
         ('B_LENS', 4, 3, -6, 12, 0, 0, 0x12), ('B_LENS', 4, -3, -6, 12, 0, 0, 0x13),
         ('B_LENS', -2, -5, -6, 12, 9, 8, 0x14),
-        ('B_CORE', 0, 0, -5, 60, 1, 2, 0),
-        ('CAPSULE', 0, 8, 0, 1, 9, 1, 0)], s.at(520, 0, 60))
+        ('B_CORE', 0, 0, -5, 60, 1, 2, 0)], s.at(1120, 0, 60))
+    s.end()
+    return s
+
+def s7():
+    """7 面: 深宇宙。地球の見えない星空。ヒナを乗せたロケット(方舟)を追い、小惑星の間を抜けて取り戻す"""
+    s = Mod(21, 'STAGE 7 / DEEP SPACE', SPACE, 'STAGE6', flags=SF_SPACE | SF_DEEP, radio='I CAN SEE YOU!', line='GIVE HER BACK.')
+    s.y0 = 60
+    s.weapon = 7                        # 秘密兵器: 全部を順に
+    s.models += ['MUSTANG', 'MINE', 'ROCKETL']
+    sp = 20
+    s.segs((104, 0, 0, sp), (32, 15, 0, sp), *lap_segs(sp), (64, -15, 0, sp), (96, 0, 0, sp), *lap_segs(sp),
+           (64, 20, 0, sp), (64, -20, 0, sp), (96, 0, 0, sp), (64, 0, 0, sp), *lap_segs(sp),
+           (24, 0, 0, sp), *lap_segs(16), (48, 0, 0, 16))
+    s.sec_y = 60
+    def rocks(seed):
+        m = Mesh()
+        for i in range(2):
+            x = ((seed * 7 + i * 13) % 30 + 10) * (1 if (seed + i) % 2 else -1)
+            y = ((seed * 5 + i * 3) % 14) - 7
+            m.box((x, y, (i * 4) % 8 - 2), (3 + (seed + i) % 3, 2.5, 3), TER1 if i else TER2, top=IRON, skip='b')
+        return m
+    pats = [rocks(k) for k in range(3)] + [None, None, None]
+    s.finish(lambda k: pats[(k * 3) % len(pats)])
+    # 周回区間 0: 136-264、1: 424-552、2: 840-968、ボス: 992-1120
+    s.lap(0); s.lap(1); s.lap(2); s.lap(3)
+    s.text(36, 'DEEP SPACE!')
+    for at in (16, 44, 72, 100, 128):
+        s.spawn(at, E07, at + 56, -5, 62, P_DRIFT); s.spawn(at, E06, at + 70, 4, 60, P_WEAVE, 128)
+    for at in (160, 196, 232):
+        s.spawn(at, E08, at + 50, -4, 61, P_HOLD); s.spawn(at, E04, at + 60, 0, 60, P_ORBIT, 128)
+    s.item(200, SUPPLY, 250, 0, 60)
+    for at in (280, 316, 352, 388, 424):
+        s.spawn(at, E06, at - 8, 0, 64, P_SWOOP, 128); s.spawn(at, E07, at + 50, 5, 59, P_DRIFT)
+    for at in (150, 330, 470):
+        s.prompt(at, PR_ROLL, 60)
+    s.item(440, MEDIC, 490, 0, 60)
+    s.text(560, 'ASTEROIDS!')
+    for at in (560, 596, 632, 668, 704, 740, 776):
+        s.spawn(at, E07, at + 44, -3 if at % 72 else 3, 60, P_DRIFT); s.spawn(at, E06, at + 70, 0, 61, P_WEAVE, 128)
+    s.prompt(650, PR_LOOP, 60)
+    s.item(700, SUPPLY, 750, 0, 60)
+    for at in (800, 830, 860):
+        s.spawn(at, E08, at + 60, -5, 62, P_HOLD); s.spawn(at, E04, at + 60, 4, 60, P_ORBIT, 128)
+    s.item(900, MEDIC, 950, 0, 60)
+    s.ev(980, EV_VOICE, V_GIVE)
+    s.text(980, 'GIVE HER BACK.')
+    s.setboss(0, 0, 30, [
+        ('B_ARK', 0, 0, 8, 1, 9, 8, 0),
+        ('B_NOZZLE', -5, -3, 2, 15, 0, 0, 2), ('B_NOZZLE', 5, -3, 2, 15, 0, 0, 2), ('B_NOZZLE', -5, 3, 2, 15, 0, 0, 1), ('B_NOZZLE', 5, 3, 2, 15, 0, 0, 1),
+        ('B_LENS', -3, 0, -6, 14, 1, 0, 0x13), ('B_LENS', 3, 0, -6, 14, 1, 0, 0x14),
+        ('B_CORE', 0, 0, -6, 60, 2, 2, 0),
+        ('CAPSULE', 0, 7, 0, 1, 9, 1, 0)], s.at(1040, 0, 60))
     s.end()
     return s
 
@@ -370,7 +534,7 @@ class Film:
     座標は単位(8.8 にして 16bit で回り込む。カメラから 128 単位より遠いものは描かない)。
     向き: 方位 h は度(0 = 北 = +z、90 = 東 = +x)。カメラのヨー = h、役者のヨー = h + 180(モデルの正面は -z)"""
     FL_EASE, FL_BOB, FL_C, FL_SHAKE, FL_STEP = 1, 2, 4, 8, 16
-    FE_SUB, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE = range(1, 8)
+    FE_SUB, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE, FE_FADE = range(1, 9)
 
     def __init__(self):
         self.cam, self.acts, self.evs = [], [], []
@@ -458,7 +622,6 @@ def opening():
     farm = strip(Mesh(), -2.5, 2.5, TER2)
     pats, over = towns()
     s.finish(lambda k: farm if k < 12 else pats[(k * 5) % len(pats)])
-    del s.path[3:]                            # 経路は進まないので、初めの点だけ(区画の置き場所は finish で決まっている)
     f = Film()
     F = Film
     TOWN = 3                                  # 町の区画(3 × 4 = 12 から)
@@ -576,7 +739,7 @@ def opening():
     OUT = T2 + 260
     f.ev(OUT, F.FE_COCKPIT, 1)
     f.ev(OUT + 2, F.FE_SUB, 0, "LET'S GO.")
-    f.ev(OUT + 150, F.FE_SUB, 0, 'THEY LAUNCH HER IN 6 HOURS.')
+    f.ev(OUT + 150, F.FE_SUB, 0, 'YOU HAVE 6 HOURS TO SAVE HER.')
     f.ev(OUT, F.FE_SE, 10)
     f.key(zero, OUT, 'ZEROF', (-8, 9, 62), 0, roll=0)
     f.key(zero, OUT + 70, 'ZEROF', (-6, 17, 90), 10, roll=-15)
@@ -591,7 +754,7 @@ def opening():
     f.key(ship, OUT, 'SHIP', (6, 34, 184), 270, cut=True)
     f.ev(2260, F.FE_END)
     s.film = f
-    s.op_base = 0x9400
+    s.op_base = 0x9500
     return s
 
 def seam1():
@@ -601,9 +764,8 @@ def seam1():
     s = Mod(15, 'SEAM 1', SEA, 'BRIDGE', flags=SF_SCENE)
     s.models = ['ZEROF', 'CRANE', 'DEPOT', 'BEAM', 'CLOUDP']
     s.y0 = 0
-    s.segs((16, 0, 0, 0))
+    s.segs((32, 0, 0, 0))
     s.finish(lambda k: None)
-    del s.path[3:]
     f = Film()
     F = Film
     B = 112.5
@@ -662,9 +824,8 @@ def seam_mod(n, name, pal, flags=0):
     s = Mod(n, name, pal, 'BRIDGE', flags=SF_SCENE | flags)
     s.op_base = 0x9000                         # 演出のコード(Makefile の OPn_BASE と同じ値)
     s.y0 = 0
-    s.segs((16, 0, 0, 0))
+    s.segs((32, 0, 0, 0))                      # 区画が 3 つ以上ないと経路の終わり(path_max)が 0 になり、場面がすぐ終わる
     s.finish(lambda k: None)
-    del s.path[3:]
     return s
 
 
@@ -714,12 +875,17 @@ def seam3():
     s = seam_mod(17, 'SEAM 3', NIGHT)
     s.models = ['RMUSTANG', 'CLOUDP']
     f = Film(); F = Film; B = 112.5; end = 900
-    c1, c2, c3, p1, p2 = [f.actor() for _ in range(5)]
-    for a in (c1, c2, c3, p1, p2):
+    c1, c2, c3, p1, p2, jet = [f.actor() for _ in range(6)]
+    for a in (c1, c2, c3, p1, p2, jet):
         f.key(a, 0, 0, (0, 0, 0))
     f.ev(0, F.FE_COCKPIT, 0)
-    # 1〜4 小節: 機首を上げて雲を抜ける
+    # 1〜4 小節: 機首を上げて雲を抜ける。前を、ヒナを乗せた誘拐犯の戦闘機が昇っていく(スプライト)
     cam = cruise(f, 0, int(4 * B), (0, 6, 0), .28, pitch=12, climb=.06)
+    for t in (0, 150, 300, int(4 * B)):
+        x, y, z = cam(t)
+        f.key(jet, t, 'RAIDER', (2, y + 9 + t * .01, z + 50), 0)
+    f.key(jet, int(4 * B) + 2, 0)
+    f.ev(60, F.FE_CAP, 2, 'AFTER THAT JET!')
     for a, (x, y, z, t0) in zip((c1, c2, c3), ((-6, 14, 40, 0), (8, 22, 90, 120), (-3, 30, 150, 260))):
         f.key(a, t0, 'CLOUDP', (x, y, z)); f.key(a, t0 + 200, 'CLOUDP', (x, y, z))
     # 5〜8 小節: 雲の上で水平に。警報、振り返ると後ろに 2 機
@@ -746,31 +912,53 @@ def seam3():
 
 
 def seam4():
-    """4 面の後(雲海 → 成層圏、明け方)。遠くでロケットが打ち上がり、白い煙を引いて空へ。ヒナを乗せている"""
+    """4 面の後(雲海 → 成層圏、明け方)。前半は雲の上の発射台に寄った絵: 着いた戦闘機から誘拐犯がヒナを担いでロケットへ運び、
+    ヒナが叫ぶ(人物はスプライト)。後半は操縦席から、そのロケットが白い煙を引いて打ち上がるのを見る"""
     s = seam_mod(18, 'SEAM 4', TWILIGHT)
-    s.models = ['ROCKETL', 'PUFF', 'CLOUDP']
+    s.models = ['ROCKETL', 'PUFF', 'CLOUDP', 'PAD']
     f = Film(); F = Film; B = 112.5; end = 900
-    rk, c1 = f.actor(), f.actor()
-    puffs = [f.actor() for _ in range(5)]
-    for a in [rk, c1] + puffs:
+    rk, c1, pad, jet, t1, t2, hina = [f.actor() for _ in range(7)]
+    puffs = [f.actor() for _ in range(4)]
+    for a in [rk, c1, pad, jet, t1, t2, hina] + puffs:
         f.key(a, 0, 0, (0, 0, 0))
-    f.ev(0, F.FE_COCKPIT, 0)
-    cam = cruise(f, 0, end, (0, 20, 0), .22, pitch=8, climb=.02)
-    f.key(c1, 0, 'CLOUDP', (10, 16, 60)); f.key(c1, 300, 'CLOUDP', (10, 16, 60))
-    # 2 小節目から、正面の遠く(100 単位先)でロケットが上がる。昇りながら白い煙を残す
-    t0 = int(1.5 * B)
-    zr = cam(t0)[2] + 45
-    path = lambda t: (4, 4 + .05 * (t - t0), zr + .22 * (t - t0))    # カメラと同じ速さで遠ざかり、大きさを保つ(遅いと追い越して消えた)
-    for t in list(range(t0, end, 300)) + [end]:  # 1 区間で 120 単位を超えないよう刻む
-        f.key(rk, t, 'ROCKETL', path(t))
+    P = 20                                     # 発射台の高さ(雲の上)
+    R = (5, P + 6, 12)                         # ロケットの中心(発射台の上に立つ)
+    # 0〜340: 発射台(外の絵、黒帯)
+    f.ev(0, F.FE_COCKPIT, 1)
+    f.cam_key(0, (-2, P + 1.8, 1), 20, -2)               # 人物が中くらいの絵になる近さ(10 単位より近く)
+    f.cam_key(339, (-1, P + 1.8, 2), 32, -4, fl=F.FL_STEP)
+    f.key(pad, 0, 'PAD', (0, P, 9), cut=True)
+    f.key(rk, 0, 'ROCKETL', R, cut=True)
+    f.key(jet, 0, 'RAIDER', (-6, P, 12), 180, cut=True)
+    f.key(t1, 40, 'TERROR', (-4.5, P, 9), 270, fl=F.FL_BOB, cut=True)
+    f.key(hina, 40, 'HINA', (-4.5, P, 9), 270, roll=90, fl=F.FL_BOB, cut=True)
+    f.key(t1, 280, 'TERROR', (3, P, 11), 270)
+    f.key(hina, 280, 'HINA', (3, P, 11), 270, roll=90)
+    f.key(t1, 300, 0); f.key(hina, 300, 0)           # ロケットに乗り込む
+    f.key(t2, 40, 'TERROR', (-3, P, 6.5), 180, cut=True)    # もう一人は見張る
+    f.key(t2, 300, 'TERROR', (-3, P, 6.5), 270)
+    f.ev(130, F.FE_VOICE, 9)                                  # 「Papa!」
+    f.ev(130, F.FE_CAP, 3, 'PAPA!')
+    f.ev(220, F.FE_SUB, 0, 'THEY PUT HER IN A ROCKET.')
+    # 340〜: 操縦席。遠くの発射台からロケットが打ち上がる
+    f.ev(340, F.FE_COCKPIT, 0)
+    f.ev(340, F.FE_SUB, 0, '')
+    f.key(t2, 340, 0); f.key(jet, 340, 0)
+    cam = cruise(f, 340, end, (0, P + 4, -70), .2, pitch=8, climb=.02)
+    f.key(c1, 340, 'CLOUDP', (10, P - 2, -20), cut=True); f.key(c1, 600, 'CLOUDP', (10, P - 2, -20))
+    t0 = 420
+    up = lambda t: (R[0], R[1] + .09 * (t - t0), R[2] + .2 * (t - t0))
+    f.key(rk, t0, 'ROCKETL', R)
+    for t in list(range(t0 + 150, end, 150)) + [end]:
+        f.key(rk, t, 'ROCKETL', up(t))
     for i, a in enumerate(puffs):
         tp = t0 + 40 + i * 110
-        f.key(a, tp, 'PUFF', path(tp - 30))
-        f.key(a, end, 'PUFF', path(tp - 30))
+        f.key(a, tp, 'PUFF', up(tp - 30), cut=True)
+        f.key(a, end, 'PUFF', up(tp - 30))
     f.ev(t0, F.FE_SE, 10)                                            # 轟音
-    f.ev(int(3 * B), F.FE_CAP, 2, 'THE ROCKET!')
-    f.ev(int(5 * B), F.FE_VOICE, 6)                                  # 「Papa, hurry!」
-    f.ev(int(5 * B), F.FE_CAP, 2, 'PAPA, HURRY!')
+    f.ev(t0 + 40, F.FE_CAP, 2, 'THE ROCKET!')
+    f.ev(int(6.5 * B), F.FE_VOICE, 6)                                # 「Papa, hurry!」
+    f.ev(int(6.5 * B), F.FE_CAP, 2, 'PAPA, HURRY!')
     f.ev(end, F.FE_END)
     s.film = f
     return s
@@ -799,22 +987,118 @@ def seam5():
     s.film = f
     return s
 
-def ending():
-    s = Mod(7, 'ENDING', SPACE, 'ENDING', flags=SF_SCENE | SF_SPACE)
-    s.pal2 = MORNING
-    s.y0 = 40
-    s.models += ['CAPSULE']
-    s.segs((40, 0, 0, 10), (48, 0, -20, 16), (48, 0, -12, 16), (48, 0, -4, 12), (32, 0, -1, 6), (16, 0, 0, 3))
-    pats, over = towns()
-    s.finish(lambda k: None if k < 11 else pats[(k * 5) % len(pats)])
-    s.ev(2, EV_VOICE, V_PAPA)
-    s.sub(2, 'PAPA!')
-    s.ev(2, EV_PROP, 'CAPSULE', 0, 0, *[s.wrap(v) for v in s.at(22, 0, 40)])
-    s.ev(44, EV_FADE)
-    s.sub(90, 'HOME.')
-    s.sub(150, 'BREAKFAST?')
-    s.sub(176, 'YEAH.')
-    s.end()
+def seam6():
+    """6 面の後(軌道 → 深宇宙)。壊れた鍵穴の基地からロケットが離れ、月のほうへ。零戦は星空へ追う"""
+    s = seam_mod(20, 'SEAM 6', SPACE, SF_SPACE | SF_DEEP)
+    s.models = ['B_KEYHOLE', 'B_ARK', 'PUFF']
+    f = Film(); F = Film; B = 112.5; end = 900
+    kh, ark, p1, p2 = f.actor(), f.actor(), f.actor(), f.actor()
+    for a in (kh, ark, p1, p2):
+        f.key(a, 0, 0, (0, 0, 0))
+    f.ev(0, F.FE_COCKPIT, 0)
+    cam = cruise(f, 0, end, (0, 60, 0), .12, pitch=2)
+    # 1〜3 小節: 正面に壊れた基地。その陰から方舟(ヒナのロケット)が離れていく
+    zk = cam(0)[2] + 70
+    f.key(kh, 0, 'B_KEYHOLE', (-14, 66, zk), 200)
+    f.key(kh, end, 'B_KEYHOLE', (-14, 66, zk), 230)
+    f.key(ark, int(1 * B), 'B_ARK', (4, 62, zk - 10), 180)
+    f.key(ark, int(4 * B), 'B_ARK', (2, 64, cam(int(4 * B))[2] + 60), 180)
+    f.key(ark, end, 'B_ARK', (0, 64, cam(end)[2] + 75), 180)
+    for i, a in enumerate((p1, p2)):
+        t0 = int((1.5 + i) * B)
+        f.key(a, t0, 'PUFF', (4 - i * 2, 62, cam(t0)[2] + 40))
+        f.key(a, t0 + 300, 'PUFF', (4 - i * 2, 62, cam(t0)[2] + 40))
+    f.ev(int(1 * B), F.FE_SE, 10)
+    f.ev(int(2 * B), F.FE_CAP, 2, 'SHE IS ON THAT ROCKET!')
+    f.ev(int(5 * B), F.FE_VOICE, 6)                                  # 「Papa, hurry!」
+    f.ev(int(5 * B), F.FE_CAP, 2, 'PAPA, HURRY!')
+    f.ev(end, F.FE_END)
+    s.film = f
     return s
 
-MODS = [opening(), s1(), s2(), s3(), s4(), s5(), s6(), ending(), seam1(), seam2(), seam3(), seam4(), seam5()]
+def ending():
+    """エンディング(モジュール 7): 宇宙でカプセルに追いつく → ヒナが零戦へ移る → 夕焼けの空へ → 零戦が夕日へ小さくなる間の親子の会話。
+    会話は残り時間で変わる(1 時間以上残っていれば素直に喜び、遅れるとすねる)。続くエンドロールの文面も、ここの字幕に置く"""
+    s = Mod(7, 'ENDING', SPACE, 'BRIDGE', flags=SF_SCENE | SF_SPACE | SF_DEEP)
+    s.pal2 = DUSK
+    s.models = ['CAPSULE', 'ZEROF', 'ZEROS', 'SUN', 'CLOUDP']
+    s.y0 = 0
+    s.segs((32, 0, 0, 0))
+    s.finish(lambda k: None)
+    f = Film(); F = Film
+    cap, zero, hina, sun, c1, c2 = [f.actor() for _ in range(6)]
+    for a in (cap, zero, hina, sun, c1, c2):
+        f.key(a, 0, 0, (0, 0, 0))
+    # 0〜300: 操縦席。前にヒナのカプセルが浮かんでいて、追いつく
+    f.ev(0, F.FE_COCKPIT, 0)
+    f.cam_key(0, (0, 40, 0), 0, 2)
+    f.cam_key(280, (0, 40, 60), 0, 4, fl=F.FL_EASE)
+    f.key(cap, 0, 'CAPSULE', (1, 41, 90))
+    f.key(cap, 300, 'CAPSULE', (1, 41, 78))
+    f.ev(60, F.FE_SUB, 0, 'HINA!')
+    # 300〜640: 外から。零戦の横にカプセル。ヒナが出てきて、零戦の操縦席へ泳いでいく
+    f.ev(300, F.FE_COCKPIT, 1)
+    f.cam_key(299, (0, 40, 60), 0, 4, fl=F.FL_STEP)       # 切り替え
+    f.cam_key(300, (8, 42, 70), -60, 6)
+    f.cam_key(640, (6, 42, 68), -50, 4)
+    f.cam_key(699, (6, 42, 68), -50, 4, fl=F.FL_STEP)
+    f.key(zero, 300, 'ZEROF', (-2, 40, 76), 90)
+    f.key(zero, 640, 'ZEROF', (-2, 40.5, 76), 90)
+    f.key(cap, 300, 'CAPSULE', (2, 41, 76), cut=True)
+    f.key(cap, 640, 'CAPSULE', (2.5, 41.5, 76))
+    f.key(hina, 380, 'HINA', (2, 40.4, 76), 270, cut=True)
+    f.key(hina, 520, 'HINA', (-1, 40.6, 76), 270)
+    f.key(hina, 560, 0)                                   # 操縦席に入る
+    f.ev(400, F.FE_VOICE, 9)                              # 「Papa!」
+    f.ev(400, F.FE_SUB, 0, 'PAPA!')
+    f.ev(470, F.FE_SUB, 1, 'I KNEW YOU WOULD COME!')
+    f.ev(470, F.FE_SUB, 2, "YOU'RE LATE, PAPA.")
+    f.ev(570, F.FE_SUB, 1, 'ALWAYS, HINA.')
+    f.ev(570, F.FE_SUB, 2, 'SORRY. TRAFFIC.')
+    # 640〜: 地球へ戻り、夕焼けの空へ(宇宙の色から夕方の色へ移る)。カメラは残り、零戦は夕日へ飛んで小さくなる
+    f.ev(640, F.FE_FADE)
+    f.ev(640, F.FE_SUB, 2, 'IN SPACE?')
+    f.cam_key(700, (0, 6, 0), 0, 4)
+    f.cam_key(1500, (0, 6, 0), 0, 4, fl=F.FL_EASE)
+    f.key(cap, 700, 0)
+    f.key(sun, 700, 'SUN', (0, 16, 110), 180, cut=True)
+    f.key(sun, 1500, 'SUN', (0, 13, 110), 180)
+    f.key(c1, 700, 'CLOUDP', (-20, 14, 70), cut=True); f.key(c1, 1500, 'CLOUDP', (-16, 14, 70))
+    f.key(c2, 700, 'CLOUDP', (24, 11, 90), cut=True); f.key(c2, 1500, 'CLOUDP', (20, 11, 90))
+    # 零戦は黒い影になって、夕日の真ん中へ小さくなっていく
+    f.key(zero, 700, 'ZEROS', (1, 5, 6), 0, cut=True)
+    f.key(zero, 900, 'ZEROS', (.5, 8, 30), 0, roll=-10)
+    f.key(zero, 1150, 'ZEROS', (0, 11, 60), 0, roll=10)
+    f.key(zero, 1500, 'ZEROS', (0, 13, 100), 0)
+    for t, mood, line in ((760, 0, 'CAN I FLY IT NEXT TIME?'), (870, 0, "WHEN YOU'RE TALLER."),
+                          (980, 1, 'I WAS BRAVE, PAPA.'), (980, 2, 'I WAS SCARED, PAPA.'),
+                          (1090, 1, 'I KNOW. ME TOO.'), (1090, 2, "I KNOW. I'M HERE NOW."),
+                          (1200, 0, 'PANCAKES FOR DINNER?'), (1310, 0, 'PANCAKES.')):
+        f.ev(t, F.FE_SUB, mood, line)
+    f.ev(1420, F.FE_SUB, 0, '')
+    f.ev(1500, F.FE_END)
+    s.film = f
+    s.op_base = 0x9000
+    # エンドロール(src/engine/scene.c の ending_run。"\x01" = 得点の行、"\x02" = 終わり)。出演者の名前は作り話
+    s.strs += [
+        'He brought his daughter home.', '', '', '', '',
+        'PAPA ZERO', '', '', '- STARRING -', '',
+        'BRICK O\'HARA', 'as Papa', '',
+        'MOMO SUZUNARI', 'as Hina', '',
+        'VIKTOR GRAUSS', 'as the Boss', '',
+        'SILENT STEVE', 'as Kidnapper #1', '',
+        'OTHER STEVE', 'as Kidnapper #2', '',
+        'KONIGS KRABBE', 'as the Crab', '',
+        'GRAF ZEPPELIN II', 'as the Airship', '',
+        'and', 'THE ZERO', 'as herself', '', '', '',
+        '- STAFF -', '',
+        'ORIGINAL CONCEPT / DIRECTION', 'suzuki-black', '',
+        'PROGRAM / GRAPHICS / MUSIC', 'Claude Code (Anthropic Claude)', '',
+        'VOICES', 'Flite (Carnegie Mellon Univ.)', '', '', '',
+        'THANK YOU FOR PLAYING!', '', '\x01', '',
+        '(C) 2026 suzuki-black', '', '',
+        'PUSH SPACE KEY', '\x02',
+    ]
+    return s
+
+MODS = [opening(), s1(), s2(), s3(), s4(), s5(), s6(), s7(), ending(), seam1(), seam2(), seam3(), seam4(), seam5(), seam6()]

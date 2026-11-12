@@ -12,6 +12,7 @@
 #define SEG_MOD_A  1
 #define SEG_MOD_B  5
 #define MOD_COUNT  8
+#define MOD_FINAL  21           /* 7 面(深宇宙)。6 面の後の継ぎ目は 20 */
 #define MOD_BANK0  5            /* モジュール n は ROM のバンク 5 + 2n〜 */
 #define SND_BANK   21
 #define VOICE_BANK 23
@@ -19,11 +20,11 @@
 #define TITLE_BANK 27           /* タイトルの絵(8 バンク) */
 
 /* ---- モジュールの見出し(tools/gen_stage.py) ---- */
-typedef struct { i16 x, y, z; u8 yaw; i8 pitch; } PathPt;           /* 2 単位ごと */
-typedef struct { const u8 *mesh; i16 x, y, z; u8 spd; u8 yaw; } Sect;   /* 8 単位ごと。spd = 速度(単位/秒 × 4) */
+/* 区画と経路の点(8 単位ごと)。x, z は経路の点で区画の置き場所、y は地形の高さ、py はカメラの高さ。spd = 速度(単位/秒 × 4)。
+ * 前は経路の点を 2 単位ごとに別に持っていて(8 バイト)、モジュールの半分近くを使っていた */
+typedef struct { const u8 *mesh; i16 x, y, z; u8 spd; u8 yaw; i16 py; i8 pitch; } Sect;
 typedef struct { u16 at; u8 cmd, a, b, c; i16 x, y, z; } Event;     /* at = 経路の位置(単位) */
 typedef struct {
-    const PathPt *path; u16 npath;
     const Sect *sect;   u16 nsect;
     const Event *ev;    u16 nev;
     const u8 *pal;                 /* 9〜15 の 7 色 */
@@ -31,22 +32,25 @@ typedef struct {
     const char * const *str;       /* 字幕 */
     const u8 *boss;                /* ボスの定義 */
     const char *name;
-    u8 bgm, flags, clock, ahead;   /* flags: bit0 = 宇宙、bit1 = 場面(操作なし、下は黒帯)。ahead = 道中に描く区画の数 - 1 */
+    u8 bgm, flags, weapon, ahead;  /* flags: bit0 = 宇宙、bit1 = 場面(操作なし、下は黒帯)。weapon = ボスの秘密兵器(stg.c)。ahead = 道中に描く区画の数 - 1 */
     const u8 *pal2;                /* EV_FADE で移る色(エンディング) */
     void (*hook)(u16 t);           /* 場面の演出(モジュールの中のコード。t = 場面の始めからのティック。0 = なし) */
 } Stage;
 #define MOD ((const Stage *)0x8000)
 #define SF_SPACE 1
 #define SF_SCENE 2
+#define SF_DEEP  4                 /* 深宇宙(地球を描かず、星を描く) */
 
 /* 台本の命令(10.5) */
 enum { EV_SPAWN, EV_BOSS, EV_ROLL, EV_PROMPT, EV_TEXT, EV_SUB, EV_VOICE, EV_BGM, EV_PAL, EV_LOOP, EV_END, EV_CAM, EV_ITEM, EV_PROP, EV_FADE };
 enum { PR_NONE, PR_ROLL, PR_LOOP, PR_DIVE };
 
 /* 物体 */
-enum { T_NONE, T_E01, T_E02, T_E03, T_E04, T_E05, T_E06, T_E07, T_E08, T_SUPPLY, T_MEDIC,
+enum { T_NONE, T_E01, T_E02, T_E03, T_E04, T_E05, T_E06, T_E07, T_E08, T_E09, T_E10, T_SUPPLY, T_MEDIC,
        T_FLAK, T_MISSILE, T_MINE, T_MYMIS, T_PROP, T_PART, T_COUNT };
-enum { P_NONE, P_PARALLEL, P_HOLD, P_PASS, P_TAIL, P_CROSS, P_DRIFT, P_BOUNCE, P_FALL, P_LIFT };
+#define T_ELAST T_E10            /* 敵は T_E01〜T_ELAST(T_E09 = 戦艦、T_E10 = 魚雷艇。動きは面のモジュールの stg.c) */
+enum { P_NONE, P_PARALLEL, P_HOLD, P_PASS, P_TAIL, P_CROSS, P_DRIFT, P_BOUNCE, P_FALL, P_LIFT,
+       P_WEAVE, P_ORBIT, P_SWOOP };   /* P_WEAVE〜 は面のモジュールの stg.c が動かす(蛇行・前で輪を描く・後ろから追い越す) */
 #define MAX_OBJ 30
 typedef struct {
     u8 t, hp, ptn, st;
@@ -64,7 +68,7 @@ typedef struct {
 extern Obj obj[MAX_OBJ];
 
 /* 隠しコンフィグ(7.3) */
-typedef struct { u8 damage, god, stage, life, oneshot, fps, xfer, split, roll; } Config;
+typedef struct { u8 damage, god, stage, life, oneshot, fps, xfer, split, roll, lockbox; } Config;   /* lockbox: 誘導弾のロックの枠の大きさ 1〜4(3 = 横 24 × 縦 16 ブロック) */
 extern Config g_cfg;
 extern u8 g_auto;               /* 1 = 自動プレイ(デモと test_flow) */
 extern u8 g_scene;              /* 0 = タイトル 1 = ゲーム 2 = 継ぎ目 3 = 場面 */

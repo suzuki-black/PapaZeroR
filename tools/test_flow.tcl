@@ -15,6 +15,7 @@ set ::last 0
 set ::shot 0
 set ::lastmod -1
 set ::lastpath -1
+set ::t7 0
 proc press {} { keymatrixdown 8 1; after time 0.2 {keymatrixup 8 1} }
 proc begin {} {
   debug write memory [expr {$::s(_g_cfg)+2}] $::env(PZ_STAGE)
@@ -44,15 +45,16 @@ proc tick {} {
   set fps [expr {($::fr-$::last)/5.0}]
   set ::last $::fr
   debug write memory $::s(_g_auto) 1
-  log [format "t=%6.1f scene=%d mod=%d path=%4d life=%d score=%d boss=%d grp=%d objs=%2d fps=%.1f ms=%.1f polys=%d" $t [m8 _g_scene] [m8 _g_mod] [expr {[m16 _path_s]/64}] [m8 _life] [m16 _g_score] [m8 _boss_on] [m8 _boss_grp] $c $fps [expr {[m16 _g_perf_frame]*0.0039}] [m8 _g_last_polys]]
-  if {[m8 _g_mod]!=$::lastmod || $::shot%6==0} { screenshot -raw -prefix {} [format "%s/s%03d.png" $::env(PZ_OUT) $::shot] }
+  log [format "t=%6.1f scene=%d mod=%d path=%4d life=%d score=%d boss=%d grp=%d objs=%2d fps=%.1f ms=%.1f polys=%d" $t [m8 _g_scene] [m8 _g_mod] [expr {[m16 _path_s]/32}] [m8 _life] [m16 _g_score] [m8 _boss_on] [m8 _boss_grp] $c $fps [expr {[m16 _g_perf_frame]*0.0039}] [m8 _g_last_polys]]
+  if {[m8 _g_mod]!=$::lastmod || $::shot%6==0 || [m8 _g_mod]==7} { screenshot -raw -prefix {} [format "%s/s%03d.png" $::env(PZ_OUT) $::shot] }
   set ::lastmod [m8 _g_mod]
   incr ::shot
   if {$t>$::env(PZ_MAX)} { log "end"; exit }
-  # エンディング(モジュール 7)の経路が止まったら、そこで終える(上限まで待たない)
-  set p [m16 _path_s]
-  if {[m8 _g_mod] == 7 && $p == $::lastpath} { log "end (ending)"; exit }
-  set ::lastpath $p
+  # エンディング(モジュール 7。映像の場面で約 25 秒)が終わってエンドロールに入ったら終える(上限まで待たない)
+  if {[m8 _g_mod] == 7} {
+    if {$::t7 == 0} { set ::t7 $t }
+    if {$t - $::t7 > 35} { log "end (ending)"; exit }
+  }
   after time 5 tick
 }
 after time 8 begin

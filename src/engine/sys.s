@@ -31,7 +31,7 @@ SND_TICK = 0x8000		; 音のモジュールの入口(modhead_snd.s)
 SND_PLAY = 0x8003
 SND_STOP = 0x8006
 MOD_ADDR = 0x8000		; モジュールの先頭(0x8000: 入口の jp、0x8003: ゲームは Stage へのポインタ / 地形は 2 つ目の jp)
-MOD_BSS	= 0xBC00		; モジュールの変数(読み込んだら 0 で埋める)。〜0xBFFF
+MOD_BSS	= 0xBE00		; 音のモジュールの変数(読み込んだら 0 で埋める)。〜0xBFFF
 
 H_TIMI	= 0xFD9F
 ; ページ3 の固定番地(常駐ローダーからも使う)
@@ -78,6 +78,7 @@ skip:
 SPR_BYTES = 19 * 4 + 1		; スプライト 19 枚分 + 終端(Y=208)。game.h の N_SPR と合わせる
 
 	.area	_DATA
+isr_sp:	.ds	2		; htimi が呼ばれたときの SP
 _g_tick::	.ds	2	; 60Hz ごとに +1
 _g_flip_req::	.ds	1	; 1 = 次の垂直帰線で g_flip_page を表示する
 _g_flip_page::	.ds	1	; R#4 に書く値(0 または 1)
@@ -102,7 +103,17 @@ _sys_install_isr::
 	ei
 	ret
 
+; htimi: 毎フレームの処理(表示ページの切り替え・照準・音)。割り込み(isr0 と pcm.s)から呼ぶ。
+;   本体はスタックを描画バッファや変換の表に向けて使う所があり、そこへ割り込みの処理が深く積むと隣の変数やバッファを壊した
+;   (2 面のボス戦の後に g_mod が書き換わった)。そこで自分専用のスタック(0xE1C0 から下。0xE100 まで)に切り替えて動かす。
+;   0xE1C0〜0xE1FF は、変換の最中(SP = 0xE200〜)に入った割り込みが入口で積む分(xf.s)
 htimi::
+	ld	(isr_sp), sp
+	ld	sp, #0xE1C0
+	call	htimi_body
+	ld	sp, (isr_sp)
+	ret
+htimi_body:
 	ld	hl, (_g_tick)
 	inc	hl
 	ld	(_g_tick), hl
@@ -596,7 +607,7 @@ _rom_chunk::
 	jp	RL_ADDR
 
 ; void mod_load(u8 bank)   A = 最初のバンク。bank と bank+1(16KB)を、いまページ2に出ているセグメントの 0x8000- へ写し、
-;   モジュールの変数(0xBC00-0xBFFF)を 0 で埋める
+;   モジュールの変数(0xBE00-0xBFFF)を 0 で埋める
 _mod_load::
 	push	af
 	call	_pcm_stop		; ゲームモジュール(声のデータもここ)を上書きし、ページ0を BIOS に戻すので、声を止める
@@ -608,7 +619,7 @@ _mod_load::
 	call	RL_ADDR
 	ld	hl, #MOD_BSS
 	ld	de, #MOD_BSS + 1
-	ld	bc, #0x03FF
+	ld	bc, #0x01FF
 	ld	(hl), #0
 	ldir
 	ret

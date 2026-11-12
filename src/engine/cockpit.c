@@ -5,6 +5,7 @@
  * 指示書では数字とバーを VDP コマンドで書くが、VDP コマンドは分割線でモードが変わると止まる(openMSX の実装でも V9958 でも、
  * SCREEN 3 の間は CMD ビットなしでは動かない)ので、CPU で書く。1 フレームに 1 項目だけ更新し、1 文字約 0.5ms で済ませる。
  */
+#include <string.h>
 #include "game.h"
 #include "sound.h"
 
@@ -92,6 +93,9 @@ void cockpit_load(void)
         vdp_set_write(0x1800 + i * (SPR_PAT_BYTES / 4));
         vdp_out((const u8 *)(0x8000 + 6656) + i * (SPR_PAT_BYTES / 4), SPR_PAT_BYTES / 4);
     }
+    /* 面のコード(stg.c)をページ3へ */
+    memcpy((void *)STG_A, (const void *)(0x8000 + STG_OFS_A), STG_A_LEN);
+    memcpy((void *)STG_B, (const void *)(0x8000 + STG_OFS_B), STG_B_LEN);
     rom_load(MOD_BANK0 + 2 * g_mod);
     /* 黒帯(4 ページ目の 160〜211 ライン) */
     bot_hi = 6;
@@ -143,7 +147,7 @@ static void radar_step(void)
     for (n = 0; n < MAX_OBJ; n++) {
         rad_i = rad_i + 1 < MAX_OBJ ? rad_i + 1 : 0;
         o = &obj[rad_i];
-        if ((o->t >= T_E01 && o->t <= T_E08) || o->t == T_PART) break;
+        if ((o->t >= T_E01 && o->t <= T_ELAST) || o->t == T_PART) break;
     }
     if (n == MAX_OBJ) return;
     {
@@ -183,14 +187,14 @@ void hud_step(void)
             if (sh_life != life) {
                 u8 k;
                 sh_life = life;
-                for (k = 0; k < 8; k++) bot_rect((u8)(37 + k * 4), 8, 3, 10, k < life ? (life <= 2 ? C_RED : C_GREEN) : C_BLACK);
+                for (k = 0; k < 8; k++) bot_rect((u8)(46 + k * 3), 8, 2, 10, k < life ? (life <= 2 ? C_RED : C_GREEN) : C_BLACK);
                 return;
             }
             break;
         case 1:
             if (sh_mis != mis_left) {
                 sh_mis = mis_left;
-                bot_num(37, 25, mis_left, 3, C_WHITE, C_BLACK);     /* 残りの数(面ごとに 500) */
+                bot_num(51, 25, mis_left, 3, C_WHITE, C_BLACK);     /* 残りの数(面ごとに 500) */
                 return;
             }
             break;
@@ -207,7 +211,12 @@ void hud_step(void)
             if (sh_spd != g_spd_show) { sh_spd = g_spd_show; bot_num(21, 8, (u16)g_spd_show * 10, 3, C_CYAN, C_BLACK); return; }
             break;
         case 4:
-            if (sh_alt != g_alt_show) { sh_alt = g_alt_show; bot_num(21, 28, g_alt_show, 3, C_CYAN, C_BLACK); return; }
+            if (sh_alt != g_alt_show) {
+                sh_alt = g_alt_show;
+                if (g_alt_show == 0xFF) bot_text(21, 28, "---", C_CYAN, C_BLACK);   /* 宇宙 */
+                else bot_num(21, 28, g_alt_show, 3, C_CYAN, C_BLACK);
+                return;
+            }
             break;
         case 5:
             if (sh_clock != g_clock) {
@@ -220,7 +229,7 @@ void hud_step(void)
             }
             break;
         case 6:
-            if (sh_heat != g_heat) { sh_heat = g_heat; bot_rect(37, 38, (u8)(g_heat + 1), 4, g_heat > 20 ? C_RED : C_ORANGE); bot_rect((u8)(38 + g_heat), 38, (u8)(23 - g_heat), 4, C_BLACK); return; }
+            if (sh_heat != g_heat) { sh_heat = g_heat; bot_rect(46, 38, (u8)(g_heat + 1), 4, g_heat > 20 ? C_RED : C_ORANGE); bot_rect((u8)(47 + g_heat), 38, (u8)(23 - g_heat), 4, C_BLACK); return; }
             break;
         default: {
             u8 c = life <= 2 ? 3 : life <= 4 ? 2 : life <= 6 ? 1 : 0;

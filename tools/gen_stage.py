@@ -33,6 +33,7 @@ def main(out):
                 f.write(mod.film.header(ids))
 
 
+
 class Blob:
     def __init__(self):
         self.b = bytearray()
@@ -56,8 +57,8 @@ def mesh_bytes(blob, m, cache):
     return a
 
 
-HDR = 2 * 6 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 4 + 4
-HOOK_OFS = 28          # 見出しの中の、場面の演出のコードの番地(0 のまま書き、mkrom.py がオープニングにだけ入れる)
+HDR = 2 * 4 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 4 + 4
+HOOK_OFS = 24          # 見出しの中の、場面の演出のコードの番地(0 のまま書き、mkrom.py がオープニングにだけ入れる)
 
 
 def build(mod, ids, nids, out):
@@ -75,13 +76,8 @@ def build(mod, ids, nids, out):
     secs = bytearray()
     for s in mod.sections:
         ma = mesh_bytes(b, s['mesh'], cache) if s['mesh'] else 0
-        secs += struct.pack('<HhhhBB', ma, s['x'], s['y'], s['z'], s['spd'], s['yaw'])
+        secs += struct.pack('<HhhhBBhb', ma, s['x'], s['y'], s['z'], s['spd'], s['yaw'], s['py'], s['pitch'])
     sa = b.add(secs)
-    # 経路
-    pts = bytearray()
-    for p in mod.path:
-        pts += struct.pack('<hhhBb', p[0], p[1], p[2], p[3], p[4])
-    pa = b.add(pts)
     # 字幕
     strs = []
     for s in mod.strs:
@@ -103,15 +99,15 @@ def build(mod, ids, nids, out):
             a0 = ids[a0]
         ev += struct.pack('<HBBBBhhh', at, cmd, a0 & 255, a1 & 255, a2 & 255, x, y, z)
     ea = b.add(ev)
-    hdr = struct.pack('<HHHHHHHHHHHBBBBHH', pa, len(mod.path), sa, len(mod.sections), ea, len(mod.events), pal, meshes, st, ba, name,
-                      mod.bgm, mod.flags, mod.clock, mod.ahead - 1, pal2, 0)
+    hdr = struct.pack('<HHHHHHHHHBBBBHH', sa, len(mod.sections), ea, len(mod.events), pal, meshes, st, ba, name,
+                      mod.bgm, mod.flags, mod.weapon, mod.ahead - 1, pal2, 0)
     b.b[:len(hdr)] = hdr
-    limit = mod.op_base - BASE if mod.film else DATA_LIMIT
+    limit = mod.op_base - BASE if mod.op_base else DATA_LIMIT
     if len(b.b) > limit:
         sys.exit('gen_stage: モジュール %s が %d バイトで %d を超えた' % (mod.name, len(b.b), limit))
     with open(os.path.join(out, 'mod%d.bin' % mod.n), 'wb') as f:
         f.write(b.b + bytes(LIMIT - len(b.b)))
-    print('gen_stage: mod%d %-24s %5d B  区画 %d 経路 %d 命令 %d メッシュ %d' % (mod.n, mod.name, len(b.b), len(mod.sections), len(mod.path), len(mod.events), len(cache)))
+    print('gen_stage: mod%d %-24s %5d B  区画 %d 命令 %d メッシュ %d' % (mod.n, mod.name, len(b.b), len(mod.sections), len(mod.events), len(cache)))
 
 
 if __name__ == '__main__':

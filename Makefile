@@ -28,16 +28,21 @@ CP0 = game scene cockpit
 SND = modhead_snd sndfm
 RELS = $(patsubst %,$(BUILD)/%.rel,$(ASM) $(CRES) $(CP0) game_ai gen_data)
 HDRS = $(wildcard $(ENG)/*.h) $(BUILD)/songs.h $(BUILD)/title.h $(BUILD)/ids.h
-MODS = $(foreach n,0 1 2 3 4 5 6 7 15 16 17 18 19,$(BUILD)/mod$(n).bin)
+MODS = $(foreach n,0 1 2 3 4 5 6 7 15 16 17 18 19 20 21,$(BUILD)/mod$(n).bin)
 # 映像の場面(オープニング = 0、n 面の後の継ぎ目 = 14 + n)の演出のコード(op.c)の置き場所。モジュールの中身の後ろ
 # (tools/stage_data.py の op_base と同じ値。mkrom.py が重なりを確かめる)
-OP0_BASE = 0x9400
+OP0_BASE = 0x9500
 OP15_BASE = 0x9000
 OP16_BASE = 0x9000
 OP17_BASE = 0x9000
 OP18_BASE = 0x9000
 OP19_BASE = 0x9000
-FILMS = 0 15 16 17 18 19
+OP7_BASE = 0x9000
+OP20_BASE = 0x9000
+FILMS = 0 7 15 16 17 18 19 20
+# 面のコード(stg.c: 新しい敵の動き・ボスの秘密兵器・残り時間)。ページ3の空き 2 か所に置き、ROM ではコクピットの絵のバンクの後ろ
+STG_A = 0xD700
+STG_B = 0xE700
 ROM = $(BUILD)/$(ROMNAME).rom
 
 .PHONY: all fpsrom clean
@@ -104,9 +109,17 @@ $(BUILD)/sndtick.rel: $(ENG)/sndtick.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --max-allocs-per-node 100000 -c -o $@ $<
 	@if grep -qiE '\b(multu|multuw|ixh|ixl|iyh|iyl)\b' $(BUILD)/sndtick.asm; then echo "sndtick.c: Z80 でも動くコードに R800 専用・非公式の命令が入った"; rm -f $@; exit 1; fi
 $(BUILD)/sndmod.ihx: $(BUILD)/modhead_snd.rel $(BUILD)/sndtick.rel $(BUILD)/sndfm.rel $(BUILD)/ressyms.rel
-	$(CC) $(MODFLAGS) --code-loc 0x8009 -o $@ $^
+	$(CC) -mr800 --no-std-crt0 --data-loc 0xBE00 -Wl-j -Wl-m -Wl-u --code-loc 0x8009 -o $@ $^
 
-OPS = $(patsubst %,$(BUILD)/op%.ihx,$(FILMS))
+# 面のコード: 1 つだけ作り、ページ3の 2 か所に分けて置く
+$(BUILD)/stg.rel: $(ENG)/stg.c $(HDRS) | $(BUILD)
+	$(CC) $(CFLAGS) --opt-code-size -c -o $@ $<
+$(BUILD)/stgb.rel: $(ENG)/stgb.c $(HDRS) | $(BUILD)
+	$(CC) $(CFLAGS) --opt-code-size --codeseg STGB --constseg STGB -c -o $@ $<
+$(BUILD)/stg.ihx: $(BUILD)/stg.rel $(BUILD)/stgb.rel $(BUILD)/ressyms.rel
+	$(CC) $(MODFLAGS) --code-loc $(STG_A) -Wl-b_STGB=$(STG_B) -o $@ $^
+
+OPS = $(patsubst %,$(BUILD)/op%.ihx,$(FILMS)) $(BUILD)/stg.ihx
 $(ROM): $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/sndmod.ihx $(MODS) $(BUILD)/songs.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin src/sound/voicemod.bin $(OPS)
 	$(PYTHON) $(TOOLS)/mkrom.py $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/engine.noi $@ $(MODS) \
 	  $(BUILD)/sndmod.ihx $(BUILD)/sndmod.noi $(BUILD)/songs.bin src/sound/voicemod.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin \

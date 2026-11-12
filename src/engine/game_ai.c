@@ -55,7 +55,7 @@ void boss_begin(void)
     }
     caption("WARNING!", C_RED, 150);
     pcm_say(VOICE_WARNING);
-    bgm_play(g_mod == 6 ? SONG_KING1 : SONG_BOSS);
+    bgm_play(g_mod == MOD_FINAL ? SONG_KING1 : SONG_BOSS);
     se_play(SE_ALARM);
 }
 
@@ -78,7 +78,7 @@ void boss_step(u8 dt)
     boss_yaw = cam_yaw_path;
     if (boss_intro) {
         boss_intro = boss_intro > dt ? boss_intro - dt : 0;
-        if (!boss_intro && g_mod == 6) bgm_play(SONG_KING2);
+        if (!boss_intro && g_mod == MOD_FINAL) bgm_play(SONG_KING2);
     }
     boss_t += dt;
     sy = SIN(boss_yaw); cy = COS(boss_yaw);
@@ -246,9 +246,9 @@ void obj_step(u8 dt)
                 o->tm += dt;
                 if (fwd < 0x0400 && fwd > -0x0200) { damage(1); fx_add(o->x, o->y, o->z, 1); o->t = T_NONE; }
                 break;
-            case P_FALL:                       /* ボスの破片: 回りながら落ちて消える */
+            case P_FALL:                       /* ボスの破片: 回りながら落ちて消える(宇宙では落ちずに漂う) */
                 o->x += cam_vx * dt; o->z += cam_vz * dt;
-                o->vy += (i16)dt * 3;
+                if (!(MOD->flags & SF_SPACE)) o->vy += (i16)dt * 3;
                 o->y -= o->vy;
                 o->roll += (u8)(dt * 6);
                 if (o->tm <= dt) { fx_add(o->x, o->y, o->z, 0); o->t = T_NONE; } else o->tm -= dt;

@@ -1272,7 +1272,6 @@ z2q::
 P3_NEAR	= 128
 	.area	_DATA
 p3_cv:	.ds	6 * 10		; 切った後の頂点(V3)
-p3_pl:	.ds	2 * 8		; poly3 の頂点のポインタの並び
 p3_pp:	.ds	2		; 次の終点のポインタの位置
 p3_a:	.ds	2		; 辺の始点
 p3_b:	.ds	2		; 辺の終点
@@ -1285,34 +1284,10 @@ p3_in:	.ds	1		; 1 = a が手前
 p3_col:	.ds	1
 
 	.area	_CODE
-_poly3::
-	pop	de
-	pop	bc			; C = n、B = color
-	push	de
-	; 頂点のポインタの並びを作る
-	ld	de, #p3_pl
-	push	bc
-	ld	b, c
-21$:
-	ld	a, l
-	ld	(de), a
-	inc	de
-	ld	a, h
-	ld	(de), a
-	inc	de
-	push	bc
-	ld	bc, #6
-	add	hl, bc
-	pop	bc
-	djnz	21$
-	pop	bc
-	ld	hl, #p3_pl
-	jr	p3_core
 _poly3p::
 	pop	de
 	pop	bc			; C = n、B = color
 	push	de
-p3_core:
 	ld	a, b
 	ld	(p3_col), a
 	ld	a, c

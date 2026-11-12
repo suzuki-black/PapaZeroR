@@ -42,7 +42,7 @@ songs.h は曲の番号(SONG_名前。1 から。0 = 無し)。鳴らすのは s
   本文(リズム): b s t c h(バスドラム・スネア・タム・シンバル・ハイハット)を並べた塊 + 長さ。例 bh8 h8 sh8 h8
     r 休み、l 長さ、[ ]、L、t は同じ。V15,15,12,12,10 で音量(バスドラム・スネア・タム・シンバル・ハイハット)
 
-■ データ(音のモジュールの曲の部分。番地は BASE = 0x8B00 から)
+■ データ(音のモジュールの曲の部分。番地は BASE = 0x8D00 から)
   BASE: db 曲の数、dw 曲 …
   曲: db メロディのチャンネル数、db フラグ(bit0 リズム、bit1 オリジナル音色、bit2 PSG のパート)、(bit1 なら)db 音色 × 8、
       dw チャンネル …、(リズムがあれば)dw リズム、(PSG のパートがあれば)dw PSG のパート
@@ -66,8 +66,8 @@ songs.h は曲の番号(SONG_名前。1 から。0 = 無し)。鳴らすのは s
 import re
 import sys
 
-BASE = 0x8B00           # 曲の表(sndfm.s の SONG_TAB。0x8000- はドライバのコード)
-LIMIT = 0xBC00 - BASE   # モジュールの 0xBC00- は変数(読み込み後に 0 で埋められる)
+BASE = 0x8D00           # 曲の表(sndfm.s の SONG_TAB。0x8000- はドライバのコード)
+LIMIT = 0xBE00 - BASE   # モジュールの 0xBE00- は変数(読み込み後に 0 で埋められる)
 PSG_CLOCK = 3579545 / 2
 TICKS = 60.0            # 1 秒のティック数
 DRUM_BITS = {'b': 0x10, 's': 0x08, 't': 0x04, 'c': 0x02, 'h': 0x01}
@@ -559,8 +559,8 @@ def main(src, out_bin, out_h):
     blobs = []
     for sg in songs:
         mel = [c for c in sg['order'] if c not in 'RP']
-        if len(mel) > 6:
-            raise SystemExit('gen_music: %s: メロディは 6 チャンネルまで' % sg['name'])
+        if len(mel) > 5:     # FM の ch5 は効果音の爆発が使う(src/engine/sndtick.c の fse_step)
+            raise SystemExit('gen_music: %s: メロディは 5 チャンネルまで(ch5 は効果音用)' % sg['name'])
         chans = []
         for c in mel:
             ev = compile_melody(sg['ch'][c], sg['tempo'], sg['name'] + ':' + c, sg.get('voices', []))

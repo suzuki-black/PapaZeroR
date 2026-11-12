@@ -11,7 +11,8 @@
 
 typedef struct { u16 t; i16 x, y, z; u8 a, b, c, fl; } Key;   /* カメラ: a = ヨー、b = ピッチ、c = ロール。役者: a = ヨー、b = ロール、c = メッシュ */
 typedef struct { u16 t; u8 kind, arg; const char *s; } FilmEv;
-enum { FE_SUB = 1, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE };
+enum { FE_SUB = 1, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE, FE_FADE };
+extern u8 g_fade, g_clock;
 #define FL_EASE  1      /* 次のキーまでをゆっくり始めてゆっくり止める */
 #define FL_BOB   2      /* 走る・跳ねる(上下に揺らす) */
 #define FL_C     4      /* c も補間する(カメラのロール) */
@@ -71,7 +72,10 @@ void op_hook(u16 t)
     while (ev_i < N_FEV && film_ev[ev_i].t <= t) {
         const FilmEv *e = &film_ev[ev_i++];
         switch (e->kind) {
-        case FE_SUB: sub_text(e->s); break;
+        case FE_SUB:                           /* arg: 0 = いつも、1 = 間に合った(残り 1 時間以上)、2 = 遅れた */
+            if (!e->arg || (e->arg == 1) == (g_clock >= 0x10)) sub_text(e->s);
+            break;
+        case FE_FADE: g_fade = 1; break;
         case FE_CAP: caption(e->s, e->arg, 150); break;
         case FE_VOICE: pcm_say(e->arg); break;
         case FE_SE: se_play(e->arg); break;

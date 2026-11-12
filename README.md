@@ -54,9 +54,10 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
 - **Genre:** Single-player cockpit-view 3D rail shooter.
 - **Screen:** the top 160 lines are the 3D view in SCREEN 3 (64 × 40 blocks, double-buffered);
   the bottom 52 lines are the cockpit instruments in a bitmap mode, split by a raster interrupt.
-- **Structure:** opening → 6 stages (the town, the harbor, the canyon, the cloud sea, the stratosphere,
-  the orbit), each ending with a boss → a short film between stages → ending and staff roll.
-  A clock counts down from 06:00 — the time left before the rocket.
+- **Structure:** opening → 7 stages (the town, the harbor, the canyon, the cloud sea, the stratosphere,
+  the orbit, deep space), each ending with a boss and its secret weapon → a short film between stages →
+  ending film and staff roll. The TIME LEFT clock counts down from 06:00 as you play; how much is left
+  changes the father-and-daughter talk in the ending.
 
 ### Features
 - **Real-time 3D in SCREEN 3** at up to 30 fps: flat-shaded polygons, a tilting horizon, LOD down to
@@ -80,7 +81,14 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
 | Arrow keys | Move the sight |
 | Space | Vulcan · start · skip the opening |
 | **M** or **B** | Homing missile (performs the manoeuvre while a prompt is shown) |
-| ↑↑↓↓←→←→ B A on the title screen | Hidden settings menu (damage, invincibility, starting stage, lives, one-shot, FPS display, transfer, split, roll) |
+| ↑↑↓↓←→←→ B A on the title screen | Hidden settings menu (damage, invincibility, starting stage, lives, one-shot, FPS display, transfer, split, roll, size of the missile lock-on box) |
+
+- **Vulcan:** hold Space to fire at whatever is under the sight (the sight turns red over a target).
+  Firing heats the gun (HEAT); when it is full the gun stops for about a second.
+- **Missiles:** any enemy that touches the cyan box around the sight is locked (up to 8; they get red marks
+  and name tags). Each press of M fires one missile at the locked targets in turn. You get 500 per stage (MSL);
+  green AMMO balloons add 50, MED balloons repair HP.
+- **ROLL! / LOOP! / DIVE!:** press M while the prompt flashes to dodge a laser or shake off a pursuer.
 
 ### Requirements
 - **Target hardware: MSX turboR** (FS-A1ST / FS-A1GT).
@@ -176,8 +184,9 @@ of real equipment. No specific game's names, characters, images or audio are use
 - **ジャンル:** 1 人用・コクピット視点の 3D レールシューター。
 - **画面:** 上 160 ラインが SCREEN 3（64 × 40 ブロック、ダブルバッファ）の 3D、下 52 ラインがビットマップのモードの
   計器盤。走査線割込みで分けています。
-- **構成:** オープニング → 全 6 面（町・港・谷・雲海・成層圏・軌道。各面の最後にボス）→ 面と面の間の短い映像
-  → エンディングとスタッフロール。時計は 06:00 から減っていきます（ロケットまでの残り時間）。
+- **構成:** オープニング → 全 7 面（町・港・谷・雲海・成層圏・軌道・深宇宙。各面の最後に秘密兵器を持つボス）→
+  面と面の間の短い映像 → エンディングの映像とスタッフロール。残り時間（TIME LEFT）は 06:00 から遊んだ時間で減り、
+  エンディングの親子の会話が、残った時間で変わります。
 
 ### 特徴
 - **SCREEN 3 でリアルタイムの 3D**（上限 30fps）。面の塗りつぶし、傾く地平線、遠くの物体は前もって描いた矩形へ落とす LOD。
@@ -197,7 +206,14 @@ of real equipment. No specific game's names, characters, images or audio are use
 | カーソルキー | 照準を動かす |
 | スペース | バルカン・開始・オープニングを飛ばす |
 | **M** または **B** | 誘導弾（指示が出ている間は機動） |
-| タイトルで ↑↑↓↓←→←→ B A | 隠しの設定メニュー（ダメージ・無敵・開始面・残機・一撃・FPS 表示・転送・分割・ロール） |
+| タイトルで ↑↑↓↓←→←→ B A | 隠しの設定メニュー（ダメージ・無敵・開始面・残機・一撃・FPS 表示・転送・分割・ロール・誘導弾のロックの枠の大きさ） |
+
+- **バルカン:** スペースを押している間、照準の下の敵を撃ちます（敵に重なると照準が赤くなります）。
+  撃ち続けると銃が熱くなり（HEAT）、いっぱいになると 1 秒ほど撃てません。
+- **誘導弾:** 照準のまわりの水色の枠に少しでもかかった敵をロックします（8 体まで。赤い印と名前の札が付きます）。
+  M を押すたびに、ロックした敵へ順に 1 発ずつ撃ちます。面ごとに 500 発（MSL）。緑の AMMO の気球で 50 発、
+  MED の気球で耐久（HP）が戻ります。
+- **ROLL! / LOOP! / DIVE!:** 文字が点滅している間に M を押すと、レーザーを避けたり、後ろの敵を振り切ったりします。
 
 ### 動作環境
 - **MSX turboR**（FS-A1ST / FS-A1GT）。

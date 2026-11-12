@@ -31,7 +31,7 @@ u8 rnd(void);
 void fx_add(i16 x, i16 y, i16 z, u8 big);
 /* 爆発(fx_add で置き、fx_draw が描く。fx_draw は fx.c) */
 #define MAX_FX 8
-#define FX_T 28                          /* 爆発が続くティック(約 0.47 秒) */
+#define FX_T 40                          /* 爆発が続くティック(約 0.67 秒) */
 typedef struct { i16 x, y, z; u8 t, big; } Fx;
 extern Fx fx[MAX_FX];
 void fx_draw(u8 dt);

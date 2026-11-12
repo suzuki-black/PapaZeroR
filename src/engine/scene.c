@@ -7,11 +7,11 @@
 
 static const u8 title_pal[32] = TITLE_PAL;
 #define TITLE_PAGE 54272u
-#define MENU_N 9
+#define MENU_N 10
 
-static const char * const menu_name[MENU_N] = { "DAMAGE", "NODAMAGE", "STAGE", "LIFE", "ONESHOT", "FPS", "XFER", "SPLIT", "ROLL" };
-static const u8 menu_lo[MENU_N] = { 1, 0, 1, 1, 0, 0, 0, 0, 0 };
-static const u8 menu_hi[MENU_N] = { 8, 1, 6, 8, 1, 1, 1, 1, 1 };
+static const char * const menu_name[MENU_N] = { "DAMAGE", "NODAMAGE", "STAGE", "LIFE", "ONESHOT", "FPS", "XFER", "SPLIT", "ROLL", "LOCKBOX" };
+static const u8 menu_lo[MENU_N] = { 1, 0, 1, 1, 0, 0, 0, 0, 0, 1 };
+static const u8 menu_hi[MENU_N] = { 8, 1, 7, 8, 1, 1, 1, 1, 1, 4 };
 
 /* 隠しコンフィグ: 上下で項目、左右で値。スペースで戻る */
 static void config_show(void)
@@ -122,17 +122,11 @@ void gameover_run(void)
     g_hiscore = g_score > g_hiscore ? g_score : g_hiscore;
 }
 
-static const char * const roll[] = {
-    "He brought his daughter home.", "", "", "", "",
-    "PAPA ZERO", "", "- STAFF -", "",
-    "ORIGINAL CONCEPT / DIRECTION", "suzuki-black", "",
-    "PROGRAM / GRAPHICS / MUSIC", "Claude Code (Anthropic Claude)", "",
-    "VOICES", "Flite (Carnegie Mellon Univ.)", "", "", "",
-    "THANK YOU FOR PLAYING!", "", "\x01", "",
-    "(C) 2026 suzuki-black", "", "",
-    "PUSH SPACE KEY",
-};
-#define ROLL_N (sizeof(roll) / sizeof(roll[0]))
+/* 文面はエンディングのモジュール(7)の字幕の 2 番から(tools/stage_data.py の ending()。ページ0に空きが無いので)。
+ * "\x01" = 得点の行、"\x02" = 終わり */
+#define roll (MOD->str + 2)
+static u16 roll_n;
+#define ROLL_N roll_n
 static char roll_score[8];
 
 /* 輪の行 k に文の k - 24 行目を中央にそろえて書く(名前表 1800h-1BFFh の 32 行を輪にする) */
@@ -155,6 +149,7 @@ void ending_run(void)
     static const u8 regs[] = { 1, 0xA0, 0, 0x00, 2, 0x06, 3, 0x80, 4, 0x00, 5, 0x36, 6, 0x07, 7, 0x01, 8, 0x0A, 9, 0x00, 23, 0x00, 25, 0 };
     u16 s, y = 0, k;
     u8 i;
+    for (roll_n = 0; roll[roll_n][0] != 2; roll_n++) ;
     g_score += (u16)life * 100;
     g_hiscore = g_score > g_hiscore ? g_score : g_hiscore;
     {   /* 得点(6 桁目は常に 0) */

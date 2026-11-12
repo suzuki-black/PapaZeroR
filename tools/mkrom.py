@@ -17,12 +17,16 @@ import sys
 
 BANK = 0x2000
 ROM_BANKS = 64
-DATA_BASE, DATA_LIMIT = 0xCC00, 0xDE00
+DATA_BASE, DATA_LIMIT = 0xCC00, 0xD700   # 0xD700- は面のコード(stg.c)
 CODE_LIMIT = 0x8000
 P0D_BASE, P0D_LIMIT = 0x0200, 0x4000
-SONG_BASE = 0x8B00
-HOOK_OFS = 28        # モジュールの見出しの中の、場面の演出のコードの番地(tools/gen_stage.py の HOOK_OFS)
+SONG_BASE = 0x8D00
+HOOK_OFS = 24        # モジュールの見出しの中の、場面の演出のコードの番地(tools/gen_stage.py の HOOK_OFS)
 MOD_BANK0, SND_BANK, VOICE_BANK, COCKPIT_BANK, TITLE_BANK = 5, 21, 23, 25, 27
+# 面のコード(stg.c): ページ3の 2 か所。ROM ではコクピットの絵のバンクの STG_OFS_A / STG_OFS_B から(src/engine/engine.h と同じ値)
+STG_A, STG_A_LEN, STG_OFS_A = 0xD700, 0x0700, 0x2200
+STG_B, STG_B_LEN, STG_OFS_B = 0xE700, 0x0800, 0x2900
+STAGES = (1, 2, 3, 4, 5, 6, 21)      # 面のコードを呼ぶモジュール
 
 
 def read_ihx(path):
@@ -58,7 +62,15 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     # modN.bin(モジュール N。ROM のバンク MOD_BANK0 + 2N〜)、opN.ihx(モジュール N の後ろに重ねる演出のコード)と、決まった順のファイル
     mods = {int(re.search(r'mod(\d+)\.bin$', a).group(1)): a for a in args if re.search(r'mod\d+\.bin$', a)}
     ops = {int(re.search(r'op(\d+)\.ihx$', a).group(1)): a for a in args if re.search(r'op\d+\.ihx$', a)}
-    snd_ihx, snd_noi, songs_bin, voice_bin, cockpit_bin, title_bin = [a for a in args if a not in mods.values() and a not in ops.values()]
+    stg_ihx = [a for a in args if a.endswith('stg.ihx')][0]
+    snd_ihx, snd_noi, songs_bin, voice_bin, cockpit_bin, title_bin = [a for a in args if a not in mods.values() and a not in ops.values() and a != stg_ihx]
+    stg = read_ihx(stg_ihx)
+    stg_hook = read_noi(stg_ihx[:-4] + '.noi')['_op_hook']
+    for a in stg:
+        if not (STG_A <= a < STG_A + STG_A_LEN or STG_B <= a < STG_B + STG_B_LEN):
+            sys.exit('mkrom: 面のコードが置き場所を超えた: 0x%04X' % a)
+    if read_noi(stg_ihx[:-4] + '.noi').get('l__DATA', 0):
+        sys.exit('mkrom: 面のコードに変数がある(持たない作り)')
     rom = bytearray(b'\xFF' * (ROM_BANKS * BANK))
     boot = read_ihx(boot_ihx)
     if min(boot) < 0x4000 or max(boot) >= 0x6000:
@@ -69,6 +81,8 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     p0 = [a for a in eng if a < 0x4000]
     code = [a for a in eng if 0x4000 <= a < 0x8000]
     hi = {a - 0x8000: b for a, b in eng.items() if 0xA400 <= a < 0xC000}   # 全モジュールの後ろに重ねるコード(game_ai.c)
+    if [a for a in eng if 0x8000 <= a < 0xA400]:     # 常駐部の後ろの領域(初期化のコードなど)があふれると、ここに来て ROM に載らない
+        sys.exit('mkrom: 常駐部があふれた(0x%04X-)' % min(a for a in eng if 0x8000 <= a < 0xA400))
     if [a for a in eng if a >= 0xC000]:
         sys.exit('mkrom: エンジンのイメージに 0xC000 以降のデータがある')
     if max(code) >= CODE_LIMIT:
@@ -103,6 +117,8 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
         d = bytearray(open(m, 'rb').read())
         for a, b in hi.items():
             d[a] = b
+        if i in STAGES:
+            d[HOOK_OFS:HOOK_OFS + 2] = stg_hook.to_bytes(2, 'little')
         if i in opimg:
             op, hook = opimg[i]
             if any(d[a - 0x8000] for a in op):
@@ -125,16 +141,21 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     v = open(voice_bin, 'rb').read()
     rom[VOICE_BANK * BANK:VOICE_BANK * BANK + len(v)] = v
     c = open(cockpit_bin, 'rb').read()
+    if len(c) > STG_OFS_A:
+        sys.exit('mkrom: コクピットの絵が面のコードの場所に重なった')
     rom[COCKPIT_BANK * BANK:COCKPIT_BANK * BANK + len(c)] = c
+    for a, b in stg.items():
+        rom[COCKPIT_BANK * BANK + (STG_OFS_A + a - STG_A if a < STG_B else STG_OFS_B + a - STG_B)] = b
     t = open(title_bin, 'rb').read()
     if len(t) > 8 * BANK:
         sys.exit('mkrom: タイトルの絵が大きすぎる')
     rom[TITLE_BANK * BANK:TITLE_BANK * BANK + len(t)] = t
     with open(out_path, 'wb') as f:
         f.write(rom)
-    print('mkrom: HICODE %d B / 7168' % len(hi))
+    print('mkrom: HICODE %d B / 7168、面のコード %d B / %d + %d B / %d' % (len(hi), len([a for a in stg if a < STG_B]), STG_A_LEN,
+                                                                          len([a for a in stg if a >= STG_B]), STG_B_LEN))
     print('mkrom: 常駐部 %d B / 16384、ページ0 %d B / 15872、変数 %d B、曲 %d B / %d' % (
-        max(code) - 0x4000 + 1, plen, syms['s__HEAP'] - syms['s__DATA'], len(songs), 0xBC00 - SONG_BASE))
+        max(code) - 0x4000 + 1, plen, syms['s__HEAP'] - syms['s__DATA'], len(songs), 0xBE00 - SONG_BASE))
 
 
 if __name__ == '__main__':

@@ -152,10 +152,23 @@ void sky_draw(u8 space)
     /* 世界の上の向き(カメラ空間) = 行列の列 1。(sx, -sy, 32) との内積が正なら空 */
     i16 ux = cm8[1], uy = cm8[4], uz = cm8[7];
     i16 a = ux, b = -uy, c = uz * 32;
-    if (space) {                        /* 宇宙: 黒い空の下に地球(青と、縁の白い雲) */
+    if (space) {                        /* 宇宙: 黒い空の下に地球(青と、縁の白い雲)。深宇宙(4)は地球が無く、星だけ */
         buf_fill(C_BLACK);
-        halfplane(-a, -b, -(c + 500), C_GND2);
-        halfplane(-a, -b, -(c + 640), C_GND1);
+        if (!(space & 4)) {
+            halfplane(-a, -b, -(c + 500), C_GND2);
+            halfplane(-a, -b, -(c + 640), C_GND1);
+            return;
+        }
+        {   /* 星: 視線の向き(ヨー・ピッチの 1 = 約 1 ブロック)で流す。遠い星なので経路を進んでも動かない */
+            static const u8 st[16] = { 3, 5, 11, 30, 22, 51, 29, 8, 34, 37, 47, 58, 52, 3, 57, 26 };
+            u8 i;
+            g_color = C_WHITE;
+            for (i = 0; i < 16; i += 2) {
+                g_rx = (u8)(st[i] - cam_yaw) & 63;
+                g_ry = (u8)(st[i + 1] + cam_pitch) & 63;
+                if (g_ry < 40) pset();
+            }
+        }
         return;
     }
     if (ux == 0 && uy > 32) {
@@ -190,20 +203,10 @@ void mat_yaw(u8 yaw, u8 roll)
     }
 }
 
-static const V3 *fp[4];
-
-/* 面の振り分けと当たり矩形は face.s。ニアクリップ面より手前の頂点を含む面だけ、ここで切って塗る */
-extern u8 g_fd_nf, g_fd_lod, g_fd_flash;
+/* 面の振り分けと当たり矩形は face.s。ニアクリップ面より手前の頂点を含む面だけ、game.c の face_near で切って塗る */
 extern i16 g_hb[4];
 void faces_draw(const Face *f);
 void hit_bounds(u8 nv);
-
-void face_near(const Face *f)
-{
-    u8 i, n = f->hdr & 7;
-    for (i = 0; i < n; i++) fp[i] = (const V3 *)&XR[f->v[i]].x;
-    poly3p(fp, n, g_fd_flash ? g_fd_flash : f->color);
-}
 
 u8 g_lod_min, g_obj_yaw;
 u8 g_perf_polys;

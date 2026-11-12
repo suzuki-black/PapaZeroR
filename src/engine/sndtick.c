@@ -25,7 +25,7 @@ static const u8 se_alarm[] = {          /* 警告: 高い音 2 発 */
 static const u8 se_kill[] = {           /* 敵を倒す: 短い「ばごん」(大きく低いノイズと、下がっていく低い音程。約 0.2 秒) */
     0x00, 6, 15, 31,  0x80, 6, 15, 31,  0x00, 7, 14, 31,  0x80, 7, 12, 31,  0x00, 8, 11, 31,  0x80, 8, 9, 30,
     0x00, 9, 8, 28,   0x80, 9, 6, 28,   0x00, 10, 5, 28,  0x80, 10, 3, 28,  0x00, 11, 2, 28,  0, 0, 0xFF, 0 };
-static const u8 se_train[] = {
+static const u8 se_train[] = {          /* 誘導弾の発射: 「しゅばっ」(高いノイズが下がる。FM のタムとシンバルを重ねる) */
     0x00, 8, 15, 31,  0x00, 8, 15, 31,  0x00, 9, 14, 31,  0x00, 9, 13, 31,
     0x00, 10, 12, 31,  0x00, 10, 10, 31,  0x00, 11, 8, 31,  0x00, 11, 5, 31,  0, 0, 0xFF, 0 };
 static const u8 se_damage[] = {         /* 被弾: 重い「ドゴン」(とても低い音程と一番低いノイズを 2 段で。約 0.27 秒) */
@@ -68,6 +68,34 @@ extern const u8 *g_psg_top;              /* 曲の PSG のパート(無ければ
 u8 g_drm;                                /* このティックに FM のリズムが打った音(bit3 スネア、bit1 シンバル、bit0 ハイハット) */
 u8 g_hha;                                /* 曲のリズムの音量 0x37 の値(上位 4 ビット = ハイハットの減衰。sndfm.s が書く) */
 
+/* 爆発(敵・ボス・被弾): FM の ch5 で、低いシンセベースの音を急に下げる「ドゴーン」を鳴らす(アフターバーナーのような派手な爆発)。
+ * 曲の旋律は ch0〜4 の 5 つまでにしてあり(tools/gen_music.py が確かめる)、ch5 は効果音だけが使う。曲のパートも音量も変えない
+ * (前は ch4・ch5 を借りて曲の音量も下げたので、爆発のたびに FM のパートが消えた)。ボスは 12 ティックごとに打ち直して「ドゴドゴドゴーン」 */
+static u8 fse_t, fse_b, fse_rep;          /* fse_rep: ボスで、次に打ち直すまでのティック(0 = 打ち直さない) */
+static u16 fse_f;
+
+static void fse_hit(void)
+{
+    fse_b = 3; fse_f = 470;                  /* 約 360Hz から */
+    fm_write(0x25, 0);                       /* キーを離してから打ち直す */
+}
+
+static void fse_step(void)
+{
+    u8 v;
+    if (!fse_t) return;
+    if (!--fse_t) { fm_write(0x25, 0); return; }
+    if (fse_rep && !--fse_rep) { fse_rep = 12; fse_hit(); }   /* 割り算(ライブラリ)は Z80 で動く割り込みでは使わない */
+    fse_f -= fse_f >> 4;                     /* 1 ティックに 1/16 ずつ下げる(約 11 ティックで半分。低い響きを長く残す) */
+    if (fse_f < 256 && fse_b) { fse_f <<= 1; fse_b--; }
+    v = fse_t > 15 ? 0 : (u8)(15 - fse_t);   /* 終わりの 15 ティックで小さく */
+    fm_write(0x15, (u8)fse_f);
+    fm_write(0x25, (u8)(0x10 | (fse_b << 1) | (fse_f >> 8)));
+    fm_write(0x35, (u8)(0xD0 | v));          /* 音色 13 = シンセベース */
+}
+
+/* 効果音ごとの FM のリズム(レジスタ 0x0E の bit4 バスドラム、bit3 スネア、bit2 タム、bit1 シンバル、bit0 ハイハット) */
+static const u8 se_rhy[SE_COUNT] = { 0, 0, 0x09, 0, 0, 0x1A, 0x06, 0x14, 0, 0, 0x1E, 0x03 };
 static const u8 *se_ptr;
 static u8 se_cur;
 
@@ -177,7 +205,16 @@ void sndm_tick(void)
             se_ptr = se_tab[req];
             se_cur = req;
         }
+        /* FM のリズム音源も鳴らす(曲もリズムモード)。爆発はバスドラム・スネア・シンバル、バルカンはスネアとハイハット。
+         * 一度キーを離してから打つ(打っている最中の曲のドラムは切れる) */
+        if (req == SE_KILL || req == SE_BOSS || req == SE_DAMAGE) {
+            fse_t = req == SE_BOSS ? 90 : 42;
+            fse_rep = req == SE_BOSS ? 12 : 0;
+            fse_hit();
+        }
+        if (se_rhy[req]) { fm_write(0x0E, 0x20); fm_write(0x0E, (u8)(0x20 | se_rhy[req])); }
     }
+    fse_step();
     if (se_ptr) {
         if (se_ptr[2] == 0xFF) {
             psg_write(10, 0);
