@@ -525,6 +525,7 @@ static void objs_draw(void)
         if (!mesh) continue;
         g_obj_yaw = o->yaw;
         g_lod_min = o->t == T_PART;        /* ボスの部位は常に細部を省く(大きい面が多く、1 面のボスで 10fps まで落ちた) */
+        if (o->mesh == M_ROCKET) g_lod_min = 2;   /* 誘導弾はいつも矩形で描く(64×40 では点にしか見えない。カメラのすぐ前を飛ぶので、面で描くと 1 本 2.7ms かかった) */
         if (o->t == T_MYMIS) id = 0xFF;    /* 自分の誘導弾は当たり矩形を作らない(バルカンが手前の誘導弾に当たって壊していた) */
         if (o->t == T_PART && !o->yaw && !o->roll) {
             mesh_draw(mesh, &ord_c[ord[k]], 0, o->flash ? C_WHITE : 0, id);

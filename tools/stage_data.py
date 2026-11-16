@@ -496,7 +496,9 @@ def s7():
             m.box((x, y, (i * 4) % 8 - 2), (3 + (seed + i) % 3, 2.5, 3), TER1 if i else TER2, top=IRON, skip='b')
         return m
     pats = [rocks(k) for k in range(3)] + [None, None, None]
-    s.finish(lambda k: pats[(k * 3) % len(pats)])
+    # ボスの周回では小惑星を置かない(近くの岩は 1 区画 5ms ほどかかり、ボス戦の 1 フレームの 1/4 を使っていた)
+    nb = (s.circles[-1] - 24) // 8
+    s.finish(lambda k: pats[(k * 3) % len(pats)] if k < nb else None)
     # 周回区間 0: 136-264、1: 424-552、2: 840-968、ボス: 992-1120
     s.lap(0); s.lap(1); s.lap(2); s.lap(3)
     s.text(36, 'DEEP SPACE!')
