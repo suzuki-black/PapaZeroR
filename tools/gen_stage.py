@@ -15,7 +15,7 @@ from stage_data import MODS
 
 BASE = 0x8000
 LIMIT = 0x4000
-DATA_LIMIT = 0x2400   # 0xA400- は全モジュール共通のコード(game_ai.c)
+DATA_LIMIT = 0x2300   # 0xA300- は全モジュール共通のコード(game_ai.c・sndtest.c。tools/mkrom.py の HICODE_BASE)
 
 
 def main(out):

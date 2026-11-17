@@ -19,14 +19,14 @@ ALLOCS ?= 100000
 
 CFLAGS = -mr800 --std-c11 -I$(ENG) -I$(BUILD) --max-allocs-per-node $(ALLOCS) $(EXTRA_CFLAGS)
 P0FLAGS = --constseg PAGE0 --codeseg PAGE0 --opt-code-size
-LDFLAGS = -mr800 --no-std-crt0 --code-loc 0x4008 --data-loc 0xCC00 -Wl-b_PAGE0=0x0200 -Wl-b_HICODE=0xA400 -Wl-j -Wl-m -Wl-u
+LDFLAGS = -mr800 --no-std-crt0 --code-loc 0x4008 --data-loc 0xCC00 -Wl-b_PAGE0=0x0200 -Wl-b_HICODE=0xA300 -Wl-j -Wl-m -Wl-u
 MODFLAGS = -mr800 --no-std-crt0 --data-loc 0xBC00 -Wl-j -Wl-m -Wl-u
 
 ASM = crt0 sys vdp gfx math raster dm xf face pcm
 CRES = view shared_ram sound hud main fx
 CP0 = game scene cockpit
 SND = modhead_snd sndfm
-RELS = $(patsubst %,$(BUILD)/%.rel,$(ASM) $(CRES) $(CP0) game_ai gen_data)
+RELS = $(patsubst %,$(BUILD)/%.rel,$(ASM) $(CRES) $(CP0) game_ai sndtest gen_data)
 HDRS = $(wildcard $(ENG)/*.h) $(BUILD)/songs.h $(BUILD)/title.h $(BUILD)/ids.h
 MODS = $(foreach n,0 1 2 3 4 5 6 7 15 16 17 18 19 20 21,$(BUILD)/mod$(n).bin)
 # 映像の場面(オープニング = 0、n 面の後の継ぎ目 = 14 + n)の演出のコード(op.c)の置き場所。モジュールの中身の後ろ
@@ -76,7 +76,7 @@ $(patsubst %,$(BUILD)/film%.h,$(FILMS)): $(BUILD)/ids.h
 $(patsubst %,$(BUILD)/%.rel,$(CP0)): $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) $(P0FLAGS) -c -o $@ $<
 
-$(BUILD)/game_ai.rel: $(ENG)/game_ai.c $(HDRS) | $(BUILD)
+$(BUILD)/game_ai.rel $(BUILD)/sndtest.rel: $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --constseg HICODE --codeseg HICODE --opt-code-size -c -o $@ $<
 
 $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)

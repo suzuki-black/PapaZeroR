@@ -119,6 +119,7 @@ extern u8 g_heat;
 
 /* scene.c */
 void title_run(void);
+void sound_test(void);       /* sndtest.c(HICODE)。タイトルで M */
 void gameover_run(void);
 void ending_run(void);
 #endif

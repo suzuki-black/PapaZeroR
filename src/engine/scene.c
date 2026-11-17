@@ -39,6 +39,18 @@ static void config_show(void)
     }
 }
 
+static void title_pic(void);
+
+/* タイトルから入る画面(隠しコンフィグ・サウンドテスト): 下は黒帯にして f を呼び、終わったらタイトルの絵を描き直す */
+static void sub_screen(void (*f)(void))
+{
+    screen3_init();
+    cockpit_load();            /* 下の帯にタイトルの絵が残らないように */
+    cockpit_mode(1);           /* 下は黒帯 */
+    f();
+    title_pic();
+}
+
 static void title_pic(void)
 {
     static const u8 regs[] = { 1, 0x20, 0, 0x0E, 8, 0x0A, 9, 0x80, 2, 0x1F, 7, 0x00, 23, 0x00, 25, 0x18 };
@@ -85,14 +97,17 @@ void title_run(void)
             else kn = (key == konami[0]);
             if (kn == sizeof(konami)) {
                 kn = 0;
-                screen3_init();
-                cockpit_load();            /* 下の帯にタイトルの絵が残らないように */
-                cockpit_mode(1);           /* 下は黒帯 */
-                config_show();
-                title_pic();
+                sub_screen(config_show);
                 prev = 0xFF;
                 continue;
             }
+        }
+        /* M(B キーではない。B は隠しコマンドに使う)でサウンドテスト */
+        if ((in & ~prev & IN_B) && !(in & IN_KEY_B)) {
+            sub_screen(sound_test);
+            bgm_play(SONG_TITLE);
+            prev = 0xFF;
+            continue;
         }
         if ((in & IN_A) && !(prev & IN_A)) break;
         prev = in;

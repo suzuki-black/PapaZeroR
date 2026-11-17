@@ -17,6 +17,7 @@ import sys
 
 BANK = 0x2000
 ROM_BANKS = 64
+HICODE_BASE = 0xA300  # 全モジュールの後ろに重ねるコード(game_ai.c・sndtest.c)。Makefile の -Wl-b_HICODE、gen_stage.py の DATA_LIMIT と同じ
 DATA_BASE, DATA_LIMIT = 0xCC00, 0xD700   # 0xD700- は面のコード(stg.c)
 CODE_LIMIT = 0x8000
 P0D_BASE, P0D_LIMIT = 0x0200, 0x4000
@@ -80,9 +81,9 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     eng = read_ihx(eng_ihx)
     p0 = [a for a in eng if a < 0x4000]
     code = [a for a in eng if 0x4000 <= a < 0x8000]
-    hi = {a - 0x8000: b for a, b in eng.items() if 0xA400 <= a < 0xC000}   # 全モジュールの後ろに重ねるコード(game_ai.c)
-    if [a for a in eng if 0x8000 <= a < 0xA400]:     # 常駐部の後ろの領域(初期化のコードなど)があふれると、ここに来て ROM に載らない
-        sys.exit('mkrom: 常駐部があふれた(0x%04X-)' % min(a for a in eng if 0x8000 <= a < 0xA400))
+    hi = {a - 0x8000: b for a, b in eng.items() if HICODE_BASE <= a < 0xC000}   # 全モジュールの後ろに重ねるコード(game_ai.c)
+    if [a for a in eng if 0x8000 <= a < HICODE_BASE]:     # 常駐部の後ろの領域(初期化のコードなど)があふれると、ここに来て ROM に載らない
+        sys.exit('mkrom: 常駐部があふれた(0x%04X-)' % min(a for a in eng if 0x8000 <= a < HICODE_BASE))
     if [a for a in eng if a >= 0xC000]:
         sys.exit('mkrom: エンジンのイメージに 0xC000 以降のデータがある')
     if max(code) >= CODE_LIMIT:
@@ -103,13 +104,13 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
         rom[BANK + a - P0D_BASE] = eng[a]
     for a in code:
         rom[3 * BANK + a - 0x4000] = eng[a]
-    # 映像の場面の演出(op.c): モジュールの中身の後ろ、0xA400 の手前に重ね、見出しに入口の番地を書く
+    # 映像の場面の演出(op.c): モジュールの中身の後ろ、HICODE の手前に重ね、見出しに入口の番地を書く
     opimg = {}
     for n, ihx in ops.items():
         op = read_ihx(ihx)
         osyms = read_noi(ihx[:-4] + '.noi')
-        if min(op) < 0x8000 or max(op) >= 0xA400:
-            sys.exit('mkrom: モジュール %d の演出が 0x%04X-0x%04X で、0xA400 を超えた' % (n, min(op), max(op)))
+        if min(op) < 0x8000 or max(op) >= HICODE_BASE:
+            sys.exit('mkrom: モジュール %d の演出が 0x%04X-0x%04X で、0x%04X を超えた' % (n, min(op), max(op), HICODE_BASE))
         if osyms.get('l__DATA', 0) or osyms.get('l__INITIALIZED', 0):
             sys.exit('mkrom: モジュール %d の演出に変数がある(持たない作り)' % n)
         opimg[n] = (op, osyms['_op_hook'])
@@ -152,7 +153,7 @@ def main(boot_ihx, eng_ihx, eng_noi, out_path, *args):
     rom[TITLE_BANK * BANK:TITLE_BANK * BANK + len(t)] = t
     with open(out_path, 'wb') as f:
         f.write(rom)
-    print('mkrom: HICODE %d B / 7168、面のコード %d B / %d + %d B / %d' % (len(hi), len([a for a in stg if a < STG_B]), STG_A_LEN,
+    print('mkrom: HICODE %d B / %d、面のコード %d B / %d + %d B / %d' % (len(hi), 0xC000 - HICODE_BASE, len([a for a in stg if a < STG_B]), STG_A_LEN,
                                                                           len([a for a in stg if a >= STG_B]), STG_B_LEN))
     print('mkrom: 常駐部 %d B / 16384、ページ0 %d B / 15872、変数 %d B、曲 %d B / %d' % (
         max(code) - 0x4000 + 1, plen, syms['s__HEAP'] - syms['s__DATA'], len(songs), 0xBE00 - SONG_BASE))
