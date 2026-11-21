@@ -3,6 +3,8 @@
 import math
 import re
 from content import *
+from film_spr import Subject
+import gen_font
 
 EV_SPAWN, EV_BOSS, EV_ROLL, EV_PROMPT, EV_TEXT, EV_SUB, EV_VOICE, EV_BGM, EV_PAL, EV_LOOP, EV_END, EV_CAM, EV_ITEM, EV_PROP, EV_FADE = range(15)
 PR_ROLL, PR_LOOP, PR_DIVE = 1, 2, 3
@@ -242,7 +244,7 @@ def s2():
     s.finish(lambda k: pats[(k * 3 + k // 5) % len(pats)])
     # 周回区間 0: 168-296、1: 376-504、2: 984-1112、ボス: 1144-1272
     s.lap(0); s.lap(1); s.lap(2); s.lap(3)
-    s.text(40, 'BANDITS!')
+    s.text(40, 'Bandits!')
     for at in (16, 48, 80, 112):
         s.spawn(at, E04, at + 70, -6, 25, P_PASS, 128); s.spawn(at, E04, at + 76, 5, 22, P_PASS, 128)
     for at in (130, 170, 200, 226):
@@ -276,7 +278,7 @@ def s2():
     return s
 
 def s3():
-    s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', radio='PAPA, HURRY!', line='THREE FOR ONE.')
+    s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', radio='Papa, hurry!', line='THREE FOR ONE.')
     s.ahead = 11                        # 谷の壁を遠くまで見せる(8 区画だと、高く飛ぶ前半に遠くの壁が消えて平地に見えた)
     s.weapon = 3                        # 秘密兵器: P-51 の群れ
     # 前半は谷の上(28。壁は 24 まで)で追っ手と空中戦。中ほどで谷へ降り、谷底の基地(戦車)を叩きながら谷を抜けてボスへ
@@ -386,7 +388,7 @@ def s4():
     return s
 
 def s5():
-    s = Mod(5, 'STAGE 5 / THE STRATOSPHERE', TWILIGHT, 'STAGE5', radio='PAPA, HURRY!', line='NICE WINGS.')
+    s = Mod(5, 'STAGE 5 / THE STRATOSPHERE', TWILIGHT, 'STAGE5', radio='Papa, hurry!', line='NICE WINGS.')
     s.y0 = 22
     s.weapon = 5                        # 秘密兵器: 大きな誘導弾
     s.models.append('ROCKETL')
@@ -431,7 +433,7 @@ def s5():
     return s
 
 def s6():
-    s = Mod(6, 'STAGE 6 / THE ORBIT', SPACE, 'STAGE6', flags=SF_SPACE, radio='SHE IS ON THAT ROCKET!', line='NOT SO FAST!')
+    s = Mod(6, 'STAGE 6 / THE ORBIT', SPACE, 'STAGE6', flags=SF_SPACE, radio='She is on that rocket!', line='NOT SO FAST!')
     s.y0 = 60
     s.weapon = 6                        # 秘密兵器: 機雷
     sp = 20
@@ -479,7 +481,7 @@ def s6():
 
 def s7():
     """7 面: 深宇宙。地球の見えない星空。ヒナを乗せたロケット(方舟)を追い、小惑星の間を抜けて取り戻す"""
-    s = Mod(21, 'STAGE 7 / DEEP SPACE', SPACE, 'STAGE6', flags=SF_SPACE | SF_DEEP, radio='I CAN SEE YOU!', line='GIVE HER BACK.')
+    s = Mod(21, 'STAGE 7 / DEEP SPACE', SPACE, 'STAGE6', flags=SF_SPACE | SF_DEEP, radio='I can see you!', line='GIVE HER BACK.')
     s.y0 = 60
     s.weapon = 7                        # 秘密兵器: 全部を順に
     s.models += ['MUSTANG', 'MINE', 'ROCKETL']
@@ -531,15 +533,20 @@ def s7():
     s.end()
     return s
 
+# 字幕の話し手(src/engine/op.c の who と同じ並び): ナレーション(第三者)・父・ヒナ(無線)・ヒナ(その場)・機の警報・敵
+WHO_NARR, WHO_PAPA, WHO_HINA_RADIO, WHO_HINA, WHO_ALERT, WHO_ENEMY = range(6)
+
 class Film:
     """オープニングの映画(src/engine/op.c が時刻 t[ティック] で再生する)。曲 OPENING と同じ時計。
     座標は単位(8.8 にして 16bit で回り込む。カメラから 128 単位より遠いものは描かない)。
     向き: 方位 h は度(0 = 北 = +z、90 = 東 = +x)。カメラのヨー = h、役者のヨー = h + 180(モデルの正面は -z)"""
     FL_EASE, FL_BOB, FL_C, FL_SHAKE, FL_STEP = 1, 2, 4, 8, 16
-    FE_SUB, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE, FE_FADE = range(1, 9)
+    FE_SUB, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE, FE_FADE, FE_SPR = range(1, 10)
 
     def __init__(self):
         self.cam, self.acts, self.evs = [], [], []
+        self.sprites = []          # 見せたいもの(tools/film_spr.py の Subject)。スプライトで描く
+        self.clears = []           # say の dur で消す字幕(出した時刻, 消す時刻)
 
     @staticmethod
     def ang(d):
@@ -570,6 +577,13 @@ class Film:
 
     def ev(self, t, kind, arg=0, s=None):
         self.evs.append((t, kind, arg, s))
+
+    def say(self, t, who, s, mood=0, dur=None):
+        """字幕(下の黒帯)。who = WHO_ の話し手(色・名前の札・斜体が決まる。src/engine/op.c の who)、mood = 時間による出し分け。
+        dur を渡すとそのティック後に消す(その間に次の字幕が来るときは消さない)"""
+        self.evs.append((t, self.FE_SUB, mood | who << 2, s))
+        if dur:
+            self.clears.append((t, t + dur))
 
     def header(self, ids):
         def fx(v):
@@ -605,10 +619,26 @@ class Film:
         out.append('#define N_ACT %d' % len(self.acts))
         out.append('static const Key act_k[] = {' + ','.join(key(k, True) for k in flat) + '};')
         out.append('static const u8 act_i[] = {' + ','.join(map(str, idx)) + '};')
+        spr = ''
+        if self.sprites:
+            import film_spr
+            end = max(e[0] for e in self.evs)
+            spr, _, _ = film_spr.header(self, self.sprites, M, end)
+            self.evs.append((0, self.FE_SPR, 0, None))
+        for t0, t1 in self.clears:
+            if not any(e[1] == self.FE_SUB and t0 < e[0] <= t1 for e in self.evs):
+                self.evs.append((t1, self.FE_SUB, 0, ''))
+        self.clears = []
         evs = sorted(self.evs, key=lambda e: e[0])
         out.append('#define N_FEV %d' % len(evs))
-        out.append('static const FilmEv film_ev[] = {' + ','.join('{%d,%d,%d,%s}' % (t, k, a, '"%s"' % s if s is not None else '0') for t, k, a, s in evs) + '};')
-        return '\n'.join(out) + '\n'
+        def c_s(k, a, s):
+            if s is None:
+                return '0'
+            if k == self.FE_SUB:   # 字幕は字体に合わせて並べた形で(tools/gen_font.py)
+                return gen_font.c_str(gen_font.layout(s, a >> 2))
+            return '"%s"' % s
+        out.append('static const FilmEv film_ev[] = {' + ','.join('{%d,%d,%d,%s}' % (t, k, a, c_s(k, a, s)) for t, k, a, s in evs) + '};')
+        return '\n'.join(out) + '\n' + spr
 
 
 def opening():
@@ -648,8 +678,8 @@ def opening():
     # 町は農場から北へ約 110 単位(遠景の黒煙と飛行船だけを置き直す)
     f.key(smoke1, 2 * BAR, 'SMOKE', (26, 0, 108), cut=True); f.key(smoke2, 2 * BAR, 'SMOKE', (40, 0, 98), cut=True)
     f.key(ship, 2 * BAR, 'SHIP', (34, 24, 104), 270, cut=True)
-    f.ev(20, F.FE_SUB, 0, 'THE TOWN FELL AT DAWN.')
-    f.ev(2 * BAR, F.FE_SUB, 0, '')
+    f.say(20, WHO_NARR, 'The town fell at dawn.')
+    f.say(2 * BAR, WHO_NARR, '')
 
     # 農場の配置: 父は庭(2, -2)。家は東、格納庫(赤い納屋)は南西で北へ開き、中に零戦が北を向いて止まる
     for a in (hina, t1, t2, raider, zero, hangar, house, tree1, tree2):
@@ -671,53 +701,64 @@ def opening():
     # 父が目を離している間に、戦闘機が道に降り、テロリストがヒナをつかむ
     CAR = 3 * BAR + 80
     f.ev(CAR - 20, F.FE_SE, 10)                                          # 轟音(SE_BOSS)
-    # 父が家を見ている間に、轟音とともに戦闘機が家の上をかすめ、北の道へ降りていく(横から見えるので 3D で描く)
-    f.key(raider, CAR - 30, 'RAIDERM', (34, 14, -22), -32, roll=-25)
-    f.key(raider, CAR + 30, 'RAIDERM', (14, 4.5, 10), -32, roll=-15)
-    f.key(raider, CAR + 60, 'RAIDERM', (5, 2, 21), -20)
-    f.key(raider, CAR + 80, 'RAIDER', (0, 0, 24), 0, cut=True)
+    # 父が家を見ている間に、轟音とともに戦闘機が東から家の上をかすめ、庭の先(約 13 単位)へ西向きに降りる。
+    # 戦闘機は最後まで 3D で描く(前は道に降りると後ろから見たスプライトになり、黒い蜘蛛のような塊に見えた)。横向きに止めて右の横腹を見せる
+    G = (-1, 0, 11)
+    f.key(raider, CAR - 30, 'RAIDERM', (40, 12, 14), -90, roll=-20)
+    f.key(raider, CAR + 30, 'RAIDERM', (15, 3, 12), -90, roll=-8)
+    f.key(raider, CAR + 60, 'RAIDERM', (4, .8, 11), -90)
+    f.key(raider, CAR + 80, 'RAIDERM', G, -90)
     # 5〜6 小節(暗い主題): 振り返ると、黒ずくめの男がヒナを肩に担いで戦闘機へ走っている。もう一人が銃を構えて父を止める
     BACK = 4 * BAR - 20
     f.cam_key(BACK, p0, 70, 0, fl=F.FL_EASE)
     f.cam_key(BACK + 30, p0, 0, 0)
-    run0, run1 = (2.6, 0, 4.5), (1.2, 0, 21.4)
+    run0, run1 = (2.6, 0, 4.5), (.5, 0, 9.6)                       # 戦闘機の右の横腹(胴の下にカプセル)へ
     f.key(t1, CAR, 'TERROR', run0, 0, fl=F.FL_BOB)
     f.key(t1, 4 * BAR + 220, 'TERROR', run1, 0)
     carry = lambda p: p                     # 担がれたヒナのスプライトは誘拐犯と同じ足もとに置く(絵が肩の上にある)
     f.key(hina, CAR, 'HINA', carry(run0), 0, roll=90, fl=F.FL_BOB, cut=True)
     f.key(hina, 4 * BAR + 220, 'HINA', carry(run1), 0, roll=90)
-    f.key(hina, 4 * BAR + 240, 'HINA', (0, .5, 22.6), 0, roll=90)  # カプセルへ入れられる
+    f.key(hina, 4 * BAR + 240, 'HINA', (-.5, .5, 10.6), 0, roll=90)  # カプセルへ入れられる
     f.key(hina, 4 * BAR + 250, HIDE, (0, 0, 0))
     f.ev(4 * BAR + 40, F.FE_VOICE, 9)                               # 「Papa!」(VOICE_PAPA)
     f.key(t1, 4 * BAR + 250, 'TERROR', run1, 0)
-    f.key(t1, 4 * BAR + 290, 'TERROR', (-1.6, 0, 25), 0, fl=F.FL_BOB)
+    f.key(t1, 4 * BAR + 290, 'TERROR', (-2.5, 0, 9.8), 270, fl=F.FL_BOB)
     f.key(t1, 4 * BAR + 300, HIDE, (0, 0, 0))                        # 乗り込む
     f.key(t2, CAR, 'TERROR', (-.6, 0, 4.5), 180)                    # 2 人目は父の前に立ちはだかり、銃を向ける
     f.key(t2, 4 * BAR + 262, 'TERROR', (-.6, 0, 4.5), 180)
     f.key(t2, 4 * BAR + 270, 'TERROR', (-.6, 0, 4.5), 0, fl=F.FL_BOB)
-    f.key(t2, 4 * BAR + 310, 'TERROR', (-1.8, 0, 23), 0)
+    f.key(t2, 4 * BAR + 310, 'TERROR', (-2.8, 0, 9.6), 0)
     f.key(t2, 4 * BAR + 320, HIDE, (0, 0, 0))
     # 父は追おうとするが、2 人目に銃を向けられて数歩で止まる(5 小節目〜6 小節目)
     p1 = (1.8, eye, 1.2)
     f.cam_key(4 * BAR + 20, p0, 0, 0, fl=F.FL_BOB)
     f.cam_key(4 * BAR + 300, p1, 0, 0)
-    # 7〜8 小節: 戦闘機は道を滑って飛び立ち、右へ傾いて町のほうへ消える。父は見上げる
+    # 7〜8 小節: 戦闘機は父の目の前を西へ滑走して飛び立ち、右へ回って父の頭の上をかすめ、町のほうへ消える。父は目で追い、見上げる
+    # (前は北へまっすぐ遠ざかり、すぐに点になった)
     TO = 6 * BAR
-    f.key(raider, TO, 'RAIDER', (0, 0, 24), 0)
-    f.key(raider, TO + 50, 'RAIDER', (0, 0, 30), 0)
-    f.key(raider, TO + 100, 'RAIDER', (0, 0, 48), 0)
-    f.key(raider, TO + 140, 'RAIDER', (0, 2.5, 68), 0)
-    f.key(raider, TO + 190, 'RAIDER', (3, 9, 90), 8, roll=-20)
-    f.key(raider, TO + 260, 'RAIDER', (14, 20, 110), 20, roll=-30)
-    f.key(raider, TO + 300, 'RAIDER', (22, 26, 120), 25, roll=-30)
-    f.key(raider, TO + 302, HIDE, (0, 0, 0))
+    f.key(raider, TO, 'RAIDERM', G, -90)
+    f.key(raider, TO + 50, 'RAIDERM', (-5, 0, 11), -90)
+    f.key(raider, TO + 100, 'RAIDERM', (-16, 0, 11), -90)
+    f.key(raider, TO + 140, 'RAIDERM', (-28, 2, 11), -88)
+    # 小さく右へ回り、父のすぐ上(約 22 単位)を低くかすめて、東の町のほうへ(前は 45 単位より遠くを回り、点になった)
+    f.key(raider, TO + 175, 'RAIDERM', (-30, 6, 20), 0, roll=-35)
+    f.key(raider, TO + 210, 'RAIDERM', (-20, 9, 24), 60, roll=-35)
+    f.key(raider, TO + 245, 'RAIDERM', (-4, 11, 22), 100, roll=-20)
+    f.key(raider, TO + 280, 'RAIDERM', (16, 14, 26), 60, roll=-25)
+    f.key(raider, TO + 310, 'RAIDERM', (30, 18, 44), 30, roll=-15)
+    f.key(raider, TO + 312, HIDE, (0, 0, 0))
     f.ev(TO, F.FE_SE, 10)
-    f.cam_key(TO + 100, p1, 0, 0, fl=F.FL_EASE)
-    f.cam_key(TO + 220, p1, 6, 12, fl=F.FL_EASE)
-    f.cam_key(TO + 300, p1, 10, 10)
+    f.cam_key(TO + 20, p1, -10, 0, fl=F.FL_EASE)
+    f.cam_key(TO + 100, p1, -50, 0)
+    f.cam_key(TO + 140, p1, -66, 2)
+    f.cam_key(TO + 175, p1, -59, 7)
+    f.cam_key(TO + 210, p1, -44, 13)
+    f.cam_key(TO + 245, p1, -14, 22)
+    f.cam_key(TO + 280, p1, 28, 22)
+    f.cam_key(TO + 310, p1, 33, 18)
     # 9 小節: 振り返り、格納庫へ走る
     TURN = 8 * BAR
-    f.cam_key(TURN, p1, 10, 10, fl=F.FL_EASE)
+    f.cam_key(TURN, p1, 33, 18, fl=F.FL_EASE)
     f.cam_key(TURN + 40, p1, -157, 0, fl=F.FL_BOB)
     p2 = (-2.5, 2.5, -8.5)                                           # 零戦の右斜め前。横顔(長い風防・丸い尾翼・黒いカウリング)と主翼の上面が見えるよう、目線を少し上げる
     f.cam_key(9 * BAR - 20, p2, -135, -12, fl=F.FL_EASE)
@@ -740,23 +781,29 @@ def opening():
     # 17〜18 小節: 外から。零戦が頭上を越え、黒煙の上がる町へ向かって小さくなる(最後の和音)
     OUT = T2 + 260
     f.ev(OUT, F.FE_COCKPIT, 1)
-    f.ev(OUT + 2, F.FE_SUB, 0, "LET'S GO.")
-    f.ev(OUT + 150, F.FE_SUB, 0, 'YOU HAVE 6 HOURS TO SAVE HER.')
+    f.say(OUT + 2, WHO_PAPA, "Let's go.")
+    f.say(OUT + 150, WHO_NARR, 'You have 6 hours to save her.')
     f.ev(OUT, F.FE_SE, 10)
-    f.key(zero, OUT, 'ZEROF', (-8, 9, 62), 0, roll=0)
-    f.key(zero, OUT + 70, 'ZEROF', (-6, 17, 90), 10, roll=-15)
-    f.key(zero, OUT + 140, 'ZEROF', (-1, 25, 115), 8, roll=-5)
-    f.key(zero, 2250, 'ZEROF', (6, 38, 170), 5)
-    camx = (6, 1.4, 76)
-    f.cam_key(OUT, camx, -126, 10)
-    f.cam_key(OUT + 70, camx, -40, 38)
-    f.cam_key(OUT + 140, camx, -14, 30, fl=F.FL_EASE)
-    f.cam_key(2250, camx, -1, 20)
+    # 零戦は 6 秒のあいだ約 20〜30 単位に保ち、カメラも昇りながら後ろから追う(前はカメラが地上に止まっていて、
+    # 2〜3 秒で 40 単位より遠くなり、最後は 95 単位先の点になった)
+    zk = [(OUT, (-8, 9, 62), 0, 0), (OUT + 70, (-5, 15, 86), 10, -15), (OUT + 140, (-1, 20, 102), 8, -5), (2250, (4, 25, 124), 5, 0)]
+    ck = [(OUT, (6, 1.4, 76)), (OUT + 70, (6, 4, 80)), (OUT + 140, (5, 8, 86)), (2250, (4, 13, 102))]
+    def lerp(ks, t):
+        for (t0, a, *_), (t1, b, *_) in zip(ks, ks[1:]):
+            if t0 <= t <= t1:
+                k = (t - t0) / (t1 - t0)
+                return tuple(a[i] + (b[i] - a[i]) * k for i in range(3))
+    for t, p, h, r in zk:
+        f.key(zero, t, 'ZEROF', p, h, roll=r)
+    for t in (OUT, OUT + 35, OUT + 70, OUT + 105, OUT + 140, OUT + 220, OUT + 300, 2250):
+        c, z = lerp(ck, t), lerp(zk, t)
+        dx, dy, dz = z[0] - c[0], z[1] - c[1], z[2] - c[2]
+        f.cam_key(t, c, math.degrees(math.atan2(dx, dz)), math.degrees(math.atan2(dy, math.hypot(dx, dz))), fl=F.FL_EASE if t == OUT + 140 else 0)
     f.key(smoke1, OUT, 'SMOKE', (-6, 0, 180), cut=True); f.key(smoke2, OUT, 'SMOKE', (14, 0, 188), cut=True)
     f.key(ship, OUT, 'SHIP', (6, 34, 184), 270, cut=True)
     f.ev(2260, F.FE_END)
     s.film = f
-    s.op_base = 0x9500
+    s.op_base = 0x9420
     return s
 
 def seam1():
@@ -764,7 +811,7 @@ def seam1():
     海の上を外から見た零戦が北へ飛ぶ → 操縦席から、遠くに誘拐犯の戦闘機(ヒナのカプセル)と、無線のヒナの声 →
     水平線に港が現れ、港から空へレーザーが伸びる(2 面の港の基地のレーザー戦車の前振り)"""
     s = Mod(15, 'SEAM 1', SEA, 'BRIDGE', flags=SF_SCENE)
-    s.models = ['ZEROF', 'CRANE', 'DEPOT', 'BEAM', 'CLOUDP']
+    s.models = ['ZEROF', 'RAIDER', 'CRANE', 'DEPOT', 'BEAM', 'CLOUDP']
     s.y0 = 0
     s.segs((32, 0, 0, 0))
     s.finish(lambda k: None)
@@ -777,35 +824,35 @@ def seam1():
     crane1, crane2, depot, beam = f.actor(), f.actor(), f.actor(), f.actor()
     for a in [zero, jet, crane1, crane2, depot, beam] + clouds:
         f.key(a, 0, HIDE, (0, 0, 0))
-    # 1〜2 小節: 海の上。外から見た零戦が左をかすめて北へ(カメラは振り返って追う)
-    cam = (5, 4, 10)
-    f.cam_key(0, cam, -160, 6)
-    f.cam_key(110, cam, -95, 10, fl=F.FL_EASE)
-    f.cam_key(225, cam, 0, 6)
-    f.key(zero, 0, 'ZEROF', (-6, 5, -30), 0, roll=10)
-    f.key(zero, 110, 'ZEROF', (-1, 7, 12), 0, roll=-10)
-    f.key(zero, 224, 'ZEROF', (3, 10, 60), 0)
+    # 1〜2 小節: 海の上。父の零戦がカメラの近くを左から右へゆっくり横切る。少し上から見下ろして、暗い海を背に翼の上面(日の丸)を見せ、カメラは首を振って追う
+    # (前は後ろからカメラの横をかすめて北へ抜けたので、点 → 画面からはみ出す塊 → 点と変わり、零戦に見える時間がほとんど無かった)
+    cam = (0, 10.5, 0)
+    f.cam_key(0, cam, -40, -24)
+    f.cam_key(225, cam, 35, -24)
+    f.key(zero, 0, 'ZEROF', (-10, 5.5, 9), 80, roll=-5)
+    f.key(zero, 110, 'ZEROF', (-1, 5.7, 9.5), 82, roll=-5)
+    f.key(zero, 224, 'ZEROF', (8, 6, 10.5), 84)
     f.key(zero, 226, HIDE)
     f.key(clouds[0], 0, 'CLOUDP', (-14, 12, 30))
     f.key(clouds[1], 0, 'CLOUDP', (16, 16, 70))
     # 3〜5 小節: 操縦席。遠くに誘拐犯の戦闘機。無線でヒナの声
     T = int(2 * B)
-    f.ev(T, F.FE_COCKPIT, 0)
     v = .3                                     # 1 ティックに進む単位
     end = 900
     for t in range(T, end, 150):               # 1 区間で 120 単位を超えないよう、150 ティックごとにキーを置く
         f.cam_key(t, (3, 10, 60 + v * (t - T)), 0, 2)
     f.cam_key(end, (3, 10, 60 + v * (end - T)), 0, 2)
-    f.key(jet, T, 'RAIDER', (8, 17, 112), 0)                       # 正面のやや上(高すぎると画面の上へ外れた)
-    f.key(jet, int(5 * B), 'RAIDER', (6, 17, 212), 0)
-    f.key(jet, end, 'RAIDER', (2, 19, 325), 0)
+    # 正面のやや上、約 20 単位先(前は 50〜60 単位先で、小さくて何か分からなかった)
+    f.key(jet, T, 'RAIDER', (5, 13.5, 80), 0)
+    f.key(jet, int(5 * B), 'RAIDER', (4, 13.5, 181), 0)
+    f.key(jet, end, 'RAIDER', (2, 14, 283), 0)
     # そばを流れる雲(速さを見せる)
     zc = lambda t: 60 + v * (t - T)
     f.key(clouds[0], T, 'CLOUDP', (-10, 13, zc(T) + 60), cut=True); f.key(clouds[0], T + 200, 'CLOUDP', (-10, 13, zc(T) + 60))
     f.key(clouds[1], T, 'CLOUDP', (14, 6, zc(T) + 110), cut=True); f.key(clouds[1], T + 360, 'CLOUDP', (14, 6, zc(T) + 110))
     f.key(clouds[2], T + 150, 'CLOUDP', (-6, 8, zc(T + 150) + 100)); f.key(clouds[2], T + 450, 'CLOUDP', (-6, 8, zc(T + 150) + 100))
     f.ev(int(3 * B) + 20, F.FE_VOICE, 6)                            # 「Papa, hurry!」(VOICE_HURRY)
-    f.ev(int(3 * B) + 20, F.FE_CAP, 2, 'PAPA, HURRY!')
+    f.say(int(3 * B) + 20, WHO_HINA_RADIO, 'Papa, hurry!', dur=150)
     # 6〜8 小節: 水平線に港。港から空へレーザーが伸びて光る(戦闘機はその上を越えていく)
     H = 300                                    # 港の z(カメラは最後に 60 + 0.3 × 675 ≒ 262。座標は 256 で回り込むので、カメラから 120 以内に置く)
     f.key(crane1, int(5 * B), 'CRANE', (-14, 0, H), 90)
@@ -815,7 +862,7 @@ def seam1():
         f.key(beam, t0, 'BEAM', ((-5, -1, -3)[i], 12, H + 2))
         f.key(beam, t0 + 40, HIDE)
         f.ev(t0, F.FE_SE, 11)                                          # SE_LASER
-    f.ev(int(6 * B) + 20, F.FE_CAP, 3, 'THEY HAVE LASERS')           # 赤(水色は青空に溶けた)
+    f.say(int(6 * B) + 20, WHO_PAPA, 'They have lasers!', dur=150)
     f.ev(end, F.FE_END)
     s.film = f
     s.op_base = 0x9000
@@ -824,7 +871,7 @@ def seam1():
 def seam_mod(n, name, pal, flags=0):
     """継ぎ目の映像の場面のモジュール(地形なし。曲は BRIDGE: t128、8 小節 = 900 ティック、1 小節 112.5)"""
     s = Mod(n, name, pal, 'BRIDGE', flags=SF_SCENE | flags)
-    s.op_base = 0x9000                         # 演出のコード(Makefile の OPn_BASE と同じ値)
+    s.op_base = 0x8800                         # 演出のコード(Makefile の OPn_BASE と同じ値。主役のスプライトの絵も入るので、データの後ろから)
     s.y0 = 0
     s.segs((32, 0, 0, 0))                      # 区画が 3 つ以上ないと経路の終わり(path_max)が 0 になり、場面がすぐ終わる
     s.finish(lambda k: None)
@@ -842,31 +889,33 @@ def cruise(f, t0, t1, p0, v, pitch=2, climb=0.0, yaw=0):
 def seam2():
     """2 面の後(港 → 谷、夕方)。夕日の荒れ地の先に台地。誘拐犯の戦闘機は谷へ降り、P-51 が迎え撃ちに上がってくる"""
     s = seam_mod(16, 'SEAM 2', DUSK)
-    s.models = ['MESA', 'MUSTANG', 'CLOUDP']
+    s.models = ['MESA', 'MUSTANGF', 'RAIDER', 'CLOUDP']
     f = Film(); F = Film; B = 112.5; end = 900
     jet, m1, m2, m3, p1, p2, cl = [f.actor() for _ in range(7)]
     for a in (jet, m1, m2, m3, p1, p2, cl):
         f.key(a, 0, 0, (0, 0, 0))
-    f.ev(0, F.FE_COCKPIT, 0)
     cam = cruise(f, 0, end, (0, 14, 0), .3)
     f.key(cl, 0, 'CLOUDP', (-12, 18, 70)); f.key(cl, 300, 'CLOUDP', (-12, 18, 70))
-    f.key(jet, 0, 'RAIDER', (4, 18, 60), 0)
-    f.key(jet, int(3 * B), 'RAIDER', (3, 16, 150), 0)
-    f.key(jet, int(6 * B), 'RAIDER', (0, 6, 250), 0)                 # 谷へ降りていく
-    f.key(jet, end, 'RAIDER', (0, 2, 330), 0)
+    # 誘拐犯の戦闘機は 3D で、約 20 単位先の少し上(前は 60〜90 単位先のスプライトで、虫のように見えた。同じ高さだと翼が線になる)
+    f.key(jet, 0, 'RAIDER', (3, 19, 20), 0)
+    f.key(jet, int(3 * B), 'RAIDER', (2, 19, 121), 0)
+    f.key(jet, 600, 'RAIDER', (1, 18.5, 201), 0)
+    f.key(jet, 680, 'RAIDER', (0, 7, 227), 0)                       # 谷へ急降下(同じ高さを通る間は翼が線になるので、短く)
+    f.key(jet, end, 'RAIDER', (0, 4, 296), 0)                       # 上から紫の翼が見える
     f.ev(int(2 * B), F.FE_VOICE, 6)                                  # 「Papa, hurry!」
-    f.ev(int(2 * B), F.FE_CAP, 2, 'PAPA, HURRY!')
+    f.say(int(2 * B), WHO_HINA_RADIO, 'Papa, hurry!', dur=150)
     for a, (x, z) in zip((m1, m2, m3), ((-14, 250), (12, 262), (-4, 290))):
         f.key(a, int(3.5 * B), 'MESA', (x, 0, z), 180)
-    # 6〜8 小節: 台地の間から P-51 が 2 機、こちらへ上がってくる
+    # 6〜8 小節: 台地の間から P-51 が 2 機、こちらへ上がってきて、操縦席のすぐ横を正面からすれ違う
+    # (前は 65〜90 単位先から近づくだけで、地平線の緑の点にしか見えなかった)
     t = int(4.5 * B)
     for a, x in ((p1, -5), (p2, 6)):
-        z0 = cam(t)[2] + 90
-        f.key(a, t, 'MUSTANG', (x, 4, z0), 180)
-        f.key(a, t + 180, 'MUSTANG', (x * .6, 13, z0 - 25), 180)
-        f.key(a, end, 'MUSTANG', (x * .4, 15, cam(end)[2] + 10), 180, roll=30)
+        z0 = cam(t)[2] + 35
+        f.key(a, t, 'MUSTANGF', (x, 8, z0), 180)
+        f.key(a, 700, 'MUSTANGF', (x * .9, 12, cam(700)[2] + 18), 180, roll=40 if x < 0 else -40)
+        f.key(a, end, 'MUSTANGF', (x * 1.3, 13.5, cam(end)[2] + 9), 180, roll=60 if x < 0 else -60)   # 翼を立てて両横をすれ違う(正面からだと薄い)
     f.ev(t + 20, F.FE_SE, 4)                                         # SE_ALARM
-    f.ev(t + 30, F.FE_CAP, 3, 'BANDITS!')
+    f.say(t + 30, WHO_ALERT, 'Bandits!', dur=150)
     f.ev(end, F.FE_END)
     s.film = f
     return s
@@ -875,19 +924,19 @@ def seam2():
 def seam3():
     """3 面の後(谷 → 雲海、夜)。雲を抜けて上へ。振り返ると、ロケットを積んだ P-51 が後ろに食いついている"""
     s = seam_mod(17, 'SEAM 3', NIGHT)
-    s.models = ['RMUSTANG', 'CLOUDP']
+    s.models = ['RMUSTANGF', 'RAIDERN', 'CLOUDP']
     f = Film(); F = Film; B = 112.5; end = 900
     c1, c2, c3, p1, p2, jet = [f.actor() for _ in range(6)]
     for a in (c1, c2, c3, p1, p2, jet):
         f.key(a, 0, 0, (0, 0, 0))
-    f.ev(0, F.FE_COCKPIT, 0)
-    # 1〜4 小節: 機首を上げて雲を抜ける。前を、ヒナを乗せた誘拐犯の戦闘機が昇っていく(スプライト)
+    # 1〜4 小節: 機首を上げて雲を抜ける。前を、ヒナを乗せた誘拐犯の戦闘機が昇っていく。約 18 単位先の少し上に置き、
+    # 月明かりの灰の腹と白いカプセルを夜空を背に見上げる(前は 50 単位先の黒いスプライトで、夜空に溶けて見えなかった)
     cam = cruise(f, 0, int(4 * B), (0, 6, 0), .28, pitch=12, climb=.06)
     for t in (0, 150, 300, int(4 * B)):
         x, y, z = cam(t)
-        f.key(jet, t, 'RAIDER', (2, y + 9 + t * .01, z + 50), 0)
+        f.key(jet, t, 'RAIDERN', (2, y + 3, z + 18), 0)
     f.key(jet, int(4 * B) + 2, 0)
-    f.ev(60, F.FE_CAP, 2, 'AFTER THAT JET!')
+    f.say(60, WHO_PAPA, 'After that jet!', dur=150)
     for a, (x, y, z, t0) in zip((c1, c2, c3), ((-6, 14, 40, 0), (8, 22, 90, 120), (-3, 30, 150, 260))):
         f.key(a, t0, 'CLOUDP', (x, y, z)); f.key(a, t0 + 200, 'CLOUDP', (x, y, z))
     # 5〜8 小節: 雲の上で水平に。警報、振り返ると後ろに 2 機
@@ -897,17 +946,17 @@ def seam3():
     cruise(f, t, tl, p, .28, pitch=0)
     f.ev(tl, F.FE_SE, 4)
     f.ev(tl, F.FE_VOICE, 5)                                          # 「Warning!」
-    f.ev(tl + 20, F.FE_CAP, 3, 'ON YOUR TAIL!')
+    f.say(tl + 20, WHO_ALERT, 'On your tail!', dur=150)
     zc = lambda tt: p[2] + .28 * (tt - t)
     turn0, turn1 = tl + 30, tl + 90
     f.cam_key(turn0, (p[0], p[1], zc(turn0)), 0, 0, fl=F.FL_EASE)
     f.cam_key(turn1, (p[0], p[1], zc(turn1)), 175, 4)
     f.cam_key(int(7.2 * B), (p[0], p[1], zc(int(7.2 * B))), 178, 4, fl=F.FL_EASE)
     f.cam_key(end, (p[0], p[1], zc(end)), 0, 0)
-    for a, x in ((p1, -4), (p2, 5)):
-        f.key(a, tl, 'RMUSTANG', (x, p[1] + 2, zc(tl) - 40), 0)
-        f.key(a, int(6.5 * B), 'RMUSTANG', (x * .6, p[1] + .5, zc(int(6.5 * B)) - 9), 0, roll=15 if x < 0 else -15)
-        f.key(a, end, 'RMUSTANG', (x * .6, p[1] + .5, zc(end) - 8), 0)
+    for a, x in ((p1, -4), (p2, 5)):                                # 映像用の大きい P-51(前は小さな緑の点だった)を、左右に並べて 10 単位後ろへ
+        f.key(a, tl, 'RMUSTANGF', (x * 1.1, p[1] + 2, zc(tl) - 40), 0)
+        f.key(a, int(6.5 * B), 'RMUSTANGF', (x * .8, p[1] - 1.5, zc(int(6.5 * B)) - 10), 0, roll=15 if x < 0 else -15)
+        f.key(a, end, 'RMUSTANGF', (x * .8, p[1] - 1.5, zc(end) - 9), 0)
     f.ev(end, F.FE_END)
     s.film = f
     return s
@@ -915,13 +964,13 @@ def seam3():
 
 def seam4():
     """4 面の後(雲海 → 成層圏、明け方)。前半は雲の上の発射台に寄った絵: 着いた戦闘機から誘拐犯がヒナを担いでロケットへ運び、
-    ヒナが叫ぶ(人物はスプライト)。後半は操縦席から、そのロケットが白い煙を引いて打ち上がるのを見る"""
+    ヒナが叫ぶ(人物はスプライト)。後半はそのロケットが白い煙を引いて打ち上がるのを、発射台の横から見上げ、並んで昇りながら追う"""
     s = seam_mod(18, 'SEAM 4', TWILIGHT)
-    s.models = ['ROCKETL', 'PUFF', 'CLOUDP', 'PAD']
+    s.models = ['ROCKETL', 'PUFF', 'PAD']
     f = Film(); F = Film; B = 112.5; end = 900
-    rk, c1, pad, jet, t1, t2, hina = [f.actor() for _ in range(7)]
+    rk, pad, jet, t1, t2, hina = [f.actor() for _ in range(6)]
     puffs = [f.actor() for _ in range(4)]
-    for a in [rk, c1, pad, jet, t1, t2, hina] + puffs:
+    for a in [rk, pad, jet, t1, t2, hina] + puffs:
         f.key(a, 0, 0, (0, 0, 0))
     P = 20                                     # 発射台の高さ(雲の上)
     R = (5, P + 6, 12)                         # ロケットの中心(発射台の上に立つ)
@@ -940,27 +989,40 @@ def seam4():
     f.key(t2, 40, 'TERROR', (-3, P, 6.5), 180, cut=True)    # もう一人は見張る
     f.key(t2, 300, 'TERROR', (-3, P, 6.5), 270)
     f.ev(130, F.FE_VOICE, 9)                                  # 「Papa!」
-    f.ev(130, F.FE_CAP, 3, 'PAPA!')
-    f.ev(220, F.FE_SUB, 0, 'THEY PUT HER IN A ROCKET.')
-    # 340〜: 操縦席。遠くの発射台からロケットが打ち上がる
-    f.ev(340, F.FE_COCKPIT, 0)
-    f.ev(340, F.FE_SUB, 0, '')
+    f.say(130, WHO_HINA, 'Papa!')
+    f.say(220, WHO_NARR, 'They put her in a rocket.')
+    # 340〜: 打ち上げ。前は操縦席から 80 単位先の発射台を見ていて、ロケットが点にしか見えなかった。
+    # ロケットに寄った 2 つのカットにする: 発射台の横から見上げるカットと、並んで昇りながら追うカット
+    f.say(340, WHO_NARR, '')
     f.key(t2, 340, 0); f.key(jet, 340, 0)
-    cam = cruise(f, 340, end, (0, P + 4, -70), .2, pitch=8, climb=.02)
-    f.key(c1, 340, 'CLOUDP', (10, P - 2, -20), cut=True); f.key(c1, 600, 'CLOUDP', (10, P - 2, -20))
-    t0 = 420
-    up = lambda t: (R[0], R[1] + .09 * (t - t0), R[2] + .2 * (t - t0))
-    f.key(rk, t0, 'ROCKETL', R)
-    for t in list(range(t0 + 150, end, 150)) + [end]:
-        f.key(rk, t, 'ROCKETL', up(t))
+    t0, tc = 420, 600                                    # 点火、追うカットへの切り替え
+    ry = lambda t: R[1] + .00035 * max(0, t - t0) ** 2   # 加速しながら真上へ
+    rp = lambda t: (R[0], ry(t), R[2])
+    def look(c, t, fl=0):                                # カメラ c からロケットの胴の真ん中を向く
+        dx, dy, dz = R[0] - c[0], ry(t) - c[1], R[2] - c[2]
+        f.cam_key(t, c, math.degrees(math.atan2(dx, dz)), math.degrees(math.atan2(dy, math.hypot(dx, dz))), fl=fl)
+    # 1 つ目(340〜600): 発射台の横、約 16 単位から。ロケットの全身が画面の 7 割ほどに映り、昇るのを見上げて追う。
+    # 南東から見る(南西からだと発射台の赤い塔がロケットの手前に重なって描かれ、胴が半分赤く見えた)
+    C = (16, P + 3, 0)
+    for t in [340] + list(range(t0, tc, 30)) + [tc - 1]:
+        look(C, t, F.FL_STEP if t == tc - 1 else 0)
+    f.key(rk, 340, 'ROCKETL', R, cut=True)
+    for t in range(t0, 901, 30):
+        f.key(rk, t, 'ROCKETL', rp(t))
+    # 2 つ目(600〜900): 並んで昇りながら追う。初めは斜め後ろのすぐ横、だんだん引き離されて見上げる形に
+    for t in range(tc, 901, 30):
+        k = (t - tc) / 300
+        o = (-9 - 2 * k, -2 - 8 * k, -6 - 2 * k)       # 約 11 → 14 単位。離れすぎると点になる
+        look((R[0] + o[0], ry(t) + o[1], R[2] + o[2]), t)
+    # 白い煙: ロケットの根もとに、通った跡として残す(追うカットでは同じ役者を新しい跡へ移す)
     for i, a in enumerate(puffs):
-        tp = t0 + 40 + i * 110
-        f.key(a, tp, 'PUFF', up(tp - 30), cut=True)
-        f.key(a, end, 'PUFF', up(tp - 30))
+        for tp in (t0 + 20 + i * 45, tc + 40 + i * 70):
+            q = rp(tp)
+            f.key(a, tp, 'PUFF', (q[0] + (i % 2 - .5) * 1.5, q[1] - 7, q[2]), cut=True)
     f.ev(t0, F.FE_SE, 10)                                            # 轟音
-    f.ev(t0 + 40, F.FE_CAP, 2, 'THE ROCKET!')
+    f.say(t0 + 40, WHO_PAPA, 'The rocket!', dur=150)
     f.ev(int(6.5 * B), F.FE_VOICE, 6)                                # 「Papa, hurry!」
-    f.ev(int(6.5 * B), F.FE_CAP, 2, 'PAPA, HURRY!')
+    f.say(int(6.5 * B), WHO_HINA_RADIO, 'Papa, hurry!', dur=150)
     f.ev(end, F.FE_END)
     s.film = f
     return s
@@ -972,48 +1034,67 @@ def seam5():
     s.models = ['B_KEYHOLE', 'ROCKETL']
     f = Film(); F = Film; B = 112.5; end = 900
     kh, rk = f.actor(), f.actor()
-    for a in (kh, rk):
-        f.key(a, 0, 0, (0, 0, 0))
-    f.ev(0, F.FE_COCKPIT, 0)
-    cam = cruise(f, 0, end, (0, 40, 0), .05, pitch=4)
-    # 鍵穴の基地は半径が 22 あり、90 単位より遠いと描かれない(mesh_draw の視野の判定)。80 単位先から近づく
-    t0 = int(2 * B)
-    zk = cam(t0)[2] + 85                                             # 最後に 50 単位ほど先(近すぎると画面を覆った)
-    f.key(kh, t0, 'B_KEYHOLE', (0, 52, zk), 180)
-    f.key(kh, end, 'B_KEYHOLE', (0, 52, zk), 180)
-    f.key(rk, t0, 'ROCKETL', (6, 44, zk - 50))
-    f.key(rk, end, 'ROCKETL', (1, 50, zk - 8))
+    f.key(kh, 0, 0, (0, 0, 0))
+    def look(t, c, p, fl=0):                             # カメラ c から点 p を向く
+        dx, dy, dz = p[0] - c[0], p[1] - c[1], p[2] - c[2]
+        f.cam_key(t, c, math.degrees(math.atan2(dx, dz)), math.degrees(math.atan2(dy, math.hypot(dx, dz))), fl=fl)
+    # 前は操縦席から 50〜85 単位先の基地を正面から見ていて、横棒と白い塊にしか見えず、ロケットも小さかった。
+    # 1 つ目(0〜300): 4 面の後の終わりと同じく、昇るロケットのすぐ横を並んで飛ぶ。カメラは少しずつ遅れ、
+    # ロケットが画面を下から上へ抜けていく(同じ速さだと止まって見えた)。下に地球
+    tc = 300
+    # カメラの向きは変えない(ロケットを向き続けると真ん中に止まって見え、地球も画面から外れた)
+    rk1 = lambda t: (0, 30 + .1 * t, 20)
+    cm1 = lambda t: (-9, 36 + .05 * t, 14)
+    for t in list(range(0, tc, 60)) + [tc - 1]:
+        f.cam_key(t, cm1(t), math.degrees(math.atan2(9, 6)), 8, fl=F.FL_STEP if t == tc - 1 else 0)
+        f.key(rk, t, 'ROCKETL', rk1(t), cut=t == 0)
+    # 2 つ目(300〜900): 鍵穴の基地を斜め横から(胴の長さと太陽の板が見える)。ロケットは左下から昇ってきて、
+    # 基地の左の口へ向かって小さくなっていく(基地に重ならないように)。基地は半径が 22 あり、90 単位より遠いと描かれない
+    K = (8, 56, 62)
+    f.key(kh, tc, 'B_KEYHOLE', K, 250, cut=True)
+    for t, c in ((tc, (-2, 48, 20)), (600, (-1, 48.5, 25)), (end, (0, 49, 30))):
+        look(t, c, (K[0] - 3, K[1] - 1, K[2]))
+    f.key(rk, tc, 'ROCKETL', (-7, 41, 32), cut=True)
+    f.key(rk, 600, 'ROCKETL', (-6, 48, 44))
+    f.key(rk, end, 'ROCKETL', (-5, 54, 54))
     f.ev(int(4 * B), F.FE_VOICE, 7)                                  # 「I can see you!」(VOICE_SEE)
-    f.ev(int(4 * B), F.FE_CAP, 2, 'I CAN SEE YOU!')
+    f.say(int(4 * B), WHO_HINA_RADIO, 'I can see you!', dur=150)
     f.ev(end, F.FE_END)
     s.film = f
     return s
 
 def seam6():
-    """6 面の後(軌道 → 深宇宙)。壊れた鍵穴の基地からロケットが離れ、月のほうへ。零戦は星空へ追う"""
+    """6 面の後(軌道 → 深宇宙)。壊れた鍵穴の基地の陰から方舟(ヒナのロケット)が離れ、深宇宙へ。零戦はそれを追う"""
     s = seam_mod(20, 'SEAM 6', SPACE, SF_SPACE | SF_DEEP)
-    s.models = ['B_KEYHOLE', 'B_ARK', 'PUFF']
+    s.models = ['B_KEYHOLE', 'B_ARK']
     f = Film(); F = Film; B = 112.5; end = 900
-    kh, ark, p1, p2 = f.actor(), f.actor(), f.actor(), f.actor()
-    for a in (kh, ark, p1, p2):
-        f.key(a, 0, 0, (0, 0, 0))
-    f.ev(0, F.FE_COCKPIT, 0)
-    cam = cruise(f, 0, end, (0, 60, 0), .12, pitch=2)
-    # 1〜3 小節: 正面に壊れた基地。その陰から方舟(ヒナのロケット)が離れていく
-    zk = cam(0)[2] + 70
-    f.key(kh, 0, 'B_KEYHOLE', (-14, 66, zk), 200)
-    f.key(kh, end, 'B_KEYHOLE', (-14, 66, zk), 230)
-    f.key(ark, int(1 * B), 'B_ARK', (4, 62, zk - 10), 180)
-    f.key(ark, int(4 * B), 'B_ARK', (2, 64, cam(int(4 * B))[2] + 60), 180)
-    f.key(ark, end, 'B_ARK', (0, 64, cam(end)[2] + 75), 180)
-    for i, a in enumerate((p1, p2)):
-        t0 = int((1.5 + i) * B)
-        f.key(a, t0, 'PUFF', (4 - i * 2, 62, cam(t0)[2] + 40))
-        f.key(a, t0 + 300, 'PUFF', (4 - i * 2, 62, cam(t0)[2] + 40))
-    f.ev(int(1 * B), F.FE_SE, 10)
-    f.ev(int(2 * B), F.FE_CAP, 2, 'SHE IS ON THAT ROCKET!')
+    kh, ark = f.actor(), f.actor()
+    f.key(kh, 0, 0, (0, 0, 0))
+    def look(t, c, p, fl=0):                             # カメラ c から点 p を向く
+        dx, dy, dz = p[0] - c[0], p[1] - c[1], p[2] - c[2]
+        f.cam_key(t, c, math.degrees(math.atan2(dx, dz)), math.degrees(math.atan2(dy, math.hypot(dx, dz))), fl=fl)
+    # 前は操縦席から 60〜75 単位先の方舟を真後ろから見ていて、赤い尾の点にしか見えなかった(胴は 18 単位ある)。
+    # 1 つ目(0〜420): 壊れた基地を斜めに映し、その陰から方舟が出てきて、カメラの約 22 単位前を右から左へ横切る(横向きの全身)
+    tc = 420
+    f.cam_key(0, (0, 60, 0), 0, 2)
+    f.cam_key(tc - 1, (0, 60, 6), -6, 2, fl=F.FL_STEP)
+    f.key(kh, 0, 'B_KEYHOLE', (-13, 67, 58), 230, cut=True)
+    f.key(kh, tc - 1, 'B_KEYHOLE', (-13, 67, 58), 240)
+    f.key(ark, 0, 'B_ARK', (18, 59, 50), 300, cut=True)          # 基地の右下の奥から(基地に重ならないように)
+    f.key(ark, 150, 'B_ARK', (12, 61, 34), 280)
+    f.key(ark, tc - 1, 'B_ARK', (-16, 60, 26), 270)
+    # 2 つ目(420〜900): 方舟を斜め後ろから追う。白い胴と赤い 4 枚の翼が見える。少しずつ引き離される
+    f.key(kh, tc, 0)
+    A = lambda t: (-4, 61, 30 + .12 * (t - tc))
+    for t in range(tc, end + 1, 60):
+        k = (t - tc) / (end - tc)
+        f.key(ark, t, 'B_ARK', A(t), 0, roll=10 * k, cut=t == tc)
+        c = A(t)
+        look(t, (c[0] - 9 - 2 * k, c[1] + 3 + k, c[2] - 17 - 8 * k), c)
+    f.ev(60, F.FE_SE, 10)
+    f.say(int(2 * B), WHO_PAPA, 'She is on that rocket!', dur=150)
     f.ev(int(5 * B), F.FE_VOICE, 6)                                  # 「Papa, hurry!」
-    f.ev(int(5 * B), F.FE_CAP, 2, 'PAPA, HURRY!')
+    f.say(int(5 * B), WHO_HINA_RADIO, 'Papa, hurry!', dur=150)
     f.ev(end, F.FE_END)
     s.film = f
     return s
@@ -1021,9 +1102,10 @@ def seam6():
 def ending():
     """エンディング(モジュール 7): 宇宙でカプセルに追いつく → ヒナが零戦へ移る → 夕焼けの空へ → 零戦が夕日へ小さくなる間の親子の会話。
     会話は残り時間で変わる(1 時間以上残っていれば素直に喜び、遅れるとすねる)。続くエンドロールの文面も、ここの字幕に置く"""
-    s = Mod(7, 'ENDING', SPACE, 'BRIDGE', flags=SF_SCENE | SF_SPACE | SF_DEEP)
-    s.pal2 = DUSK
-    s.models = ['CAPSULE', 'ZEROF', 'ZEROS', 'SUN', 'CLOUDP']
+    s = Mod(7, 'ENDING', SPACE, '',   # 曲は無し(最後のボスを倒したときに鳴らした FINALE が、映像の終わりまで続く)
+            flags=SF_SCENE | SF_SPACE | SF_DEEP)
+    s.pal2 = SUNSET
+    s.models = ['CAPSULE', 'ZEROF', 'ZEROS', 'SUN', 'CLOUDS']
     s.y0 = 0
     s.segs((32, 0, 0, 0))
     s.finish(lambda k: None)
@@ -1032,75 +1114,84 @@ def ending():
     for a in (cap, zero, hina, sun, c1, c2):
         f.key(a, 0, 0, (0, 0, 0))
     # 0〜300: 操縦席。前にヒナのカプセルが浮かんでいて、追いつく
-    f.ev(0, F.FE_COCKPIT, 0)
     f.cam_key(0, (0, 40, 0), 0, 2)
     f.cam_key(280, (0, 40, 60), 0, 4, fl=F.FL_EASE)
     f.key(cap, 0, 'CAPSULE', (1, 41, 90))
     f.key(cap, 300, 'CAPSULE', (1, 41, 78))
-    f.ev(60, F.FE_SUB, 0, 'HINA!')
+    f.say(60, WHO_PAPA, 'Hina!', dur=150)
     # 300〜640: 外から。零戦の横にカプセル。ヒナが出てきて、零戦の操縦席へ泳いでいく
     f.ev(300, F.FE_COCKPIT, 1)
     f.cam_key(299, (0, 40, 60), 0, 4, fl=F.FL_STEP)       # 切り替え
     f.cam_key(300, (8, 42, 70), -60, 6)
     f.cam_key(640, (6, 42, 68), -50, 4)
-    f.cam_key(699, (6, 42, 68), -50, 4, fl=F.FL_STEP)
+    f.cam_key(739, (6, 42, 68), -50, 4, fl=F.FL_STEP)
     f.key(zero, 300, 'ZEROF', (-2, 40, 76), 90)
     f.key(zero, 640, 'ZEROF', (-2, 40.5, 76), 90)
+    # 宇宙から夕方への色の移り(640〜)が終わってから夕焼けの絵に切り替える(700 だと、星空の上に夕日が数コマ出た)
     f.key(cap, 300, 'CAPSULE', (2, 41, 76), cut=True)
     f.key(cap, 640, 'CAPSULE', (2.5, 41.5, 76))
     f.key(hina, 380, 'HINA', (2, 40.4, 76), 270, cut=True)
     f.key(hina, 520, 'HINA', (-1, 40.6, 76), 270)
     f.key(hina, 560, 0)                                   # 操縦席に入る
     f.ev(400, F.FE_VOICE, 9)                              # 「Papa!」
-    f.ev(400, F.FE_SUB, 0, 'PAPA!')
-    f.ev(470, F.FE_SUB, 1, 'I KNEW YOU WOULD COME!')
-    f.ev(470, F.FE_SUB, 2, "YOU'RE LATE, PAPA.")
-    f.ev(570, F.FE_SUB, 1, 'ALWAYS, HINA.')
-    f.ev(570, F.FE_SUB, 2, 'SORRY. TRAFFIC.')
+    f.say(400, WHO_HINA, 'Papa!')
+    f.say(470, WHO_HINA, 'I knew you would come!', 1)
+    f.say(470, WHO_HINA, "You're late, Papa.", 2)
+    f.say(570, WHO_PAPA, 'Always, Hina.', 1)
+    f.say(570, WHO_PAPA, 'Sorry. Traffic.', 2)
     # 640〜: 地球へ戻り、夕焼けの空へ(宇宙の色から夕方の色へ移る)。カメラは残り、零戦は夕日へ飛んで小さくなる
     f.ev(640, F.FE_FADE)
-    f.ev(640, F.FE_SUB, 2, 'IN SPACE?')
-    f.cam_key(700, (0, 6, 0), 0, 4)
-    f.cam_key(1500, (0, 6, 0), 0, 4, fl=F.FL_EASE)
-    f.key(cap, 700, 0)
-    f.key(sun, 700, 'SUN', (0, 16, 110), 180, cut=True)
-    f.key(sun, 1500, 'SUN', (0, 13, 110), 180)
-    f.key(c1, 700, 'CLOUDP', (-20, 14, 70), cut=True); f.key(c1, 1500, 'CLOUDP', (-16, 14, 70))
-    f.key(c2, 700, 'CLOUDP', (24, 11, 90), cut=True); f.key(c2, 1500, 'CLOUDP', (20, 11, 90))
-    # 零戦は黒い影になって、夕日の真ん中へ小さくなっていく
-    f.key(zero, 700, 'ZEROS', (1, 5, 6), 0, cut=True)
-    f.key(zero, 900, 'ZEROS', (.5, 8, 30), 0, roll=-10)
-    f.key(zero, 1150, 'ZEROS', (0, 11, 60), 0, roll=10)
-    f.key(zero, 1500, 'ZEROS', (0, 13, 100), 0)
-    for t, mood, line in ((760, 0, 'CAN I FLY IT NEXT TIME?'), (870, 0, "WHEN YOU'RE TALLER."),
-                          (980, 1, 'I WAS BRAVE, PAPA.'), (980, 2, 'I WAS SCARED, PAPA.'),
-                          (1090, 1, 'I KNOW. ME TOO.'), (1090, 2, "I KNOW. I'M HERE NOW."),
-                          (1200, 0, 'PANCAKES FOR DINNER?'), (1310, 0, 'PANCAKES.')):
-        f.ev(t, F.FE_SUB, mood, line)
-    f.ev(1420, F.FE_SUB, 0, '')
+    f.say(640, WHO_HINA, 'In space?', 2)
+    f.cam_key(740, (0, 5, 0), 0, 0)
+    f.cam_key(1500, (0, 5, 0), 0, 0, fl=F.FL_EASE)
+    f.key(cap, 740, 0)
+    # 大きな夕日を零戦の真後ろ、地平線のすぐ上に置き、零戦はその前を逆光の影になって飛ぶ。雲は夕日にかかる暗い筋
+    f.key(sun, 740, 'SUN', (-3, 18.5, 40), 0, cut=True)
+    f.key(sun, 1500, 'SUN', (-2, 17, 40), 0)
+    f.key(c1, 740, 'CLOUDS', (-9, 21, 41), cut=True); f.key(c1, 1500, 'CLOUDS', (-5, 21, 41))
+    f.key(c2, 740, 'CLOUDS', (12, 12.5, 41), cut=True); f.key(c2, 1500, 'CLOUDS', (8, 12.5, 41))
+    # 零戦は黒い影になって夕日へ向かう。2 人の乗った機だと分かるように、映像の終わりまで大きく映る距離にとどめ、
+    # 斜め下から見上げて、空を背に翼の形を見せる(真後ろの水平からだと翼が線になって点のように見え、上から見ると暗い地面に溶けた)
+    f.key(zero, 740, 'ZEROS', (-2.5, 6.4, 7.5), 25, cut=True)
+    f.key(zero, 900, 'ZEROS', (-1.5, 6.7, 8), 20, roll=-15)
+    f.key(zero, 1150, 'ZEROS', (-.5, 7, 9.5), 15, roll=10)
+    f.key(zero, 1500, 'ZEROS', (.5, 7.2, 11), 10)
+    H, P = WHO_HINA, WHO_PAPA
+    for t, who, mood, line in ((760, H, 0, 'Can I fly it next time?'), (870, P, 0, "When you're taller."),
+                               (980, H, 1, 'I was brave, Papa.'), (980, H, 2, 'I was scared, Papa.'),
+                               (1090, P, 1, 'I know. Me too.'), (1090, P, 2, "I know. I'm here now."),
+                               (1200, H, 0, 'Pancakes for dinner?'), (1310, P, 0, 'Pancakes.')):
+        f.say(t, who, line, mood)
+    f.say(1420, WHO_NARR, '')
     f.ev(1500, F.FE_END)
     s.film = f
-    s.op_base = 0x9000
-    # エンドロール(src/engine/scene.c の ending_run。"\x01" = 得点の行、"\x02" = 終わり)。出演者の名前は作り話
-    s.strs += [
-        'He brought his daughter home.', '', '', '', '',
-        'PAPA ZERO', '', '', '- STARRING -', '',
-        'BRICK O\'HARA', 'as Papa', '',
-        'MOMO SUZUNARI', 'as Hina', '',
-        'VIKTOR GRAUSS', 'as the Boss', '',
-        'SILENT STEVE', 'as Kidnapper #1', '',
-        'OTHER STEVE', 'as Kidnapper #2', '',
-        'KONIGS KRABBE', 'as the Crab', '',
-        'GRAF ZEPPELIN II', 'as the Airship', '',
-        'and', 'THE ZERO', 'as herself', '', '', '',
-        '- STAFF -', '',
-        'ORIGINAL CONCEPT / DIRECTION', 'suzuki-black', '',
-        'PROGRAM / GRAPHICS / MUSIC', 'Claude Code (Anthropic Claude)', '',
-        'VOICES', 'Flite (Carnegie Mellon Univ.)', '', '', '',
-        'THANK YOU FOR PLAYING!', '', '\x01', '',
-        '(C) 2026 suzuki-black', '', '',
-        'PUSH SPACE KEY', '\x02',
-    ]
+    s.op_base = 0x8E00
+    # エンドロール(src/engine/scene.c の ending_run)。映像の場面の字幕と同じ字体で、見出し(役)は水色、名前は白。
+    # 1 行 = [色 + 10h][左端の x] 字…(tools/gen_font.py で真ん中にそろえる)。"\x01" = 得点の行、"\x02" = 終わり。出演者の名前は作り話
+    W, C, O = 2, 6, 4                                    # 白・水色・橙(src/engine/engine.h の C_)
+    def ln(t, c=W):
+        if not t:
+            return ''
+        x = max(2, (256 - gen_font.advance(t)) // 2)
+        return chr(c | 0x10) + chr(x) + t                  # 色に 10h を足す(1 = 得点の行・2 = 終わりの印と分ける)
+    def cast(name, role):
+        return [ln(name), ln(role, C), '']
+    def staff(role, name):
+        return [ln(role, C), ln(name), '']
+    s.strs += ([ln('He brought his daughter home.', C), '', '', '', '',
+                ln('PAPA ZERO', O), '', '', ln('- STARRING -', C), '']
+               + cast("BRICK O'HARA", 'as Papa') + cast('MOMO SUZUNARI', 'as Hina') + cast('VIKTOR GRAUSS', 'as the Boss')
+               + cast('SILENT STEVE', 'as Kidnapper #1') + cast('OTHER STEVE', 'as Kidnapper #2')
+               + cast('KONIGS KRABBE', 'as the Crab') + cast('GRAF ZEPPELIN II', 'as the Airship')
+               + [ln('and', C), ln('THE ZERO'), ln('as herself', C), '', '', '',
+                  ln('- STAFF -', C), '']
+               + staff('ORIGINAL CONCEPT', 'suzuki-black') + staff('DIRECTION', 'suzuki-black')
+               + staff('PROGRAM', 'Claude Code (Anthropic Claude)') + staff('GRAPHICS', 'Claude Code (Anthropic Claude)')
+               + staff('MUSIC', 'Claude Code (Anthropic Claude)') + staff('VOICES', 'Flite (Carnegie Mellon Univ.)')
+               + ['', '', ln('THANK YOU FOR PLAYING!', O), '',
+                  '\x01' + chr(W | 0x10) + chr((256 - gen_font.advance('000000')) // 2), '',
+                  ln('(C) 2026 suzuki-black'), '', '',
+                  ln('PUSH SPACE KEY', C), '\x02'])
     return s
 
 MODS = [opening(), s1(), s2(), s3(), s4(), s5(), s6(), s7(), ending(), seam1(), seam2(), seam3(), seam4(), seam5(), seam6()]

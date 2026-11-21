@@ -119,7 +119,7 @@ class Mesh:
     def lod2(self):
         """8 方向から描いて、矩形の集まりにする。半径が 7 単位を超えるものは作らない"""
         ext = max(max(abs(c) for c in p) for p in self.v)
-        if ext > 7.5:
+        if ext > 7.5 or getattr(self, 'no_lod2', False):
             return 0, []
         N = 16
         scale = N / (2 * max(ext * 1.5, 0.25))

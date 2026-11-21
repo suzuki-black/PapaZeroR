@@ -15,6 +15,8 @@ extern u8 g_clock;
 #define ST_FL    9       /* 画面の光の残り(フレーム)。0 で面の色に戻す */
 #define ST_BX    10      /* ボスを倒した後の連続爆発の残り(ティック / 4) */
 #define ST_BD    11      /* 1 = このボスの連続爆発を始めた */
+#define ST_AG    12      /* 12〜13: 連続爆発の後、「STAGE CLEAR!」を見せたティック。AG_LEN で面を終える */
+#define AG_LEN   360     /* 6 秒 */
 
 #define STG_WEAPON (MOD->weapon)
 

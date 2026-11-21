@@ -121,7 +121,7 @@ void boss_step(u8 dt)
         se_play(SE_BOSS);
         mis_left = MIS_MAX;
         g_score += (u16)g_mod * 500;
-        bgm_play(SONG_CLEAR);
+        bgm_play(g_mod == MOD_FINAL ? SONG_FINALE : SONG_CLEAR);   /* 最後のボスはエンディングへつなぐ曲(映像の終わりまで鳴る) */
         caption(MOD->str[1], C_WHITE, 170);
         return;
     }

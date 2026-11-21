@@ -53,6 +53,35 @@ def mustang(c):
 @model('MUSTANG')
 def _(): return mustang(GREEN)
 
+def mustang_film():
+    """映像の場面の P-51。ゲームの MUSTANG(全幅 5.2、面 12 枚。小さく速く飛ぶので足りる)は、映像で零戦(全幅 12)と並べると
+    小さな点にしかならなかったので、全幅 11 の大きさで、幅のある主翼・水色の風防・尾翼を付ける。機首は -z。遠くでも矩形にしない"""
+    m = Mesh()
+    m.prism_z((0, 0, 0), .8, 8, 6, GREEN, cap=WHITE)                                          # 胴(機首の白はプロペラの円盤)
+    m.face([(-.45, .7, -1.2), (-.3, 1.3, -.4), (.3, 1.3, -.4), (.45, .7, -1.2)], CYAN, False, (0, .6, -1))   # 風防
+    m.face([(-.3, 1.3, -.4), (-.3, 1.2, .9), (.3, 1.2, .9), (.3, 1.3, -.4)], CYAN, False, (0, 1, 0))
+    for sx in (-1, 1):
+        wing = [(sx * .7, -.3, -1.6), (sx * 5.6, 0, -.3), (sx * 5.6, 0, .6), (sx * .7, -.3, .9)]
+        m.face(wing, IRON, False, (0, 1, 0))
+        m.face(wing, IRON, False, (0, -1, 0))
+        m.face([(sx * 4.2, .01, -.2), (sx * 5.0, .01, 0), (sx * 5.0, .01, .5), (sx * 4.2, .01, .5)], WHITE, False, (0, 1, 0))   # 翼の白い星
+        tail = [(sx * .3, 0, 3), (sx * 2.2, 0, 3.6), (sx * 2.2, 0, 4.1), (sx * .3, 0, 4.1)]
+        m.face(tail, GREEN, False, (0, 1, 0))
+        m.face(tail, GREEN, False, (0, -1, 0))
+    m.plate([(0, .6, 2.6), (0, 2.1, 3.6), (0, 2.1, 4.1), (0, .6, 4.1)], GREEN)                  # 垂直尾翼
+    m.no_lod2 = True
+    return m
+
+@model('MUSTANGF')
+def _(): return mustang_film()
+
+@model('RMUSTANGF')
+def _():     # 映像の場面の、ロケットを積んだ P-51(3 面の後)。主翼の下に白いロケットを 2 本
+    m = mustang_film()
+    for sx in (-1, 1):
+        m.box((sx * 3, -.6, -.2), (.5, .5, 2.4), WHITE)
+    return m
+
 @model('RMUSTANG')
 def _():
     m = mustang(GREEN)
@@ -266,7 +295,17 @@ def raider():  # テロ集団の魔改造の戦闘機: 黒い胴、紫の後退�
     return m
 
 @model('RAIDER')
-def _(): return raider()            # オープニングでは op.c がスプライトで描く(モデルは入れない)
+def _():     # オープニングでは op.c がスプライトで描く(モデルは入れない)。継ぎ目では近くを飛ばして 3D で描くので、遠くでも矩形にしない
+    m = raider()
+    m.no_lod2 = True
+    return m
+
+@model('RAIDERN')
+def _():     # 夜の場面(3 面の後)の誘拐犯の戦闘機。黒い所を灰にする(月明かり。黒のままでは夜空と夜の海に溶けて見えなかった)
+    m = raider()
+    m.f = [(idx, IRON if c == BLACK else c, d) for idx, c, d in m.f]
+    m.no_lod2 = True
+    return m
 
 @model('RAIDERM')
 def _(): return raider()            # 家の上をかすめて降りる場面だけは 3D で描く(横から見る絵のスプライトは無い)
@@ -485,15 +524,24 @@ def _():     # 雲の上の発射台(継ぎ目 4)。灰色の台と、ロケッ�
     return m
 
 @model('SUN')
-def _():     # 夕日(エンディング)。カメラを向く橙の円盤
+def _():     # 夕日(エンディング)。カメラを向く淡い黄の円盤(CLOUD の色。夕焼けの色の表 SUNSET で黄にする)と、その後ろの橙の光の輪
     m = Mesh()
-    m.prism_z((0, 0, 0), 14, .5, 8, ORANGE, cap=ORANGE)
+    m.prism_z((0, 0, 0), 9, .5, 8, CLOUD, cap=CLOUD)
+    m.prism_z((0, 0, -1), 12, .5, 8, ORANGE, cap=ORANGE)     # 向き 0 で置くとモデルの -z が奥になる
+    return m
+
+@model('CLOUDS')
+def _():     # 夕焼けの雲(エンディング)。夕日に裏から照らされて暗く見える、細長い紫の筋
+    m = Mesh()
+    m.box((0, 0, 0), (16, .9, 2), PURPLE, top=PURPLE)
+    m.box((3, -.9, 0), (9, .7, 2), PURPLE, top=PURPLE)
     return m
 
 @model('ZEROS')
 def _():     # 夕日の前を飛ぶ零戦の影(エンディング)。形は飛んでいる零戦のまま、全部を黒に
     m = zero(False)
     m.f = [(idx, BLACK, d) for idx, c, d in m.f]
+    m.no_lod2 = True     # 遠くでも矩形にしない(矩形の 3 枚では、真後ろから見た影が点になった)
     return m
 
 @model('B_KEYHOLE')
@@ -526,6 +574,8 @@ def pal(*rgb):
 MORNING = pal((7, 5, 5), (7, 4, 2), (4, 6, 1), (2, 4, 1), (5, 4, 3), (3, 2, 1), (7, 7, 7))
 SEA = pal((4, 6, 7), (2, 4, 7), (1, 3, 6), (0, 2, 5), (5, 4, 3), (3, 2, 1), (7, 7, 7))   # 継ぎ目: 青い空と海
 NOON = pal((4, 6, 7), (2, 3, 7), (3, 5, 3), (1, 3, 1), (4, 4, 4), (2, 2, 2), (7, 7, 7))
+# 夕焼け(エンディングの後半だけ): 地平線の近くは金、上は赤橙、地面は逆光で暗い。CLOUD は夕日の淡い黄
+SUNSET = pal((7, 5, 1), (6, 2, 1), (3, 1, 0), (1, 0, 0), (5, 2, 1), (2, 1, 0), (7, 7, 4))
 DUSK = pal((7, 4, 1), (4, 1, 4), (4, 3, 1), (2, 1, 0), (5, 2, 1), (2, 1, 0), (7, 4, 5))
 NIGHT = pal((1, 1, 4), (0, 0, 1), (1, 1, 3), (0, 0, 1), (2, 2, 3), (0, 0, 0), (3, 3, 4))
 TWILIGHT = pal((4, 2, 6), (1, 1, 3), (2, 3, 6), (1, 1, 3), (3, 3, 4), (1, 1, 2), (7, 7, 7))

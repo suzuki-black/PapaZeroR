@@ -7,11 +7,11 @@
 
 static const u8 title_pal[32] = TITLE_PAL;
 #define TITLE_PAGE 54272u
-#define MENU_N 10
+#define MENU_N 11
 
-static const char * const menu_name[MENU_N] = { "DAMAGE", "NODAMAGE", "STAGE", "LIFE", "ONESHOT", "FPS", "XFER", "SPLIT", "ROLL", "LOCKBOX" };
-static const u8 menu_lo[MENU_N] = { 1, 0, 1, 1, 0, 0, 0, 0, 0, 1 };
-static const u8 menu_hi[MENU_N] = { 8, 1, 7, 8, 1, 1, 1, 1, 1, 4 };
+static const char * const menu_name[MENU_N] = { "DAMAGE", "NODAMAGE", "STAGE", "LIFE", "ONESHOT", "FPS", "XFER", "SPLIT", "ROLL", "LOCKBOX", "FILM" };
+static const u8 menu_lo[MENU_N] = { 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0 };
+static const u8 menu_hi[MENU_N] = { 8, 1, 7, 8, 1, 1, 1, 1, 1, 4, 8 };
 
 /* 隠しコンフィグ: 上下で項目、左右で値。スペースで戻る */
 static void config_show(void)
@@ -138,30 +138,38 @@ void gameover_run(void)
 }
 
 /* 文面はエンディングのモジュール(7)の字幕の 2 番から(tools/stage_data.py の ending()。ページ0に空きが無いので)。
- * "\x01" = 得点の行、"\x02" = 終わり */
+ * 1 行 = [色 + 10h][左端の x(ドット)] 字…(並べ方はビルドのときに tools/gen_font.py で決める)。空の行は ""。
+ * "\x01" [色][x] = 得点の行、"\x02" = 終わり */
 #define roll (MOD->str + 2)
 static u16 roll_n;
 #define ROLL_N roll_n
 static char roll_score[8];
+#define ROLL_LH 13                 /* 1 行の高さ(ライン) */
+#define ROLL_TOP 15                /* 始めは画面 1 枚ぶん(192 ライン)を空ける */
+extern u8 bot_hi;
+/* 面のコード(stg.c)の字幕を書く関数。面のコードの先頭の飛び先の表(stgjt.s)を通して呼ぶ */
+#define lb_at (*(void (*)(u8, u8))0xD700)
+typedef const char *(*LbLine)(const char *, u8, u8, u8, u8);
+#define lb_line ((LbLine)0xD703)
 
-/* 輪の行 k に文の k - 24 行目を中央にそろえて書く(名前表 1800h-1BFFh の 32 行を輪にする) */
+/* 輪の行 k(1 ページ目の 256 ラインを輪にして、k × 13 ライン目から)に、文の k - 15 行目を映像の場面の字幕の字体で書く */
 static void roll_row(u16 k)
 {
-    u8 row[32], i, n;
-    const char *t = "";
-    i16 li = (i16)k - 24;
-    if (li >= 0 && li < (i16)ROLL_N) t = (roll[li][0] == 1) ? roll_score : roll[li];
-    for (i = 0; i < 32; i++) row[i] = ' ';
-    for (n = 0; t[n]; n++) ;
-    for (i = 0; i < n; i++) row[(32 - n) / 2 + i] = (u8)t[i];
-    vdp_set_write(0x1800 + (u16)(k & 31) * 32);
-    vdp_out(row, 32);
+    const char *t;
+    i16 li = (i16)k - ROLL_TOP;
+    u8 y = (u8)(k * ROLL_LH), r;
+    for (r = 0; r < ROLL_LH; r++) { lb_at(0, (u8)(y + r)); vdp_fill(0x11, 128); }
+    if (li < 0 || li >= (i16)ROLL_N) return;
+    t = roll[li];
+    if (*t == 1) lb_line(roll_score, (u8)t[2], y, t[1] & 15, 0);
+    else if (*t) lb_line(t + 2, (u8)t[1], y, t[0] & 15, 0);
 }
 
-/* エンドロール(7.4): SCREEN 1 に切り替え、BIOS のフォントで下から上へ流す(R#23 で 1 ドットずつ)。スペースで速く流す */
+/* エンドロール(7.4): SCREEN 5 に切り替え、映像の場面の字幕の字体(VRAM 0EA00h。cockpit_load が置く)で
+ * 下から上へ流す(R#23 で 1 ドットずつ)。スペースで速く流す */
 void ending_run(void)
 {
-    static const u8 regs[] = { 1, 0xA0, 0, 0x00, 2, 0x06, 3, 0x80, 4, 0x00, 5, 0x36, 6, 0x07, 7, 0x01, 8, 0x0A, 9, 0x00, 23, 0x00, 25, 0 };
+    static const u8 regs[] = { 1, 0xA0, 0, 0x06, 2, 0x1F, 7, 0x01, 8, 0x0A, 9, 0x00, 23, 0x00, 25, 0 };
     u16 s, y = 0, k;
     u8 i;
     for (roll_n = 0; roll[roll_n][0] != 2; roll_n++) ;
@@ -176,26 +184,20 @@ void ending_run(void)
     pcm_stop();
     split_off();
     for (i = 0; i < sizeof(regs); i += 2) vdp_wreg(regs[i], regs[i + 1]);
-    bios_font(BUF);
-    vdp_set_write(0x0000);
-    vdp_out(BUF, 2048);
-    vdp_set_write(0x2000);
-    vdp_fill(0x21, 32);
+    vdp_set_write_hi(0, 0);
+    vdp_fill(0x11, 0x8000);
     vdp_set_palette(0, pal_fixed);
-    for (k = 0; k < 32; k++) roll_row(k);
+    bot_hi = 0;
     xfer_invalidate();
     vdp_wreg(1, 0xE0);
     bgm_play(SONG_ENDING);
-    k = 32;
+    k = ROLL_TOP;
     for (;;) {
         wait_tick();
         s = (input_raw() & IN_A) ? 1 : (g_tick & 3) == 0;
-        if (k < 24 + ROLL_N + 13) {
-            for (; s; s--) {
-                y++;
-                vdp_wreg(23, (u8)y);
-                if (!(y & 7)) roll_row(k++);
-            }
+        if (k < ROLL_TOP + ROLL_N + 8) {
+            for (; s; s--) vdp_wreg(23, (u8)++y);
+            while (k * ROLL_LH < y + 192 + ROLL_LH) roll_row(k++);   /* 画面の下に入る前に描く */
         } else if (input_raw() & IN_A) break;
     }
     bgm_stop();

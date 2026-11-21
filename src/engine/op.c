@@ -11,7 +11,7 @@
 
 typedef struct { u16 t; i16 x, y, z; u8 a, b, c, fl; } Key;   /* カメラ: a = ヨー、b = ピッチ、c = ロール。役者: a = ヨー、b = ロール、c = メッシュ */
 typedef struct { u16 t; u8 kind, arg; const char *s; } FilmEv;
-enum { FE_SUB = 1, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE, FE_FADE };
+enum { FE_SUB = 1, FE_CAP, FE_VOICE, FE_SE, FE_COCKPIT, FE_END, FE_SHAKE, FE_FADE, FE_SPR };
 extern u8 g_fade, g_clock;
 #define FL_EASE  1      /* 次のキーまでをゆっくり始めてゆっくり止める */
 #define FL_BOB   2      /* 走る・跳ねる(上下に揺らす) */
@@ -31,6 +31,12 @@ static const Look look[] = {
     { M_TANK, 7, 24, 255, C_IRON, C_BLACK },
     { 0 },
 };
+
+/* 見せたいもの(主役)のスプライト(tools/film_spr.py が台本といっしょに作る)。主役のモデルはモジュールに入れず、時刻で表を引いて絵を置く。
+ * SprSub: 役者の番号、2 枚の色、表の始まりと数。SprEnt: その時刻からの絵(パターン 17〜62 の番号)と種類(0 = 出さない、1 = 1 枚、2 = 2×2) */
+typedef struct { u8 a, c1, c2, first, n; } SprSub;
+typedef struct { u16 t; u8 slot, kind; } SprEnt;
+#define SPR_SLOT0 17
 
 #include FILM_H                  /* 台本(film0.h = オープニング、film15.h = 1 面の後の継ぎ目。Makefile が選ぶ) */
 
@@ -58,6 +64,8 @@ static void key_at(const Key *k, u8 n, u16 t, Key *o)
     }
 }
 
+void film_say(const char *s, u8 w);    /* 字幕(下の黒帯)。話し手 w ごとに色・名前の札・斜体。面のコード(stg.c)に置く */
+
 static i16 bob(u16 t)
 {
     i16 s = SIN((u8)(t * 9));
@@ -72,16 +80,28 @@ void op_hook(u16 t)
     while (ev_i < N_FEV && film_ev[ev_i].t <= t) {
         const FilmEv *e = &film_ev[ev_i++];
         switch (e->kind) {
-        case FE_SUB:                           /* arg: 0 = いつも、1 = 間に合った(残り 1 時間以上)、2 = 遅れた */
-            if (!e->arg || (e->arg == 1) == (g_clock >= 0x10)) sub_text(e->s);
+        case FE_SUB: {                         /* arg の下 2 ビット: 0 = いつも、1 = 間に合った(残り 1 時間以上)、2 = 遅れた。上は話し手 */
+            u8 m = e->arg & 3;
+            if (!m || (m == 1) == (g_clock >= 0x10)) film_say(e->s, e->arg >> 2);
             break;
+        }
         case FE_FADE: g_fade = 1; break;
-        case FE_CAP: caption(e->s, e->arg, 150); break;
         case FE_VOICE: pcm_say(e->arg); break;
         case FE_SE: se_play(e->arg); break;
         case FE_COCKPIT: cockpit_mode(e->arg); break;
         case FE_END: scr_end = 1; break;
         case FE_SHAKE: g_shake = e->arg; break;
+#ifdef N_SUBJ
+        case FE_SPR: {                     /* 場面の絵をパターン 17〜へ送る。一度に約 1KB 以上を送ると分割画面がずれたので、帰線ごとに 12 枚ずつ */
+            u8 k;
+            for (k = 0; k < N_SPRPAT; k += 12) {
+                wait_tick();
+                vdp_set_write(0x1800 + (u16)(SPR_SLOT0 + k) * 32);
+                vdp_out(spr_pat + (u16)k * 32, (u16)(N_SPRPAT - k > 12 ? 12 : N_SPRPAT - k) * 32);
+            }
+            break;
+        }
+#endif
         }
     }
     key_at(cam_k, N_CAMK, t, &c);
@@ -107,7 +127,10 @@ void op_hook(u16 t)
             i16 sx, sy;
             u8 art, zu, *a;
             while (k->mesh && k->mesh != c.c) k++;
-            if (!k->mesh || n > 8) continue;
+            if (!k->mesh || n > 8 || MOD->meshes[c.c]) continue;   /* モデルを入れた場面では 3D で描く(スプライトは重ねない) */
+#ifdef N_SUBJ
+            if (spr_sub_of[i] != 0xFF) continue;          /* 主役は下で */
+#endif
             pt_cam(o->x, o->y, o->z, &v);
             if (!pt_screen(&v, &sx, &sy)) continue;
             sx = (sx >> 2) - 16; sy = (sy >> 2) - 32;
@@ -126,6 +149,32 @@ void op_hook(u16 t)
             a[3] = k->col; a[35] = k->col2;
         }
     }
+#ifdef N_SUBJ
+    /* 主役: 時刻の表から絵を選び、物体の中心に置く(2×2 は 64×64 ドット)。2 枚目(色)は 8 つ後ろの番号 */
+    for (i = 0; i < N_SUBJ; i++) {
+        const SprSub *s = &spr_sub[i];
+        const SprEnt *e = &spr_ent[s->first];
+        u8 j = s->n, k, w, *a;
+        V3 v;
+        i16 sx, sy;
+        while (--j && e[1].t <= t) e++;
+        if (!e->kind) continue;
+        w = e->kind;
+        if (n + w * w > 9) continue;
+        o = &obj[s->a];
+        pt_cam(o->x, o->y, o->z, &v);
+        if (!pt_screen(&v, &sx, &sy)) continue;
+        sx = (sx >> 2) - 16 * w; sy = (sy >> 2) - 16 * w;
+        for (k = 0; k < w * w; k++) {
+            i16 x = sx + ((k & 1) << 5), y = sy + ((k >> 1) << 5);
+            if (x < 0 || x > 255 || y < -31 || y > 150) continue;
+            a = &g_spr_attr[n++ * 4];
+            a[0] = a[32] = (u8)(y - 1); a[1] = a[33] = (u8)x;
+            a[2] = (u8)((e->slot + k) << 2); a[34] = (u8)((e->slot + w * w + k) << 2);
+            a[3] = s->c1; a[35] = s->c2;
+        }
+    }
+#endif
     /* 使わなかった番号を隠す。先に全部を隠してから置くと、その間に割り込みが VRAM へ送ったフレームは何も映らなかった */
     for (i = 0; i < N_SPR; i++) if (i == 0 || (i >= n && i < 9) || i >= n + 8) g_spr_attr[i * 4] = 209;
 }

@@ -15,7 +15,7 @@ extern i16 g_fx, g_fz;
 #define g_rad_fx g_fx
 #define g_rad_fz g_fz
 extern u8 g_r2_bot;              /* sys.s */
-static u8 bot_hi;                /* VRAM の番地の A16〜A14: 2 = 計器盤、6 = 黒帯 */
+u8 bot_hi;                       /* VRAM の番地の A16〜A14: 2 = 計器盤、6 = 黒帯、0 = エンドロール(stg.c の lb_at も使う) */
 u8 g_spd_show, g_alt_show, g_heat;
 static u16 sh_score;
 static u16 sh_mis;
@@ -85,13 +85,13 @@ void cockpit_load(void)
     /* 計器盤の絵: 2 バンク(16KB)をページ2へ写して VRAM へ。ページ2は面のモジュールなので、終わったら読み直す */
     rom_load(COCKPIT_BANK);
     vdp_set_write_hi(3, 0x1000);                  /* 8000h + 160 × 128 = D000h */
-    vdp_out((const u8 *)0x8000, 6656);
+    vdp_out((const u8 *)0x8000, 6656 + 1152);      /* 後ろに映像の場面の字幕の字体(tools/gen_font.py)。VRAM EA00h〜 */
     /* スプライトの絵(tools/gen_cockpit.py が後ろに付けた)。約 1KB 以上を一度に送ると分割画面の切り替えがずれ、
      * 数秒のあいだ上の画面が下の画面のモードで出た(タイトルの絵が化けて見えた)。帰線の直後に 4 回に分けて送る */
     for (i = 0; i < 4; i++) {
         wait_tick();
         vdp_set_write(0x1800 + i * (SPR_PAT_BYTES / 4));
-        vdp_out((const u8 *)(0x8000 + 6656) + i * (SPR_PAT_BYTES / 4), SPR_PAT_BYTES / 4);
+        vdp_out((const u8 *)(0x8000 + 6656 + 1152) + i * (SPR_PAT_BYTES / 4), SPR_PAT_BYTES / 4);
     }
     /* 面のコード(stg.c)をページ3へ */
     memcpy((void *)STG_A, (const void *)(0x8000 + STG_OFS_A), STG_A_LEN);

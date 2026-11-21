@@ -31,14 +31,14 @@ HDRS = $(wildcard $(ENG)/*.h) $(BUILD)/songs.h $(BUILD)/title.h $(BUILD)/ids.h
 MODS = $(foreach n,0 1 2 3 4 5 6 7 15 16 17 18 19 20 21,$(BUILD)/mod$(n).bin)
 # 映像の場面(オープニング = 0、n 面の後の継ぎ目 = 14 + n)の演出のコード(op.c)の置き場所。モジュールの中身の後ろ
 # (tools/stage_data.py の op_base と同じ値。mkrom.py が重なりを確かめる)
-OP0_BASE = 0x9500
+OP0_BASE = 0x9420
 OP15_BASE = 0x9000
-OP16_BASE = 0x9000
-OP17_BASE = 0x9000
-OP18_BASE = 0x9000
-OP19_BASE = 0x9000
-OP7_BASE = 0x9000
-OP20_BASE = 0x9000
+OP16_BASE = 0x8800
+OP17_BASE = 0x8800
+OP18_BASE = 0x8800
+OP19_BASE = 0x8800
+OP7_BASE = 0x8E00
+OP20_BASE = 0x8800
 FILMS = 0 7 15 16 17 18 19 20
 # 面のコード(stg.c: 新しい敵の動き・ボスの秘密兵器・残り時間)。ページ3の空き 2 か所に置き、ROM ではコクピットの絵のバンクの後ろ
 STG_A = 0xD700
@@ -65,10 +65,10 @@ $(BUILD)/title.h: data/title_art.webp data/title_text.png $(TOOLS)/gen_title.py 
 	$(PYTHON) $(TOOLS)/gen_title.py data/title_art.webp $(BUILD)/title.bin $(BUILD)/title.h
 $(BUILD)/title.bin: $(BUILD)/title.h
 
-$(BUILD)/cockpit.bin: $(TOOLS)/gen_cockpit.py $(TOOLS)/gen_data.py | $(BUILD)
+$(BUILD)/cockpit.bin: $(TOOLS)/gen_cockpit.py $(TOOLS)/gen_data.py $(TOOLS)/gen_font.py | $(BUILD)
 	$(PYTHON) $(TOOLS)/gen_cockpit.py $@
 
-$(BUILD)/ids.h: $(TOOLS)/gen_stage.py $(TOOLS)/stage_data.py $(TOOLS)/content.py $(TOOLS)/meshlib.py src/sound/songs.mml | $(BUILD)
+$(BUILD)/ids.h: $(TOOLS)/gen_stage.py $(TOOLS)/stage_data.py $(TOOLS)/content.py $(TOOLS)/meshlib.py $(TOOLS)/film_spr.py $(TOOLS)/gen_font.py src/sound/songs.mml | $(BUILD)
 	$(PYTHON) $(TOOLS)/gen_stage.py $(BUILD)
 $(MODS): $(BUILD)/ids.h
 $(patsubst %,$(BUILD)/film%.h,$(FILMS)): $(BUILD)/ids.h
@@ -102,8 +102,13 @@ $(BUILD)/ressyms.rel: $(BUILD)/ressyms.s
 # コードは同じ op.c で、台本 filmN.h だけが違う
 $(BUILD)/op%.rel: $(ENG)/op.c $(HDRS) $(BUILD)/film%.h | $(BUILD)
 	$(CC) $(CFLAGS) --opt-code-size -DFILM_H='"film$*.h"' -c -o $@ $<
-$(BUILD)/op%.ihx: $(BUILD)/op%.rel $(BUILD)/ressyms.rel
+$(BUILD)/op%.ihx: $(BUILD)/op%.rel $(BUILD)/ressyms.rel $(BUILD)/stgsyms.rel
 	$(CC) $(MODFLAGS) --code-loc $(OP$*_BASE) -o $@ $^
+# 映像の場面から呼ぶ面のコードの関数(字幕の film_say)の番地
+$(BUILD)/stgsyms.s: $(BUILD)/stg.ihx $(TOOLS)/ressyms.py
+	$(PYTHON) $(TOOLS)/ressyms.py $(BUILD)/stg.noi $@ _film_say
+$(BUILD)/stgsyms.rel: $(BUILD)/stgsyms.s
+	$(AS) -l -o $@ $<
 
 $(BUILD)/sndtick.rel: $(ENG)/sndtick.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --max-allocs-per-node 100000 -c -o $@ $<
@@ -116,8 +121,8 @@ $(BUILD)/stg.rel: $(ENG)/stg.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --opt-code-size -c -o $@ $<
 $(BUILD)/stgb.rel: $(ENG)/stgb.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --opt-code-size --codeseg STGB --constseg STGB -c -o $@ $<
-$(BUILD)/stg.ihx: $(BUILD)/stg.rel $(BUILD)/stgb.rel $(BUILD)/ressyms.rel
-	$(CC) $(MODFLAGS) --code-loc $(STG_A) -Wl-b_STGB=$(STG_B) -o $@ $^
+$(BUILD)/stg.ihx: $(BUILD)/stgjt.rel $(BUILD)/stg.rel $(BUILD)/stgb.rel $(BUILD)/ressyms.rel
+	$(CC) $(MODFLAGS) -Wl-b_STGJT=$(STG_A) --code-loc 0xD706 -Wl-b_STGB=$(STG_B) -o $@ $^   # 先頭 6 バイトは飛び先の表(stgjt.s)
 
 OPS = $(patsubst %,$(BUILD)/op%.ihx,$(FILMS)) $(BUILD)/stg.ihx
 $(ROM): $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/sndmod.ihx $(MODS) $(BUILD)/songs.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin src/sound/voicemod.bin $(OPS)

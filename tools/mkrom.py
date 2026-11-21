@@ -21,12 +21,12 @@ HICODE_BASE = 0xA300  # 全モジュールの後ろに重ねるコード(game_ai
 DATA_BASE, DATA_LIMIT = 0xCC00, 0xD700   # 0xD700- は面のコード(stg.c)
 CODE_LIMIT = 0x8000
 P0D_BASE, P0D_LIMIT = 0x0200, 0x4000
-SONG_BASE = 0x8D00
+SONG_BASE = 0x8B80
 HOOK_OFS = 24        # モジュールの見出しの中の、場面の演出のコードの番地(tools/gen_stage.py の HOOK_OFS)
 MOD_BANK0, SND_BANK, VOICE_BANK, COCKPIT_BANK, TITLE_BANK = 5, 21, 23, 25, 27
 # 面のコード(stg.c): ページ3の 2 か所。ROM ではコクピットの絵のバンクの STG_OFS_A / STG_OFS_B から(src/engine/engine.h と同じ値)
-STG_A, STG_A_LEN, STG_OFS_A = 0xD700, 0x0700, 0x2200
-STG_B, STG_B_LEN, STG_OFS_B = 0xE700, 0x0800, 0x2900
+STG_A, STG_A_LEN, STG_OFS_A = 0xD700, 0x0700, 0x2700
+STG_B, STG_B_LEN, STG_OFS_B = 0xE700, 0x0800, 0x2E00
 STAGES = (1, 2, 3, 4, 5, 6, 21)      # 面のコードを呼ぶモジュール
 
 

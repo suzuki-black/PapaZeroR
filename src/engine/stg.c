@@ -20,12 +20,19 @@ static const u8 pal_orange[14] = { 0x72, 5, 0x71, 4, 0x72, 5, 0x71, 3, 0x72, 5, 
 static void fx_flash(u8 dt)
 {
     u8 i, fl = 0;
+    u16 *ag = (u16 *)&g_stg[ST_AG];
     for (i = 0; i < MAX_FX; i++) if (fx[i].t == FX_T) {           /* このフレームに起きた爆発 */
         if (g_shake < 5) g_shake = 5;
         if (boss_on) fl = 1;
     }
-    if (boss_on) g_stg[ST_BD] = 0;
+    if (boss_on) { g_stg[ST_BD] = 0; *ag = 0; }
     else if (boss_dead && !g_stg[ST_BD]) { g_stg[ST_BD] = 1; g_stg[ST_BX] = 24; }
+    else if (boss_dead && !g_stg[ST_BX]) {
+        /* 連続爆発の後は「STAGE CLEAR!」を約 6 秒見せて面を終える。前は周回区間の残りを飛び切るまで続き、
+         * 遅い 1 面(速さ 13)では 40 秒近くかかった */
+        *ag += dt;                          /* 足すのと比べるのは分けて書く(SDCC は 1 つの式だと書き戻しを落とすことがある) */
+        if (*ag >= AG_LEN) scr_end |= 1;
+    }
     if (g_stg[ST_BX]) {
         u8 k = g_stg[ST_BX];
         g_stg[ST_BX] = k > (u8)((dt + 3) >> 2) ? k - ((dt + 3) >> 2) : 0;
@@ -120,4 +127,54 @@ void op_hook(u16 t)
     dt = (u8)((t - *wt) >> 3);
     while (g_stg[ST_WP] <= 13 && g_stg[ST_WP] <= dt + 1) { weapon(w, (u8)(g_stg[ST_WP] - 1)); g_stg[ST_WP]++; }
     if (dt > 13) { g_stg[ST_WP] = 0; g_stg[ST_WN]++; *wt = t + 420; }
+}
+
+/* 映像の場面の字幕を黒帯に描く(stgb.c の film_say が使う。置き場が足りないので 2 か所に分ける) */
+/* (x バイト = 2 ドット、y ライン)へ書く番地。ページは bot_hi(cockpit.c。黒帯は 4 ページ目で y = 160〜211、エンドロールは 1 ページ目) */
+extern u8 bot_hi;
+void lb_at(u8 x, u8 y)
+{
+    u16 a = (u16)y * 128 + x;
+    vdp_set_write_hi((u8)(bot_hi + (a >> 14)), a & 0x3FFF);
+}
+
+/* 字幕の字体(tools/gen_font.py。高さ 11 ドット、字ごとに幅が変わる)は VRAM EA00h(2 ページ目の 212 ライン〜)にある。
+ * 1 行を 1 段ずつ、字の形を VRAM から読んでは黒帯へ 2 ドット = 1 バイトずつ書く。c = 色、ital = 上の 5 段を 1 ドット右へ(斜体)。
+ * 1Fh か 0 で止まり、そこを返す */
+__sfr __at 0x98 VD;
+__sfr __at 0x99 VC;
+static u8 lb_rd(u16 a)
+{
+    u8 v;
+    __asm__("di");
+    VC = 3; VC = 0x8E; VC = (u8)a; VC = (u8)(a >> 8);
+    __asm__("nop");
+    v = VD;
+    __asm__("ei");
+    return v;
+}
+
+const char *lb_line(const char *s, u8 x0, u8 y, u8 c, u8 ital)
+{
+    const char *q;
+    u8 r, x, g, n, k, pend, h;
+    for (r = 0; r < 11; r++) {
+        x = x0 + (ital && r < 5);
+        h = x & 1;
+        pend = 0x10;
+        for (q = s; (u8)*q >= 0x20; q++) {
+            k = (u8)(*q - 0x20);
+            g = lb_rd(0x2A00 + r * 96 + k);
+            n = lb_rd(0x2A00 + 11 * 96 + k);
+            lb_at(x >> 1, (u8)(y + r));
+            x += n;
+            for (; n; n--, g <<= 1) {
+                u8 b = (g & 0x80) ? c : 1;
+                if (h) VD = pend | b; else pend = (u8)(b << 4);
+                h ^= 1;
+            }
+        }
+        if (h) VD = pend | 1;
+    }
+    return q;
 }

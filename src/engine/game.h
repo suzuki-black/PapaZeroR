@@ -68,7 +68,7 @@ typedef struct {
 extern Obj obj[MAX_OBJ];
 
 /* 隠しコンフィグ(7.3) */
-typedef struct { u8 damage, god, stage, life, oneshot, fps, xfer, split, roll, lockbox; } Config;   /* lockbox: 誘導弾のロックの枠の大きさ 1〜4(3 = 横 24 × 縦 16 ブロック) */
+typedef struct { u8 damage, god, stage, life, oneshot, fps, xfer, split, roll, lockbox, film; } Config;   /* lockbox: 誘導弾のロックの枠の大きさ 1〜4(3 = 横 24 × 縦 16 ブロック)。film: 0 でなければ映像の場面だけを見る(1 = オープニング、2〜7 = 1〜6 面の後、8 = エンディング。そこから最後まで) */
 extern Config g_cfg;
 extern u8 g_auto;               /* 1 = 自動プレイ(デモと test_flow) */
 extern u8 g_scene;              /* 0 = タイトル 1 = ゲーム 2 = 継ぎ目 3 = 場面 */

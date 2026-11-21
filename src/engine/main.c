@@ -161,6 +161,11 @@ void main(void)
         title_run();
         game_reset();
         if (g_auto) { stage_run(1); continue; }      /* デモ: 1 面の自動プレイ */
+        if (g_cfg.film) {                            /* 隠しコンフィグ FILM: 映像の場面だけを、選んだものから最後まで */
+            for (n = g_cfg.film; n <= 8; n++) { if (n == 8) bgm_play(SONG_FINALE); stage_run(n == 1 ? 0 : n == 8 ? 7 : (u8)(13 + n)); }   /* エンディングは曲を持たない(最後のボスの撃破から FINALE が続く)ので、ここで鳴らす */
+            ending_run();
+            continue;
+        }
         for (n = g_cfg.stage; n <= 7; n++) {
             if (n == 1 && !stage_run(0)) break;     /* オープニング(飛ばしてもよい) */
             if (!stage_run(n == 7 ? MOD_FINAL : n)) { gameover_run(); n = 0xFF; break; }

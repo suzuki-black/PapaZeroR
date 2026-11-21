@@ -114,10 +114,10 @@ extern const u8 font35_map[96];     /* ASCII 0x20-0x7F → font35 の文字番�
 /* 面のコード(stg.c)。ページ3の 2 か所に、cockpit_load がコクピットの絵のバンクから写す(tools/mkrom.py と同じ値) */
 #define STG_A 0xD700
 #define STG_A_LEN 0x0700
-#define STG_OFS_A 0x2200
+#define STG_OFS_A 0x2700
 #define STG_B 0xE700
 #define STG_B_LEN 0x0800
-#define STG_OFS_B 0x2900
+#define STG_OFS_B 0x2E00
 #define SPR_PAT_BYTES (63 * 32)     /* 照準など 4 + 敵の名前 10 + 引き出し線 3 + オープニングの人物・機体・戦車 46(tools/gen_data.py)。cockpit_load が 4 回に分けて送る */
 extern const u16 recip9[256];      /* round(2^24 / m)、m = 256..511 */
 

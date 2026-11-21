@@ -11,7 +11,7 @@
 
 static const char * const st_song[SONG_COUNT] = {
     "TITLE", "OPENING", "STAGE 1", "STAGE 2", "STAGE 3", "STAGE 4", "STAGE 5", "STAGE 6",
-    "BOSS", "BRIDGE", "CLEAR", "ENDING", "GAME OVER", "KING 1", "KING 2",
+    "BOSS", "BRIDGE", "CLEAR", "ENDING", "GAME OVER", "KING 1", "KING 2", "FINALE",
 };
 static const char * const st_se[SE_COUNT - 1] = {
     "HEAL", "SHOT", "HIT", "ALARM", "KILL", "MISSILE", "DAMAGE", "LOCK", "TALLY", "BOSS", "LASER",
