@@ -72,11 +72,82 @@ static i16 bob(u16 t)
     return s < 0 ? -s : s;
 }
 
+#ifdef ENDING_ROLL
+/* ---- エンドロール(エンディングのモジュール 7 だけ。main.c が op_hook(0xFFFF) で呼ぶ) ---- */
+/* 文面はエンディングのモジュール(7)の字幕の 2 番から(tools/stage_data.py の ending()。ページ0に空きが無いので)。
+ * 1 行 = [色 + 10h][左端の x(ドット)] 字…(並べ方はビルドのときに tools/gen_font.py で決める)。空の行は ""。
+ * "\x01" [色][x] = 得点の行、"\x02" = 終わり */
+#define ROLL_STR (MOD->str + 2)
+/* 演出のコードは変数を持たないので、得点の文字列はエンドロールの間は使わない span の場所(0xDE00)に置き、行の数は引数で渡す */
+#define roll_score ((char *)0xDE00)
+extern u8 bot_hi;
+#define ROLL_LH 13                 /* 1 行の高さ(ライン) */
+#define ROLL_TOP 15                /* 始めは画面 1 枚ぶん(192 ライン)を空ける */
+/* 面のコード(stg.c)の字幕を書く関数。面のコードの先頭の飛び先の表(stgjt.s)を通して呼ぶ */
+#define lb_at (*(void (*)(u8, u8))0xD700)
+typedef const char *(*LbLine)(const char *, u8, u8, u8, u8);
+#define lb_line ((LbLine)0xD703)
+
+/* 輪の行 k(1 ページ目の 256 ラインを輪にして、k × 13 ライン目から)に、文の k - 15 行目を映像の場面の字幕の字体で書く */
+static void roll_row(u16 k, u16 roll_n)
+{
+    const char *t;
+    i16 li = (i16)k - ROLL_TOP;
+    u8 y = (u8)(k * ROLL_LH), r;
+    for (r = 0; r < ROLL_LH; r++) { lb_at(0, (u8)(y + r)); vdp_fill(0x11, 128); }
+    if (li < 0 || li >= (i16)roll_n) return;
+    t = ROLL_STR[li];
+    if (*t == 1) lb_line(roll_score, (u8)t[2], y, t[1] & 15, 0);
+    else if (*t) lb_line(t + 2, (u8)t[1], y, t[0] & 15, 0);
+}
+
+/* エンドロール(7.4): SCREEN 5 に切り替え、映像の場面の字幕の字体(VRAM 0EA00h。cockpit_load が置く)で
+ * 下から上へ流す(R#23 で 1 ドットずつ)。スペースで速く流す */
+static void ending_roll(void)
+{
+    static const u8 regs[] = { 1, 0xA0, 0, 0x06, 2, 0x1F, 7, 0x01, 8, 0x0A, 9, 0x00, 23, 0x00, 25, 0 };
+    u16 s, y = 0, k, roll_n;
+    u8 i;
+    for (roll_n = 0; ROLL_STR[roll_n][0] != 2; roll_n++) ;
+    g_score += (u16)life * 100;
+    g_hiscore = g_score > g_hiscore ? g_score : g_hiscore;
+    {   /* 得点(6 桁目は常に 0) */
+        u16 v = g_score, d = 10000;
+        for (i = 0; i < 5; i++) { char c = '0'; while (v >= d) { v -= d; c++; } roll_score[i] = c; d = i == 0 ? 1000 : i == 1 ? 100 : i == 2 ? 10 : 1; }
+        roll_score[5] = '0'; roll_score[6] = 0;
+    }
+    while (g_flip_req) wait_tick();
+    pcm_stop();
+    split_off();
+    for (i = 0; i < sizeof(regs); i += 2) vdp_wreg(regs[i], regs[i + 1]);
+    vdp_set_write_hi(0, 0);
+    vdp_fill(0x11, 0x8000);
+    vdp_set_palette(0, pal_fixed);
+    bot_hi = 0;
+    xfer_invalidate();
+    vdp_wreg(1, 0xE0);
+    bgm_play(SONG_ENDING);
+    k = ROLL_TOP;
+    for (;;) {
+        wait_tick();
+        s = (input_raw() & IN_A) ? 1 : (g_tick & 3) == 0;
+        if (k < ROLL_TOP + roll_n + 8) {
+            for (; s; s--) vdp_wreg(23, (u8)++y);
+            while (k * ROLL_LH < y + 192 + ROLL_LH) roll_row(k++, roll_n);   /* 画面の下に入る前に描く */
+        } else if (input_raw() & IN_A) break;
+    }
+    bgm_stop();
+}
+#endif
+
 void op_hook(u16 t)
 {
     Key c;
     u8 i, n;
     Obj *o = obj;
+#ifdef ENDING_ROLL
+    if (t == 0xFFFF) { ending_roll(); return; }
+#endif
     while (ev_i < N_FEV && film_ev[ev_i].t <= t) {
         const FilmEv *e = &film_ev[ev_i++];
         switch (e->kind) {

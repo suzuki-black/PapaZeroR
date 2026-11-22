@@ -165,7 +165,7 @@ void main(void)
         if (g_auto) { stage_run(1); continue; }      /* デモ: 1 面の自動プレイ */
         if (g_cfg.film) {                            /* 隠しコンフィグ FILM: 映像の場面だけを、選んだものから最後まで */
             for (n = g_cfg.film; n <= 8; n++) { if (n == 8) bgm_play(SONG_FINALE); stage_run(n == 1 ? 0 : n == 8 ? 7 : (u8)(13 + n)); }   /* エンディングは曲を持たない(最後のボスの撃破から FINALE が続く)ので、ここで鳴らす */
-            ending_run();
+            MOD->hook(0xFFFF);             /* エンドロール(モジュール 7 の op.c) */
             continue;
         }
         for (n = g_cfg.stage; n <= 7; n++) {
@@ -173,6 +173,6 @@ void main(void)
             if (!stage_run(n == 7 ? MOD_FINAL : n)) { gameover_run(); n = 0xFF; break; }
             if (n < 7) stage_run((u8)(14 + n));     /* n 面の後の継ぎ目: 映像の場面(モジュール 15〜20、src/engine/op.c) */
         }
-        if (n == 8) { stage_run(7); ending_run(); }
+        if (n == 8) { stage_run(7); MOD->hook(0xFFFF); }
     }
 }

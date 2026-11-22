@@ -101,17 +101,10 @@ def build(mod, ids, nids, out):
     ea = b.add(ev)
     sky = b.add(b'\0')                             # 飾りの無いモジュールも、空のデータを指す(sky_marks が 0 を確かめずにすむ)
     if mod.sky or mod.waves:
-        # 空の飾り(src/engine/game.c の sky_marks): [点の数][色] { 方角 x, y, z(i8、長さ 90。x 東・y 上・z 北。長さ 127) } を 0 まで。
-        # (色, 方位, 仰角, 長さ) の方位・仰角は 256 で 1 周。筋雲は方位を 1 ずつ進めた点を並べる
+        # 空の飾り(src/engine/game.c の sky_marks)。(色, 方位, 仰角, 長さ) の方位・仰角は 256 で 1 周、長さ 0 = 星
         d = bytearray()
-        for col, az, el, n in mod.sky:
-            az, el = (az + 128) % 256 - 128, (el + 128) % 256 - 128
-            pts = []
-            steps = int(n / .6) if n else 0                 # 筋雲は 0.6 ずつ(1 ずつだと端のほうで点の間があいた)
-            for k in range(steps + 1):
-                a, e = (az + (k * n / steps if steps else 0)) * math.pi / 128, el * math.pi / 128
-                pts += [round(127 * math.sin(a) * math.cos(e)), round(127 * math.sin(e)), round(127 * math.cos(a) * math.cos(e))]
-            d += bytes([steps + 1, col]) + bytes(v & 255 for v in pts)
+        for col, az, el, n in mod.sky:                  # 筋雲・星: [1][色][方位][仰角][長さ](src/engine/game.c の sky_marks が角度のまま画面へ写す)
+            d += bytes([1, col, az & 255, el & 255, n])
         for i in range(0, len(mod.waves), 120):         # 海の白波(80h を立てた組): (x, z) は 64 単位四方の中の位置
             w = mod.waves[i:i + 120]
             d += bytes([len(w), 11 | 0x80]) + bytes(v for pt in w for v in pt)   # 11 = src/engine/engine.h の C_GND1

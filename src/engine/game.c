@@ -296,14 +296,19 @@ static void aim_poll(void)
 /* 空の飾り(筋雲・星。tools/stage_data.py の Mod.sky)。空の決まった方角(ワールド。どの面も経路は北から ±40 度に収まる)に貼り付け、
  * カメラの向きで画面に写すので、
  * ロールや宙返りでは地平線と一緒に回る。シリアスな映画の空に合うよう、地平線の帯と同じ色の筋雲と、灰色の星だけにする(記号の太陽や月は描かない)。
- * データは [点の数][色] { 方角(x 東, y 上, z 北。長さ 127) } × 点の数 を 0 まで繰り返す(筋雲の点も、ビルドのときに 1 つずつ並べる)。
+ * データは [点の数][色] { 方位, 仰角, 長さ } × 点の数 を 0 まで繰り返す。方位・仰角は 256 で 1 周(1 ≒ 画面の 1 ブロック)、
+ * 長さ 0 は星(1 ブロック)、それ以外は方位の向きに伸びる筋雲。カメラのヨー・ピッチとの差から画面の位置を直接出し、ロールの分だけ回す
+ * (前は 1 点ずつワールドの点として変換・投影していて、1 点 0.4ms、1〜3 面の筋雲 100 点あまりで 1 枚 45ms かかり、半分の fps になった)。
  * 色に 80h が立った組は海の白波: { x, z(0〜63 単位) } × 点の数。64 単位四方の並びを海の面(y = 0)に敷き詰め、2 ブロックの横線で描く */
+static i16 sm_fx, sm_fy, sm_cr, sm_sr;
 static void sky_marks(void)
 {
     const u8 *p = MOD->sky;
-    u8 n, g;
-    i16 x, y, wx, wy, wz;
+    u8 n, g, k, x, y;
+    i8 dx, dy;
+    i16 sx, sy;
     V3 c;
+    sm_sr = SIN(cam_roll); sm_cr = COS(cam_roll);
     g_rh = 1;
     while ((n = *p++)) {
         g = *p++;
@@ -311,18 +316,32 @@ static void sky_marks(void)
         g_rw = (g >> 7) + 1;                  /* 白波は 2 ブロック、ほかは 1 */
         for (; n; n--) {
             if (g & 0x80) {
-                wx = ((((u16)p[0] << 8) - cam_x) & 0x3FFF) - 0x2000;
-                wz = (((u16)p[1] << 8) - cam_z) & 0x3FFF;
-                wy = -cam_y;
+                pt_cam(cam_x + (i16)((((((u16)p[0] << 8) - cam_x) & 0x3FFF) - 0x2000)), 0, cam_z + (i16)((((u16)p[1] << 8) - cam_z) & 0x3FFF), &c);
                 p += 2;
-            } else {                          /* カメラから約 64 単位先の点 */
-                wx = (i8)p[0] << 7; wy = (i8)p[1] << 7; wz = (i8)p[2] << 7;
+                if (!pt_screen(&c, &sx, &sy) || (u16)sx >= 1024 || (u16)sy >= 1024) continue;
+                sm_fx = sx << 4; sm_fy = sy << 4; k = 1;
+            } else {
+                dx = (i8)(p[0] - cam_yaw); dy = (i8)(p[1] - cam_pitch); k = p[2] ? p[2] : 1;
                 p += 3;
+                if ((u8)(dx + 64) > 128 || (u8)(dy + 64) > 128) continue;
+                /* 画面の中心(32, 20)からのずれをロールで回す(8 ビットの小数。上のバイトがブロック) */
+                sm_fx = (i16)dx * sm_cr - (i16)dy * sm_sr + (32 << 8) + 128;
+                sm_fy = (20 << 8) + 128 - (i16)dy * sm_cr - (i16)dx * sm_sr;
             }
-            pt_cam(cam_x + wx, cam_y + wy, cam_z + wz, &c);
-            if (!pt_screen(&c, &x, &y)) continue;
-            x >>= 4; y >>= 4;
-            if ((u16)x < 63 && (u16)y < GAME_ROWS) { g_rx = (u8)x; g_ry = (u8)y; rect_fill(); }
+            if (!sm_sr && k > 1) {            /* 傾いていない筋雲は 1 本を横長の 1 枚で塗る(1 ブロックずつ塗るより約 2ms 軽い) */
+                x = (u8)(sm_fx >> 8); y = (u8)(sm_fy >> 8);
+                if (y >= GAME_ROWS) continue;
+                if (x >= 128) { if ((u8)(x + k) >= 128 || (u8)(x + k) == 0) continue; k += x; x = 0; }   /* 左にはみ出した分を切る */
+                if (x >= 64) continue;
+                g_rw = (u8)(x + k) > 64 ? (u8)(64 - x) : k;
+                g_rx = x; g_ry = y; rect_fill();
+                g_rw = 1;
+                continue;
+            }
+            for (; k; k--, sm_fx += sm_cr, sm_fy -= sm_sr) {
+                x = (u8)(sm_fx >> 8); y = (u8)(sm_fy >> 8);
+                if ((u8)(x + g_rw) <= 64 && y < GAME_ROWS) { g_rx = x; g_ry = y; rect_fill(); }
+            }
         }
     }
 }
@@ -733,12 +752,20 @@ u8 stage_run(u8 mod)
 static u8 stage_body(u8 mod)
 {
     u16 t0, t_demo, ts;
+    u8 i;
+    /* 読み込みの前に上の画面を黒にする。前は、新しい場面の色や下の帯に切り替わってから最初の絵ができるまで、
+     * 前の場面の最後の絵が残って見えた(オープニングを飛ばして 1 面に入るとき、映像の場面から次の場面へ移るとき) */
+    g_poll = 0;
+    buf_fill(C_BLACK);
+    for (i = 0; i < N_SPR; i++) g_spr_attr[i * 4] = 209;   /* 照準・札・映像の人物のスプライトも隠す */
+    present();
     mod_load_now(mod);
     stage_reset();
     g_scene = (MOD->flags & SF_SCENE) ? 3 : 1;
     set_stage_palette(MOD->pal);
     cockpit_mode(g_scene == 3);
     cockpit_reset();
+    for (i = 0; i < 9; i++) hud_step();   /* 計器を全部書いてから始める(1 枚に 1 項目ずつだと、HP の目盛りが出るまで 1 秒近くかかった) */
     if (MOD->bgm) bgm_play(MOD->bgm);
     if (g_scene == 1) {
         caption(MOD->name + 10, C_WHITE, 120);   /* 「STAGE n / 」を除く。字幕は 16 文字まで */

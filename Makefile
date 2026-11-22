@@ -103,7 +103,7 @@ $(BUILD)/ressyms.rel: $(BUILD)/ressyms.s
 # 映像の場面の演出: モジュール n の後ろに重ねる(常駐部・ページ0の関数と変数は ressyms で番地を引く。変数は持たない)。
 # コードは同じ op.c で、台本 filmN.h だけが違う
 $(BUILD)/op%.rel: $(ENG)/op.c $(HDRS) $(BUILD)/film%.h | $(BUILD)
-	$(CC) $(CFLAGS) --opt-code-size -DFILM_H='"film$*.h"' -c -o $@ $<
+	$(CC) $(CFLAGS) --opt-code-size -DFILM_H='"film$*.h"' $(if $(filter 7,$*),-DENDING_ROLL) -c -o $@ $<
 $(BUILD)/op%.ihx: $(BUILD)/op%.rel $(BUILD)/ressyms.rel $(BUILD)/stgsyms.rel
 	$(CC) $(MODFLAGS) --code-loc $(OP$*_BASE) -o $@ $^
 $(BUILD)/op22.rel: $(ENG)/guide.c $(HDRS) | $(BUILD)
