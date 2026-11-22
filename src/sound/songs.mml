@@ -167,8 +167,8 @@ D @13 v15 q6 l8
 D [o2 g o3 g]4 | [o2 g o3 g]4 | [o2 e- o3 e-]4 | [o2 d o3 d]4 | [o2 g o3 g]4 | [o2 g o3 g]4 | [o2 c o3 c]4 | [o2 d o3 d]4 |
 D [o2 e- o3 e-]4 | [o2 f o3 f]4 | [o2 g o3 g]4 | [o2 g o3 g]4 | [o2 c o3 c]4 | [o2 a- o3 a-]4 | [o2 d o3 d]4 | [o2 d o3 d]4 |
 #   リズム: 16 分の 2 打を挟む軍隊のスネア。4 小節ごとにタムの連打
-R V15,14,13,11,13
-R [ bc8 s16 s16 sh8 b16 b16 b8 s16 s16 sh8 s16 s16 [ bh8 s16 s16 sh8 b16 b16 b8 s16 s16 sh8 s16 s16 ]2 bh8 s16 s16 sh8 t16 t16 t16 t16 t16 t16 bs8 s8 ]4
+R V15,14,13,11,11
+R [ bc8 sh16 s16 sh8 bh16 b16 bh8 sh16 s16 sh8 sh16 s16 [ bh8 sh16 s16 sh8 bh16 b16 bh8 sh16 s16 sh8 sh16 s16 ]2 bh8 sh16 s16 sh8 t16 t16 t16 t16 t16 t16 bs8 s8 ]4
 
 @song STAGE3 loop
 # ステージ 3「夕の峡谷」: 岩陰を忍び、追手の太鼓が迫る。ニ短調。4 小節の同じ節を t120 → t150 → t180 → t225 と上げ、音域と音量も上げる
@@ -252,8 +252,8 @@ D o1 g-8 g-8 o2 g-8 o1 g-8 g-8 o2 g-8 o1 g-8 o2 g-8 o1 g-8 o2 g-8 | [o2 f8 f8 o3
 D o1 g-8 g-8 o2 g-8 o1 g-8 g-8 o2 g-8 o1 g-8 o2 g-8 o1 g-8 o2 g-8 | o2 d-8 d-8 o3 d-8 o2 d-8 d-8 o3 d-8 o2 d-8 o3 d-8 o2 d-8 o3 d-8 |
 D [o2 c8 c8 o3 c8 o2 c8 c8 o3 c8 o2 c8 o3 c8 o2 c8 o3 c8 |]2
 #   リズム: 5 拍子を 3 + 3 + 2 + 2 で。バスドラムとタムが区切りを踏み、スネアが 16 分で挟む。4 小節ごとにタムの連打
-R V15,14,13,11,12
-R [ bc8 s16 s16 t8 b8 s16 s16 t8 bh8 h8 sh8 s16 s16 [ b8 s16 s16 t8 b8 s16 s16 t8 bh8 h8 sh8 s16 s16 ]2 t8 t8 t8 t8 t8 t8 s16 s16 s16 s16 bs8 s8 ]3
+R V15,14,13,11,11
+R [ bc8 sh16 s16 th8 bh8 sh16 s16 th8 bh8 h8 sh8 sh16 s16 [ bh8 sh16 s16 th8 bh8 sh16 s16 th8 bh8 h8 sh8 sh16 s16 ]2 t8 t8 t8 t8 t8 t8 s16 s16 s16 s16 bs8 s8 ]3
 
 @song STAGE5 loop
 # ステージ 5「薄明の成層圏」: 敵の追撃をふり切る。ロ短調、t180、16 小節
@@ -357,8 +357,8 @@ D @13 v15 q6 l8
 D [o2 e o3 e]4 | [o2 e o3 e]4 | [o2 c o3 c]4 | [o1 b o2 b]4 | [o2 e o3 e]4 | [o2 e o3 e]4 | [o2 f o3 f]4 | [o1 b o2 b]4 |
 D [o1 a o2 a]4 | [o1 a o2 a]4 | [o2 e o3 e]4 | [o2 e o3 e]4 | [o2 c o3 c]4 | [o2 f o3 f]4 | [o1 b o2 b]4 | [o1 b o2 b]4 |
 #   リズム: バスドラムを踏み続ける速い 4 拍。4 拍目の裏でタム 2 つ、4 小節ごとにタムとスネアの連打
-R V15,15,13,12,13
-R [ bch8 b8 sh8 b16 b16 bh8 b8 sh8 t16 t16 [ bh8 b8 sh8 b16 b16 bh8 b8 sh8 t16 t16 ]2 t16 t16 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 bs8 ]4
+R V15,15,13,12,12
+R [ bch8 bh8 sh8 bh16 b16 bh8 bh8 sh8 th16 t16 [ bh8 bh8 sh8 bh16 b16 bh8 bh8 sh8 th16 t16 ]2 t16 t16 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 bs8 ]4
 
 @song BRIDGE loop
 # 継ぎ目: 空と海だけの場面。遠くにいる娘を思う、一人きりの笛の歌(オリジナルの旋律)。変ロ短調、t128、8 小節でちょうど 15 秒
@@ -514,8 +514,8 @@ D [o2 c8 c16 c16]4 | [o2 f8 f16 f16]4 | [o1 g-8 g-16 g-16]4 | [o1 g8 g16 g16]4 |
 D [ [o2 c8 c16 c16]2 [o1 g8 g16 g16]2 | ]2 [o2 f8 f16 f16]2 [o2 d-8 d-16 d-16]2 | [o1 g8 g16 g16]4 |
 D [o2 c8 c16 c16]2 [o2 f8 f16 f16]2 | [o1 g8 g16 g16]4 | [o1 a-8 a-16 a-16]2 [o2 d-8 d-16 d-16]2 | [o1 g8 g16 g16]4 |
 #   リズム: 速い 4 拍。2 拍目と 4 拍目にバスドラムとスネアを重ね、間を 16 分のスネアで埋める。4 小節ごとにタムとスネアの連打
-R V15,15,13,12,14
-R [ bch8 s16 s16 bsh8 b16 b16 bh8 s16 s16 bsh8 s8 [ bh8 s16 s16 bsh8 b16 b16 bh8 s16 s16 bsh8 s8 ]2 t16 t16 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 bs8 ]4
+R V15,15,13,12,12
+R [ bch8 sh16 s16 bsh8 bh16 b16 bh8 sh16 s16 bsh8 sh8 [ bh8 sh16 s16 bsh8 bh16 b16 bh8 sh16 s16 bsh8 sh8 ]2 t16 t16 t16 t16 t16 t16 t16 t16 s16 s16 s16 s16 bs8 bs8 ]4
 
 @song FINALE once
 # 最後のボスを倒してからエンディングの映像の終わりまで(約 32 秒)。ハ短調から変ホ長調へ、t120、16 小節(1 小節 = 2 秒)
