@@ -48,7 +48,8 @@ extern u8 g_buf_hi;                 /* 描画バッファの上位バイト(gfx.
 
 /* ---- sys.s ---- */
 extern volatile u16 g_tick;
-extern volatile u8 g_b_latch;      /* 割り込みが毎ティック見た M・B キーの押下(IN_B)。読んだら 0 にする */
+extern volatile u8 g_b_cnt;        /* 割り込みが数えた M・B キーの押し始め(回り続ける) */
+extern u8 g_joy;                   /* input_raw が読んだジョイスティックだけの値(キーボードを足す前) */
 extern volatile u8  g_flip_req;
 extern volatile u8  g_spr_live, g_spr0_req;   /* 照準を毎ティック動かす(sys.s の割り込み) */
 extern volatile u8  g_flip_page;

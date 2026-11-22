@@ -103,8 +103,14 @@ def build(mod, ids, nids, out):
     if mod.sky or mod.waves:
         # 空の飾り(src/engine/game.c の sky_marks)。(色, 方位, 仰角, 長さ) の方位・仰角は 256 で 1 周、長さ 0 = 星
         d = bytearray()
-        for col, az, el, n in mod.sky:                  # 筋雲・星: [1][色][方位][仰角][長さ](src/engine/game.c の sky_marks が角度のまま画面へ写す)
-            d += bytes([1, col, az & 255, el & 255, n])
+        sk = list(mod.sky)
+        while sk:                                       # 筋雲・星: [点の数][色]{方位, 仰角, 長さ}。続く同じ色を 1 組にまとめる(src/engine/game.c の sky_marks が角度のまま画面へ写す)
+            col = sk[0][0]
+            k = 1
+            while k < len(sk) and k < 255 and sk[k][0] == col:
+                k += 1
+            d += bytes([k, col]) + bytes(v & 255 for _, az, el, n in sk[:k] for v in (az, el, n))
+            sk = sk[k:]
         for i in range(0, len(mod.waves), 120):         # 海の白波(80h を立てた組): (x, z) は 64 単位四方の中の位置
             w = mod.waves[i:i + 120]
             d += bytes([len(w), 11 | 0x80]) + bytes(v for pt in w for v in pt)   # 11 = src/engine/engine.h の C_GND1

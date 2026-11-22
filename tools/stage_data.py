@@ -200,6 +200,19 @@ def sky_stars(*ls):
     return [(2 if w else 8, (bx - 32) & 255, (20 - by) & 255, 0) for bx, by, w in ls]
 
 
+def deep_stars(n=48):
+    """深宇宙(7 面・6 面の後の継ぎ目・エンディング)の星。地球も地平線も無いので、全周(方位 256)と上下(仰角 ±50)に散らす。
+    前は view.c の sky_draw が星 8 つをヨー・ピッチで流していたが、ロールを無視していて、ロールすると敵とボスだけが回って星が止まっていた。
+    sky_marks で描けば、ほかの面の星と同じくロールにつれて回る。灰色を多く、白をわずかに(同じ色を続けて 1 組にまとめる)"""
+    r, st = 12345, []
+    for i in range(n):
+        r = (r * 1103515245 + 12345) & 0x7FFFFFFF
+        az = (i * 256 // n + (r >> 8) % 5) & 255
+        el = ((r >> 16) % 101 - 50) & 255
+        st.append((2 if i % 3 == 0 else 8, az, el, 0))
+    return sorted(st, key=lambda s: s[0])
+
+
 C_SKY1_IDX = 9                       # src/engine/engine.h の C_SKY1
 
 
@@ -540,6 +553,7 @@ def s6():
 def s7():
     """7 面: 深宇宙。地球の見えない星空。ヒナを乗せたロケット(方舟)を追い、小惑星の間を抜けて取り戻す"""
     s = Mod(21, 'STAGE 7 / DEEP SPACE', SPACE, 'STAGE6', flags=SF_SPACE | SF_DEEP, radio='I CAN SEE YOU!', line='GIVE HER BACK.')
+    s.sky = deep_stars()
     s.y0 = 60
     s.weapon = 7                        # 秘密兵器: 全部を順に
     s.models += ['MUSTANG', 'MINE', 'ROCKETL']
@@ -1124,6 +1138,7 @@ def seam5():
 def seam6():
     """6 面の後(軌道 → 深宇宙)。壊れた鍵穴の基地の陰から方舟(ヒナのロケット)が離れ、深宇宙へ。零戦はそれを追う"""
     s = seam_mod(20, 'SEAM 6', SPACE, SF_SPACE | SF_DEEP)
+    s.sky = deep_stars()
     s.models = ['B_KEYHOLE', 'B_ARK']
     f = Film(); F = Film; B = 112.5; end = 900
     kh, ark = f.actor(), f.actor()
@@ -1162,6 +1177,7 @@ def ending():
     会話は残り時間で変わる(1 時間以上残っていれば素直に喜び、遅れるとすねる)。続くエンドロールの文面も、ここの字幕に置く"""
     s = Mod(7, 'ENDING', SPACE, '',   # 曲は無し(最後のボスを倒したときに鳴らした FINALE が、映像の終わりまで続く)
             flags=SF_SCENE | SF_SPACE | SF_DEEP)
+    s.sky = deep_stars(36)              # 夕焼けの空へ移った後は描かない(game.c の sky_marks)。モジュールに空きが無いので少なめ
     s.pal2 = SUNSET
     s.models = ['CAPSULE', 'ZEROF', 'ZEROS', 'SUN', 'CLOUDS']
     s.y0 = 0

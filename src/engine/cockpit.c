@@ -131,7 +131,8 @@ static void sub_draw(const char *s)
 void cockpit_reset(void)
 {
     u8 i;
-    sh_score = 0xFFFF; sh_life = 0xFF; sh_mis = 0xFFFF; sh_spd = 0xFF; sh_alt = 0xFF; sh_clock = 0xFF; sh_heat = 0xFF; sh_crack = 0;
+    /* sh_alt は 0xFF(宇宙の「---」)にしない。宇宙の面で書き直されず、前の面の高度の数字が残っていた */
+    sh_score = 0xFFFF; sh_life = 0xFF; sh_mis = 0xFFFF; sh_spd = 0xFF; sh_alt = 0xFE; sh_clock = 0xFF; sh_heat = 0xFF; sh_crack = 0;
     for (i = 0; i < 6; i++) sh_dig[i] = 0xFF;
     for (i = 0; i < RAD_N; i++) rad_on[i] = 0;
 }

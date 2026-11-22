@@ -49,6 +49,7 @@ u8  scr_end;                    /* 静的にしない(op.c が場面を終える
 u16 aim_x, aim_y;
 i16 shot_tx, shot_ty, shot_tz;     /* 敵弾の狙う先(game_ai.c の obj_step が使う) */
 static u8 in_cur, in_prev, aim_hold;
+static u8 b_seen, b_q, joy_prev;        /* 誘導弾: 前に見た g_b_cnt、撃っていない押しの数、前の枚のジョイスティック */
 static u8 fire_t, heat_t, over_t;
 #define MAX_LOCK 8
 #define LOCK_HOLD 60                     /* 照準が外れてもロックが残るティック(約 1 秒) */
@@ -308,6 +309,7 @@ static void sky_marks(void)
     i8 dx, dy;
     i16 sx, sy;
     V3 c;
+    if (!g_space && (MOD->flags & SF_SPACE)) return;   /* エンディングで宇宙から夕焼けの空へ移った後は、深宇宙の星を描かない */
     sm_sr = SIN(cam_roll); sm_cr = COS(cam_roll);
     g_rh = 1;
     while ((n = *p++)) {
@@ -428,7 +430,9 @@ static void lock_box_draw(void)
 
 static void fire_step(u8 dt)
 {
-    u8 in = in_cur, pressed = (u8)(in & ~in_prev), b = pressed & IN_B, i, id;
+    u8 in = in_cur, b = 0, i, id;
+    if (g_auto) b_q = in & ~in_prev & IN_B;   /* デモは auto_input が押す */
+    if (b_q) { b_q--; b = 1; }
     /* 機動の指示に応える(指示が出ている間は B で機動。ロックがあれば誘導弾も撃つ。
      * 前は B が機動だけになり、撃ったつもりの誘導弾が出ず、消えたように見えた) */
     if (pr_kind) {
@@ -504,6 +508,7 @@ static void fire_step(u8 dt)
             se_play(SE_MISSILE);
             if (!pcm_mode || (u16)(g_tick - fire_tick) < 24) { pcm_say(VOICE_FIRE); fire_tick = g_tick; }
         }
+        else b_q++;                        /* 物体の枠が空いていない: 次の枚に撃つ */
     }
 }
 
@@ -728,6 +733,7 @@ static void stage_reset(void)
     boss_on = 0; boss_dead = 0; boss_grp = 0;
     mis_left = MIS_MAX;                /* 誘導弾は面ごとに満タン */
     pr_kind = 0; man_t = 0; man_len = 0; inv_t = 0; env_rt = 0; env_roll = 0; lock_n = 0; cam_spin = 0;
+    b_seen = g_b_cnt; b_q = 0;         /* 前の場面で押した分は撃たない */
     cap_t = 0; heat_t = 0; over_t = 0;
     n_hits = 0;
     aim_x = 128; aim_y = 80;
@@ -786,9 +792,18 @@ static u8 stage_body(u8 mod)
         an_acc -= g_an * 3;
         g_anim += g_an;
         in_prev = in_cur;
-        /* B は割り込みが毎ティック見た押下も足す(1 枚に 1 回読むだけだと、1〜3 面(約 11fps、1 枚 90ms)で短い押しを落とした) */
-        in_cur = input_raw() | g_b_latch;
-        g_b_latch = 0;
+        in_cur = input_raw();
+        {
+            /* 誘導弾: M・B キーは割り込みが毎ティック数えた押し始めの回数、ジョイスティックのトリガー B は 1 枚ごとの押し始め
+             * (キーボードを足す前の値で見る。足した後の値で見ると、押した直後で割り込みがまだ見ていないキーを二重に数えた)。
+             * fire_step が 1 枚に 1 発ずつ撃つ(3 発まで溜める) */
+            u8 n = (u8)(g_b_cnt - b_seen), j = g_joy;
+            b_seen += n;
+            if (j & ~joy_prev & IN_B) n++;
+            joy_prev = j;
+            n += b_q;
+            b_q = n > 3 ? 3 : n;
+        }
         if (g_auto == 2 && ((in_cur & IN_A) || (u16)(g_anim - t_demo) >= 800)) { bgm_stop(); return 1; }   /* デモは 40 秒か、キーで終わる */
         if (g_scene == 3) {
             if ((in_cur & IN_A) && !(in_prev & IN_A) && mod == 0) { bgm_stop(); return 1; }

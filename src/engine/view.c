@@ -152,22 +152,11 @@ void sky_draw(u8 space)
     /* 世界の上の向き(カメラ空間) = 行列の列 1。(sx, -sy, 32) との内積が正なら空 */
     i16 ux = cm8[1], uy = cm8[4], uz = cm8[7];
     i16 a = ux, b = -uy, c = uz * 32;
-    if (space) {                        /* 宇宙: 黒い空の下に地球(青と、縁の白い雲)。深宇宙(4)は地球が無く、星だけ */
+    if (space) {                        /* 宇宙: 黒い空の下に地球(青と、縁の白い雲)。深宇宙(4)は地球が無く、星は空の飾り(game.c の sky_marks)で描く */
         buf_fill(C_BLACK);
         if (!(space & 4)) {
             halfplane(-a, -b, -(c + 500), C_GND2);
             halfplane(-a, -b, -(c + 640), C_GND1);
-            return;
-        }
-        {   /* 星: 視線の向き(ヨー・ピッチの 1 = 約 1 ブロック)で流す。遠い星なので経路を進んでも動かない */
-            static const u8 st[16] = { 3, 5, 11, 30, 22, 51, 29, 8, 34, 37, 47, 58, 52, 3, 57, 26 };
-            u8 i;
-            for (i = 0; i < 16; i += 2) {
-                g_color = i & 4 ? C_IRON : C_WHITE;     /* 半分は灰色(明るさに差をつける) */
-                g_rx = (u8)(st[i] - cam_yaw) & 63;
-                g_ry = (u8)(st[i + 1] + cam_pitch) & 63;
-                if (g_ry < 40) pset();
-            }
         }
         return;
     }

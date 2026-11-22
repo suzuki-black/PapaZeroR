@@ -80,7 +80,9 @@ SPR_BYTES = 19 * 4 + 1		; スプライト 19 枚分 + 終端(Y=208)。game.h の
 	.area	_DATA
 isr_sp:	.ds	2		; htimi が呼ばれたときの SP
 _g_tick::	.ds	2	; 60Hz ごとに +1
-_g_b_latch::	.ds	1	; 毎ティック見た M・B キーの押下(IN_B)。game.c が読んで消す
+_g_b_up::	.ds	1	; bit0 = 1: 前のティックで M・B キーが離れていた
+_g_b_cnt::	.ds	1	; M・B キーを押し始めた回数(回り続ける。game.c が前に見た値との差を使う)。_g_b_up のすぐ後に置く
+_g_joy::	.ds	1	; input_raw が読んだジョイスティックだけの値(キーボードを足す前)
 _g_flip_req::	.ds	1	; 1 = 次の垂直帰線で g_flip_page を表示する
 _g_flip_page::	.ds	1	; R#4 に書く値(0 または 1)
 _g_spr_live::	.ds	1	; 1 = 本体が VDP に触らない間(描画中と表示待ち)。このときだけ割り込みが照準を書く
@@ -118,25 +120,32 @@ htimi_body:
 	ld	hl, (_g_tick)
 	inc	hl
 	ld	(_g_tick), hl
-	; M・B キーを毎ティック見る(1〜3 面は描画が約 11fps で、1 枚に 1 回読むだけだと短い押しを落とした)
-	ld	hl, #_g_b_latch
+	; M・B キーを毎ティック見て、押し始めを数える(1〜3 面は描画が約 11fps。1 枚に 1 回読むだけだと短い押しを落とし、
+	; 押している間を覚えるだけだと、続けて押したときに離した所が 1 枚にも映らず、2 回目からの押し始めを落とした)
 	in	a, (0xAA)
 	and	a, #0xF0
 	ld	c, a
 	or	a, #4
 	out	(0xAA), a
 	in	a, (0xA9)		; 行4: bit2=M(0 = 押下)
-	and	a, #4
-	jr	nz, 11$
-	set	5, (hl)
-11$:
+	rrca
+	rrca
+	ld	e, a			; bit0 = M(1 = 離れている)
 	ld	a, c
 	or	a, #2
 	out	(0xAA), a
 	in	a, (0xA9)		; 行2: bit7=B
 	rlca
-	jr	c, 12$
-	set	5, (hl)
+	and	a, e			; bit0 = 1: M も B も離れている
+	ld	hl, #_g_b_up
+	ld	e, (hl)
+	ld	(hl), a
+	cpl
+	and	a, e			; bit0 = 1: 前のティックは離れていて、いま押した
+	rrca
+	jr	nc, 12$
+	inc	hl			; _g_b_cnt
+	inc	(hl)
 12$:
 	ld	a, (_g_flip_req)
 	or	a, a
@@ -459,6 +468,7 @@ _input_raw::
 	ei
 	cpl
 	and	a, #0x3F		; ジョイスティックの並びがそのまま戻り値の並び
+	ld	(_g_joy), a		; キーボードを足す前の値(誘導弾のトリガー B を、割り込みが数えるキーと分けて見る)
 	bit	5, e
 	jr	z, 1$
 	or	a, #0x01

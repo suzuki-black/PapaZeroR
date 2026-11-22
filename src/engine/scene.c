@@ -5,6 +5,8 @@
 #include "pcm.h"
 #include "title.h"
 
+extern u8 g_r2_bot;              /* sys.s: 分割線より下の R#2 */
+
 static const u8 title_pal[32] = TITLE_PAL;
 #define TITLE_PAGE 54272u
 #define MENU_N 11
@@ -114,6 +116,9 @@ void title_run(void)
         if (t >= 1800) { g_auto = 2; break; }     /* 30 秒放置でデモ */
     }
     bgm_stop();
+    /* 場面を読み込むあいだ、下の帯は R#2 = 0(VRAM の先頭の、いま消した所。黒)を映す。隠しコンフィグ・サウンドテストから戻ると
+     * 黒帯の 7Fh が残っていて、送っている途中の計器盤やタイトルの絵の残りが下に数フレーム出た(起動直後は 0 なので出ない) */
+    g_r2_bot = 0;
     screen3_init();
     cockpit_load();
 }
