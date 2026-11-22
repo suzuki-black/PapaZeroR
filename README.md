@@ -15,11 +15,24 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
 **Repository:** <https://github.com/suzuki-black/PapaZeroR>. The 3D engine grew out of
 **[CoasterHomeRunR](https://github.com/suzuki-black/CoasterHomeRunR)** (a 3D rail shooter in SCREEN 3).
 
-<p align="center">
-  <img src="docs/media/opening_zero.png" width="300" alt="Opening — the Zero parked by the barn">
-  <img src="docs/media/stage2_harbor.png" width="300" alt="Stage 2 — the harbor">
-  <br><sub>Opening · the Zero by the barn / オープニング 納屋の前の零戦　　Stage 2 · the harbor / 2面 港</sub>
-</p>
+<table>
+  <tr>
+    <td><img src="docs/media/opening_zero.png" width="320" alt="Opening"><br><sub><b>OPENING</b> — the Zero by the barn / 納屋の前の零戦</sub></td>
+    <td><img src="docs/media/stage1.png" width="320" alt="Stage 1"><br><sub><b>1 THE TOWN</b> — balloon bombs / 気球の爆弾</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/stage2.png" width="320" alt="Stage 2"><br><sub><b>2 THE HARBOR</b> — battleships in the bay / 港の戦艦</sub></td>
+    <td><img src="docs/media/stage3.png" width="320" alt="Stage 3"><br><sub><b>3 THE CANYON</b> — HYDRA and its drone swarm / ヒュドラとドローンの群れ</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/stage4.png" width="320" alt="Stage 4"><br><sub><b>4 THE CLOUD SEA</b> — the air battleship GRAF ZEPPELIN II and its flak / 空中戦艦グラーフ改の対空砲火</sub></td>
+    <td><img src="docs/media/stage5.png" width="320" alt="Stage 5"><br><sub><b>5 THE STRATOSPHERE</b> — a mega missile / 大きな誘導弾</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/stage6.png" width="320" alt="Stage 6"><br><sub><b>6 THE ORBIT</b> — the keyhole base above the Earth / 地球の上の鍵穴の基地</sub></td>
+    <td><img src="docs/media/stage7.png" width="320" alt="Stage 7"><br><sub><b>7 DEEP SPACE</b> — the ark carrying Hina / ヒナを乗せた方舟</sub></td>
+  </tr>
+</table>
 
 **Language:** [🇬🇧 English](#english) · [🇯🇵 日本語](#japanese)
 
@@ -31,7 +44,9 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
 - [Story](#story)
 - [Overview](#overview)
 - [Features](#features)
+- [Stages](#stages)
 - [Controls](#controls)
+- [Cockpit](#cockpit)
 - [Requirements](#requirements)
 - [Building](#building)
 - [Running](#running)
@@ -75,13 +90,28 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
   ("Fire!", "Papa, hurry!" …), generated with Flite.
 - **Attract mode** (a cockpit guide, then a demo) after 30 seconds on the title screen, and a hidden settings menu.
 
+### Stages
+| # | Title | Time of day | Boss |
+|---|---|---|---|
+| 1 | THE TOWN | Morning | Five balloons |
+| 2 | THE HARBOR | Noon | KONIGS KRABBE, a walking tank |
+| 3 | THE CANYON | Dusk | HYDRA, three P-51s joined together |
+| 4 | THE CLOUD SEA | Night | GRAF ZEPPELIN II, an air battleship |
+| 5 | THE STRATOSPHERE | Twilight | DOPPELGANGER II, a super fighter |
+| 6 | THE ORBIT | Space | The keyhole base |
+| 7 | DEEP SPACE | Deep space | The ark, with Hina's capsule on board |
+
+Every boss has a secret weapon it announces before firing (balloon bombs, crab missiles, a drone swarm, a flak
+curtain, a mega missile, space mines; stage 7 uses them all in turn). A short film plays between stages.
+
 ### Controls
 | Input | Action |
 |-------|--------|
 | Arrow keys | Move the sight |
 | Space | Vulcan · start · skip the opening |
 | **M** or **B** | Homing missile (while a prompt is shown it also performs the manoeuvre; a missile still fires if anything is locked) |
-| ↑↑↓↓←→←→ B A on the title screen | Hidden settings menu (damage, invincibility, starting stage, lives, one-shot, FPS display, transfer, split, roll, size of the missile lock-on box) |
+| ↑↑↓↓←→←→ B A on the title screen | Hidden settings menu (damage, invincibility, starting stage, lives, one-shot, FPS display, transfer, split, roll, size of the missile lock-on box, FILM: watch only the films) |
+| M on the title screen | Sound test (↑↓ choose, ←→ switch between music, effects and voices, Space plays, M returns) |
 
 - **Vulcan:** hold Space to fire at whatever is under the sight (the sight turns red over a target).
   Firing heats the gun (HEAT); when it is full the gun stops for about a second.
@@ -161,7 +191,7 @@ test runs from the opening to the staff roll, but difficulty is not tuned yet an
 - **Title illustration:** Microsoft Copilot (from a brief written with Claude Code: [docs/タイトル画像の依頼.md](docs/タイトル画像の依頼.md))
 - **Title lettering font:** [Anton](https://fonts.google.com/specimen/Anton) — SIL Open Font License 1.1 (the font file is not
   included in this repository; `tools/gen_title_text.py` renders the lettering once into `data/title_text.png`)
-- **Voices:** [Flite](http://www.festvox.org/flite/) (Carnegie Mellon University)
+- **Voices:** [Flite](http://www.festvox.org/flite/) (Carnegie Mellon University), `rms` voice
 
 ### License
 **MIT** © 2026 suzuki-black. See [LICENSE](LICENSE).
@@ -179,7 +209,9 @@ of real equipment. No specific game's names, characters, images or audio are use
 - [あらすじ](#あらすじ)
 - [概要](#概要)
 - [特徴](#特徴)
+- [ステージ](#ステージ)
 - [操作](#操作)
+- [計器盤](#計器盤)
 - [動作環境](#動作環境)
 - [ビルド](#ビルド)
 - [実行](#実行)
@@ -216,6 +248,20 @@ of real equipment. No specific game's names, characters, images or audio are use
   動かすので、絵と曲はずれません。人物・誘拐の戦闘機・戦車は 2 枚重ねの拡大スプライトで描き、64 × 40 でも見分けがつきます。
 - **音楽:** MSX-MUSIC（YM2413）に PSG を重ねた、すべてオリジナルの曲。**声**は turboR 内蔵 PCM（「Fire!」「Papa, hurry!」など。Flite で作成）。
 - タイトルで 30 秒待つと計器盤の説明とデモ。隠しの設定メニュー。曲・効果音・声を聴けるサウンドテスト。
+
+### ステージ
+| 面 | 名前 | 時刻 | ボス |
+|---|---|---|---|
+| 1 | THE TOWN（町） | 朝 | 気球 5 個 |
+| 2 | THE HARBOR（港） | 昼 | ケーニヒス・クラブ（歩く戦車） |
+| 3 | THE CANYON（谷） | 夕 | ヒュドラ（P-51 を 3 機つないだもの） |
+| 4 | THE CLOUD SEA（雲海） | 夜 | グラーフ改（空中戦艦） |
+| 5 | THE STRATOSPHERE（成層圏） | 薄明 | ドッペルゲンガー改（超戦闘機） |
+| 6 | THE ORBIT（軌道） | 宇宙 | 鍵穴の基地 |
+| 7 | DEEP SPACE（深宇宙） | 深宇宙 | 方舟（ヒナのカプセル付き） |
+
+どのボスも、名前を出してから秘密兵器を撃ちます（気球の爆弾・カニの誘導弾・ドローンの群れ・対空砲火の幕・大きな誘導弾・機雷。
+7 面は全部を順に）。面と面の間には短い映像が入ります。
 
 ### 操作
 | 入力 | 動作 |
@@ -300,7 +346,7 @@ docs/          開発ノート
 - **タイトルの絵:** Microsoft Copilot（依頼書は Claude Code と作成: [docs/タイトル画像の依頼.md](docs/タイトル画像の依頼.md)）
 - **タイトルの文字の書体:** [Anton](https://fonts.google.com/specimen/Anton) — SIL Open Font License 1.1（書体のファイルはリポジトリに入れていません。
   `tools/gen_title_text.py` が一度だけ `data/title_text.png` に描き出します）
-- **声:** [Flite](http://www.festvox.org/flite/)（Carnegie Mellon University）
+- **声:** [Flite](http://www.festvox.org/flite/)（Carnegie Mellon University）の `rms` の声
 
 ### ライセンス
 **MIT** © 2026 suzuki-black。[LICENSE](LICENSE) を参照してください。
