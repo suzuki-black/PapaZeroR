@@ -146,6 +146,7 @@ docs/          development notes
 ```
 
 ### Documentation
+- **[Design spec / 指示書](docs/指示書.md)** — what the game is and how it is built (screens, rules, enemies, stages, rendering, sound, memory map).
 - **[Verification log / 検証記録](docs/検証記録.md)** — every problem found in testing, how it was measured and fixed.
 - **[TODO](docs/TODO.md)** — what is left.
 - **[View-direction bug notes / 視線の向きの不具合](docs/視線の向きの不具合_TrolleyHomeRun向け.md)** — a bug report written for a sibling project.
@@ -284,6 +285,7 @@ docs/          開発ノート
 ```
 
 ### ドキュメント
+- **[指示書](docs/指示書.md)** — ゲームの仕様と作り(画面・遊びの決まり・敵・面・描画・音・メモリの配置)。
 - **[検証記録](docs/検証記録.md)** — 試験で見つけた問題と、測り方・直し方の記録。
 - **[TODO](docs/TODO.md)** — 残っていること。
 - **[視線の向きの不具合](docs/視線の向きの不具合_TrolleyHomeRun向け.md)** — 兄弟プロジェクト向けに書いた不具合の報告。
