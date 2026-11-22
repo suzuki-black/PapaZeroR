@@ -4,9 +4,8 @@
   <img src="docs/media/title.png" width="640" alt="PAPA ZERO — title screen">
 </p>
 
-> ⚠️ **This is a prototype** (work in progress). The repository is private for now; this README will be
-> rewritten before it is made public.
-> **試作品（プロトタイプ・開発中）です。** いまは非公開で、公開の前にこの README は書き直します。
+> ⚠️ **Work in progress.** Published for feedback and experimentation.
+> **開発中の作品です。** フィードバックと実験のために公開しています。
 
 A cockpit-view 3D rail shooter for the **MSX turboR** (V9958 VDP · R800). A father climbs into a
 heavily modified Zero fighter and chases the terrorists who kidnapped his daughter — across a captured
@@ -140,6 +139,7 @@ walks through it, one instrument at a time, before the demo.
 - **Target hardware: MSX turboR** (FS-A1ST / FS-A1GT).
 - The turboR system ROM is copyrighted and is **not** included. Development and testing are done in
   [openMSX](https://openmsx.org/) with a machine built from a dumped turboR BIOS.
+- It has **not been tried on real hardware yet**.
 - The ROM also runs in [WebMSX](https://webmsx.org/) (turboR machine); the official WebMSX does not
   emulate the turboR PCM, so the voices may be silent there.
 
@@ -179,11 +179,16 @@ docs/          development notes
 - **[Design spec / 指示書](docs/指示書.md)** — what the game is and how it is built (screens, rules, enemies, stages, rendering, sound, memory map).
 - **[Verification log / 検証記録](docs/検証記録.md)** — every problem found in testing, how it was measured and fixed.
 - **[TODO](docs/TODO.md)** — what is left.
-- **[View-direction bug notes / 視線の向きの不具合](docs/視線の向きの不具合_TrolleyHomeRun向け.md)** — a bug report written for a sibling project.
 
 ### Scope & honest positioning
-This is an **experimental prototype**. The stages, bosses, films and music are all in place and an autoplay
-test runs from the opening to the staff roll, but difficulty is not tuned yet and the timbres are under review.
+**[CoasterHomeRunR](https://github.com/suzuki-black/CoasterHomeRunR)** showed that real-time 3D is possible in
+SCREEN 3 on the turboR. PAPA ZERO pushes that further, aiming for a cinematic cockpit-view 3D shooter in the spirit
+of *Starblade* on the MSX: a cockpit you sit in, enemies and their shots coming at the screen, and films between the
+stages.
+- The whole game is in place: the opening, seven stages with their bosses, the films between them, the ending and
+  the staff roll. The author has played it through from the title to the ending in openMSX.
+- 64 × 40 blocks is coarse, so the 3D is about readable shapes and framing rather than detail.
+- It has not been tried on real hardware yet. What is still open is in [TODO](docs/TODO.md).
 
 ### Credits
 - **Original Concept / Direction:** suzuki-black
@@ -199,7 +204,8 @@ test runs from the opening to the staff roll, but difficulty is not tuned yet an
 ### Disclaimer
 The aircraft and vehicles that appear (the Zero, the P-51 and others) only borrow historical names and
 shapes. Their shapes, colors and performance are changed for the game and are not accurate depictions
-of real equipment. No specific game's names, characters, images or audio are used.
+of real equipment. No specific game's names, characters, images or audio are used. *Starblade* is named above
+only as the kind of game this aims at; PAPA ZERO is not affiliated with it or its rights holders.
 
 ---
 
@@ -298,6 +304,7 @@ of real equipment. No specific game's names, characters, images or audio are use
 - **MSX turboR**（FS-A1ST / FS-A1GT）。
 - turboR 本体 ROM は著作物のため**同梱していません**。開発と検証は [openMSX](https://openmsx.org/) で、
   実機の BIOS を吸い出した機種定義を使って行っています。
+- **実機ではまだ試していません。**
 - [WebMSX](https://webmsx.org/)（turboR 機種）でも動きます。本家の WebMSX は turboR の PCM を鳴らさないので、声は出ないことがあります。
 
 ### ビルド
@@ -334,11 +341,15 @@ docs/          開発ノート
 - **[指示書](docs/指示書.md)** — ゲームの仕様と作り(画面・遊びの決まり・敵・面・描画・音・メモリの配置)。
 - **[検証記録](docs/検証記録.md)** — 試験で見つけた問題と、測り方・直し方の記録。
 - **[TODO](docs/TODO.md)** — 残っていること。
-- **[視線の向きの不具合](docs/視線の向きの不具合_TrolleyHomeRun向け.md)** — 兄弟プロジェクト向けに書いた不具合の報告。
 
 ### 位置づけ
-**実験的な試作品**です。面・ボス・映像・曲はひととおり揃い、オープニングからスタッフロールまで自動プレイの試験が通りますが、
-難易度はまだ調整しておらず、音色も見直し中です。
+『[CoasterHomeRunR](https://github.com/suzuki-black/CoasterHomeRunR)』で、turboR の SCREEN 3 でもリアルタイムの 3D が描けると分かりました。
+本作はそれをさらに推し進め、『スターブレード』のような、映画のように見せるコクピット視点の 3D シューティングを MSX で実現することを目指しました。
+操縦席に座り、敵と敵弾が画面へ向かってくる遊びと、面と面をつなぐ映像です。
+- オープニング、ボスのいる全 7 面、面の間の映像、エンディング、スタッフロールまで、ゲームとして揃っています。
+  作者が openMSX でタイトルからエンディングまで通して遊んでいます。
+- 64 × 40 ブロックは粗いので、3D は細かさより、形の分かりやすさと映し方で見せています。
+- 実機ではまだ試していません。残っていることは [TODO](docs/TODO.md) にあります。
 
 ### クレジット
 - **原案・監督:** suzuki-black
@@ -354,3 +365,4 @@ docs/          開発ノート
 ### 免責
 登場する航空機や車両（零戦・P-51 など）は、実在の名前と形を借りただけのものです。形・色・性能はゲームのために変えてあり、
 実物を正確に描いたものではありません。特定のゲームの名前・キャラクター・画像・音声は使っていません。
+『スターブレード』の名は、目指したゲームの種類を示すために挙げただけで、本作はその作品や権利者とは関係ありません。
