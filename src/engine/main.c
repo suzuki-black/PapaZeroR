@@ -159,6 +159,8 @@ void main(void)
     cockpit_load();
     for (;;) {
         title_run();
+        /* 放っておいたら、デモの前に計器盤の説明(モジュール 22、guide.c)。キーで終われば、デモに進まずタイトルへ */
+        if (g_auto) { mod_load_now(MOD_GUIDE); if (((u8 (*)(void))MOD->hook)()) continue; }
         game_reset();
         if (g_auto) { stage_run(1); continue; }      /* デモ: 1 面の自動プレイ */
         if (g_cfg.film) {                            /* 隠しコンフィグ FILM: 映像の場面だけを、選んだものから最後まで */

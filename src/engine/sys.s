@@ -80,6 +80,7 @@ SPR_BYTES = 19 * 4 + 1		; スプライト 19 枚分 + 終端(Y=208)。game.h の
 	.area	_DATA
 isr_sp:	.ds	2		; htimi が呼ばれたときの SP
 _g_tick::	.ds	2	; 60Hz ごとに +1
+_g_b_latch::	.ds	1	; 毎ティック見た M・B キーの押下(IN_B)。game.c が読んで消す
 _g_flip_req::	.ds	1	; 1 = 次の垂直帰線で g_flip_page を表示する
 _g_flip_page::	.ds	1	; R#4 に書く値(0 または 1)
 _g_spr_live::	.ds	1	; 1 = 本体が VDP に触らない間(描画中と表示待ち)。このときだけ割り込みが照準を書く
@@ -117,6 +118,26 @@ htimi_body:
 	ld	hl, (_g_tick)
 	inc	hl
 	ld	(_g_tick), hl
+	; M・B キーを毎ティック見る(1〜3 面は描画が約 11fps で、1 枚に 1 回読むだけだと短い押しを落とした)
+	ld	hl, #_g_b_latch
+	in	a, (0xAA)
+	and	a, #0xF0
+	ld	c, a
+	or	a, #4
+	out	(0xAA), a
+	in	a, (0xA9)		; 行4: bit2=M(0 = 押下)
+	and	a, #4
+	jr	nz, 11$
+	set	5, (hl)
+11$:
+	ld	a, c
+	or	a, #2
+	out	(0xAA), a
+	in	a, (0xA9)		; 行2: bit7=B
+	rlca
+	jr	c, 12$
+	set	5, (hl)
+12$:
 	ld	a, (_g_flip_req)
 	or	a, a
 	jr	z, 1$
@@ -622,22 +643,6 @@ _mod_load::
 	ld	bc, #0x01FF
 	ld	(hl), #0
 	ldir
-	ret
-
-; void bios_font(u8 *dst) — BIOS のフォント(CGTABL の指す 2KB。ひらがなを含む)を dst(ページ2・3)へ写す。
-;   エンディングの SCREEN 1 で使う。写す間だけページ0を BIOS に戻す
-_bios_font::
-	push	hl
-	call	_pcm_stop		; ページ0を BIOS に戻すので、声を止める
-	pop	hl
-	ex	de, hl
-	di
-	P0_TO_BIOS
-	ld	hl, (0x0004)		; CGTABL
-	ld	bc, #2048
-	ldir
-	P0_TO_RAM
-	ei
 	ret
 
 ; void sys_page0_data(void) — ページ0の表(sin 表・逆数表・フォント・敵の絵など、エリア _PAGE0)を

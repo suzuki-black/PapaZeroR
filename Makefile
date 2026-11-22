@@ -28,7 +28,7 @@ CP0 = game scene cockpit
 SND = modhead_snd sndfm
 RELS = $(patsubst %,$(BUILD)/%.rel,$(ASM) $(CRES) $(CP0) game_ai sndtest gen_data)
 HDRS = $(wildcard $(ENG)/*.h) $(BUILD)/songs.h $(BUILD)/title.h $(BUILD)/ids.h
-MODS = $(foreach n,0 1 2 3 4 5 6 7 15 16 17 18 19 20 21,$(BUILD)/mod$(n).bin)
+MODS = $(foreach n,0 1 2 3 4 5 6 7 15 16 17 18 19 20 21 22,$(BUILD)/mod$(n).bin)
 # 映像の場面(オープニング = 0、n 面の後の継ぎ目 = 14 + n)の演出のコード(op.c)の置き場所。モジュールの中身の後ろ
 # (tools/stage_data.py の op_base と同じ値。mkrom.py が重なりを確かめる)
 OP0_BASE = 0x9420
@@ -39,6 +39,8 @@ OP18_BASE = 0x8800
 OP19_BASE = 0x8800
 OP7_BASE = 0x8E00
 OP20_BASE = 0x8800
+# 計器盤の説明(モジュール 22)のコード(guide.c。op.c ではない)
+OP22_BASE = 0x8800
 FILMS = 0 7 15 16 17 18 19 20
 # 面のコード(stg.c: 新しい敵の動き・ボスの秘密兵器・残り時間)。ページ3の空き 2 か所に置き、ROM ではコクピットの絵のバンクの後ろ
 STG_A = 0xD700
@@ -104,6 +106,8 @@ $(BUILD)/op%.rel: $(ENG)/op.c $(HDRS) $(BUILD)/film%.h | $(BUILD)
 	$(CC) $(CFLAGS) --opt-code-size -DFILM_H='"film$*.h"' -c -o $@ $<
 $(BUILD)/op%.ihx: $(BUILD)/op%.rel $(BUILD)/ressyms.rel $(BUILD)/stgsyms.rel
 	$(CC) $(MODFLAGS) --code-loc $(OP$*_BASE) -o $@ $^
+$(BUILD)/op22.rel: $(ENG)/guide.c $(HDRS) | $(BUILD)
+	$(CC) $(CFLAGS) --opt-code-size -c -o $@ $<
 # 映像の場面から呼ぶ面のコードの関数(字幕の film_say)の番地
 $(BUILD)/stgsyms.s: $(BUILD)/stg.ihx $(TOOLS)/ressyms.py
 	$(PYTHON) $(TOOLS)/ressyms.py $(BUILD)/stg.noi $@ _film_say
@@ -124,7 +128,7 @@ $(BUILD)/stgb.rel: $(ENG)/stgb.c $(HDRS) | $(BUILD)
 $(BUILD)/stg.ihx: $(BUILD)/stgjt.rel $(BUILD)/stg.rel $(BUILD)/stgb.rel $(BUILD)/ressyms.rel
 	$(CC) $(MODFLAGS) -Wl-b_STGJT=$(STG_A) --code-loc 0xD706 -Wl-b_STGB=$(STG_B) -o $@ $^   # 先頭 6 バイトは飛び先の表(stgjt.s)
 
-OPS = $(patsubst %,$(BUILD)/op%.ihx,$(FILMS)) $(BUILD)/stg.ihx
+OPS = $(patsubst %,$(BUILD)/op%.ihx,$(FILMS)) $(BUILD)/op22.ihx $(BUILD)/stg.ihx
 $(ROM): $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/sndmod.ihx $(MODS) $(BUILD)/songs.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin src/sound/voicemod.bin $(OPS)
 	$(PYTHON) $(TOOLS)/mkrom.py $(BUILD)/boot.ihx $(BUILD)/engine.ihx $(BUILD)/engine.noi $@ $(MODS) \
 	  $(BUILD)/sndmod.ihx $(BUILD)/sndmod.noi $(BUILD)/songs.bin src/sound/voicemod.bin $(BUILD)/cockpit.bin $(BUILD)/title.bin \

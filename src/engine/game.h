@@ -13,6 +13,7 @@
 #define SEG_MOD_B  5
 #define MOD_COUNT  8
 #define MOD_FINAL  21           /* 7 面(深宇宙)。6 面の後の継ぎ目は 20 */
+#define MOD_GUIDE  22           /* 計器盤の説明(guide.c) */
 #define MOD_BANK0  5            /* モジュール n は ROM のバンク 5 + 2n〜 */
 #define SND_BANK   21
 #define VOICE_BANK 23

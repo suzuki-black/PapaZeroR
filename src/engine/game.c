@@ -759,7 +759,9 @@ static u8 stage_body(u8 mod)
         an_acc -= g_an * 3;
         g_anim += g_an;
         in_prev = in_cur;
-        in_cur = input_raw();
+        /* B は割り込みが毎ティック見た押下も足す(1 枚に 1 回読むだけだと、1〜3 面(約 11fps、1 枚 90ms)で短い押しを落とした) */
+        in_cur = input_raw() | g_b_latch;
+        g_b_latch = 0;
         if (g_auto == 2 && ((in_cur & IN_A) || (u16)(g_anim - t_demo) >= 800)) { bgm_stop(); return 1; }   /* デモは 40 秒か、キーで終わる */
         if (g_scene == 3) {
             if ((in_cur & IN_A) && !(in_prev & IN_A) && mod == 0) { bgm_stop(); return 1; }

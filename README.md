@@ -73,7 +73,7 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
   jet and tanks are drawn as two-layer magnified sprites so they can be told apart at 64 × 40.
 - **Music:** MSX-MUSIC (YM2413) with a PSG layer, all original. **Voices** on the turboR internal PCM
   ("Fire!", "Papa, hurry!" …), generated with Flite.
-- **Attract mode** after 30 seconds on the title screen, and a hidden settings menu.
+- **Attract mode** (a cockpit guide, then a demo) after 30 seconds on the title screen, and a hidden settings menu.
 
 ### Controls
 | Input | Action |
@@ -89,6 +89,22 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
   and name tags). Each press of M fires one missile at the locked targets in turn. You get 500 per stage (MSL);
   green AMMO balloons add 50, MED balloons repair HP.
 - **ROLL! / LOOP! / DIVE!:** press M while the prompt flashes to dodge a laser or shake off a pursuer.
+
+### Cockpit
+The bottom of the screen is the instrument panel. Leave the title screen alone for 30 seconds and a short guide
+walks through it, one instrument at a time, before the demo.
+
+| Instrument | What it shows |
+|------------|---------------|
+| KM/H | Air speed |
+| ALT | Altitude (`---` in space) |
+| HP | Armor, 8 segments. Turns red when only 2 are left; the windshield cracks as you take hits |
+| MSL | Homing missiles left (500 per stage) |
+| HEAT | Gun heat. When full, the Vulcan stops for about a second |
+| Top right | Score |
+| TIME LEFT | Hours left to save Hina. Starts at 6:00 and runs down as you play; at 1:00 Hina calls for you. It changes what she says in the ending |
+| RADAR | You are in the middle, facing up. Green dots are enemies, red dots the boss |
+| HINA | Your daughter's photo |
 
 ### Requirements
 - **Target hardware: MSX turboR** (FS-A1ST / FS-A1GT).
@@ -198,7 +214,7 @@ of real equipment. No specific game's names, characters, images or audio are use
 - **オープニングと面の間の場面は、曲に合わせて動く映像**。カメラと役者のキーフレームを、曲と同じ 60Hz の時計で
   動かすので、絵と曲はずれません。人物・誘拐の戦闘機・戦車は 2 枚重ねの拡大スプライトで描き、64 × 40 でも見分けがつきます。
 - **音楽:** MSX-MUSIC（YM2413）に PSG を重ねた、すべてオリジナルの曲。**声**は turboR 内蔵 PCM（「Fire!」「Papa, hurry!」など。Flite で作成）。
-- タイトルで 30 秒待つとデモ。隠しの設定メニュー。曲・効果音・声を聴けるサウンドテスト。
+- タイトルで 30 秒待つと計器盤の説明とデモ。隠しの設定メニュー。曲・効果音・声を聴けるサウンドテスト。
 
 ### 操作
 | 入力 | 動作 |
@@ -215,6 +231,21 @@ of real equipment. No specific game's names, characters, images or audio are use
   M を押すたびに、ロックした敵へ順に 1 発ずつ撃ちます。面ごとに 500 発（MSL）。緑の AMMO の気球で 50 発、
   MED の気球で耐久（HP）が戻ります。
 - **ROLL! / LOOP! / DIVE!:** 文字が点滅している間に M を押すと、レーザーを避けたり、後ろの敵を振り切ったりします。
+
+### 計器盤
+画面の下は計器盤です。タイトルで 30 秒待つと、デモの前に計器を 1 つずつ指して説明する画面が流れます。
+
+| 計器 | 表すもの |
+|------|----------|
+| KM/H | 速度 |
+| ALT | 高度（宇宙では `---`） |
+| HP | 機体の耐久（8 目盛り）。残り 2 で赤くなる。被弾が重なると風防にひびが入る |
+| MSL | 誘導弾の残り（面ごとに 500） |
+| HEAT | 機銃の熱。いっぱいになると 1 秒ほどバルカンが撃てない |
+| 右上 | 得点 |
+| TIME LEFT | ヒナを助けるまでの残り時間。6:00 から遊んだ時間で減り、1:00 でヒナが呼ぶ。エンディングのヒナの台詞が変わる |
+| RADAR | 真ん中が自機（上が進む向き）。緑の点は敵、赤い点はボス |
+| HINA | 娘の写真 |
 
 ### 動作環境
 - **MSX turboR**（FS-A1ST / FS-A1GT）。

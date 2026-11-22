@@ -152,6 +152,40 @@ def lap_segs(spd):
     return [(LAP_LEN, LAP, 0, spd)]
 
 
+def guide():
+    """計器盤の説明(モジュール 22。src/engine/guide.c)。タイトルで 30 秒放っておくと、デモの前に流れる。
+    下に本物の計器盤を置き、計器を 1 つずつ橙の枠と線で指して、上に映像の場面の字幕の字体で説明を出す。
+    字幕 2 番から計器ごとに 1 つ: [線の上端の y / 2] { [色 + 10h][左端の x][y / 2] 字… } を並べる(枠の位置は guide.c)"""
+    s = Mod(22, 'GUIDE', MORNING)
+    s.models = []
+    s.y0 = 0
+    s.segs((32, 0, 0, 0))
+    s.finish(lambda k: None)
+    s.op_base = 0x8800
+    W, O, G = 2, 4, 8                                    # 白・橙・灰(src/engine/engine.h の C_)
+    items = [('KM/H', ['Air speed.']),
+             ('ALT', ['Altitude.', 'It reads --- in space.']),
+             ('HP', ['Armor. It turns red', 'when you are nearly down.']),
+             ('MSL', ['Homing missiles left.', '500 for each stage.']),
+             ('HEAT', ['Gun heat. When it is full,', 'the gun stops for a moment.']),
+             ('SCORE', ['Score.']),
+             ('TIME LEFT', ['Hours left to save Hina.']),
+             ('RADAR', ['You are in the middle.', 'Green: enemies. Red: the boss.']),
+             ('HINA', ['Your daughter.'])]
+    def ln(t, c, y):
+        x = (256 - gen_font.advance(t)) // 2
+        assert 1 <= x < 128 and y % 2 == 0, t
+        return chr(c | 0x10) + chr(x) + chr(y // 2) + t
+    for k, (name, lines) in enumerate(items):
+        y = 96 - 14 * len(lines)
+        t = ln('COCKPIT  %d / %d' % (k + 1, len(items)), G, 8) + ln(name, O, y)
+        y += 18
+        for l in lines:
+            t += ln(l, W, y)
+            y += 14
+        s.strs.append(chr((y + 2) // 2) + t)
+    return s
+
 MODS = []
 
 CLR_LASER, CLR_FIBER = 0x10, 0x12
@@ -1218,4 +1252,4 @@ def ending():
                   ln('PUSH SPACE KEY', C), '\x02'])
     return s
 
-MODS = [opening(), s1(), s2(), s3(), s4(), s5(), s6(), s7(), ending(), seam1(), seam2(), seam3(), seam4(), seam5(), seam6()]
+MODS = [opening(), s1(), s2(), s3(), s4(), s5(), s6(), s7(), ending(), seam1(), seam2(), seam3(), seam4(), seam5(), seam6(), guide()]

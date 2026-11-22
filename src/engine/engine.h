@@ -48,6 +48,7 @@ extern u8 g_buf_hi;                 /* 描画バッファの上位バイト(gfx.
 
 /* ---- sys.s ---- */
 extern volatile u16 g_tick;
+extern volatile u8 g_b_latch;      /* 割り込みが毎ティック見た M・B キーの押下(IN_B)。読んだら 0 にする */
 extern volatile u8  g_flip_req;
 extern volatile u8  g_spr_live, g_spr0_req;   /* 照準を毎ティック動かす(sys.s の割り込み) */
 extern volatile u8  g_flip_page;
@@ -67,7 +68,6 @@ void rom_chunk(u8 bank, u16 off);    /* ROM の bank〜 の off から 1KB を�
 void rom_load(u8 bank);             /* 同じく写すが、0xBC00- を 0 で埋めない(モジュールでないデータ。タイトルの絵) */
 void sys_seg2(u8 seg);              /* ページ2のマッパーのセグメントを切り替える */
 void sys_page0_data(void);          /* ページ0の表とコード(エリア _PAGE0 = 0x1A00-)を ROM のバンク 1 から読み込む */
-void bios_font(u8 *dst);            /* BIOS のフォント 2KB を dst へ(ページ2・3) */
 void split_off(void);               /* 分割をやめる(sys.s) */
 extern u8 g_split;                  /* 1 = 分割画面(sys.s) */
 extern u8 g_r1_mask;
