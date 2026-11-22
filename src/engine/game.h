@@ -35,6 +35,7 @@ typedef struct {
     u8 bgm, flags, weapon, ahead;  /* flags: bit0 = 宇宙、bit1 = 場面(操作なし、下は黒帯)。weapon = ボスの秘密兵器(stg.c)。ahead = 道中に描く区画の数 - 1 */
     const u8 *pal2;                /* EV_FADE で移る色(エンディング) */
     void (*hook)(u16 t);           /* 場面の演出(モジュールの中のコード。t = 場面の始めからのティック。0 = なし) */
+    const u8 *sky;                 /* 空の飾り(筋雲・星。game.c の sky_marks)。無いモジュールは 0 の 1 バイトを指す */
 } Stage;
 #define MOD ((const Stage *)0x8000)
 #define SF_SPACE 1
@@ -68,7 +69,7 @@ typedef struct {
 extern Obj obj[MAX_OBJ];
 
 /* 隠しコンフィグ(7.3) */
-typedef struct { u8 damage, god, stage, life, oneshot, fps, xfer, split, roll, lockbox, film; } Config;   /* lockbox: 誘導弾のロックの枠の大きさ 1〜4(3 = 横 24 × 縦 16 ブロック)。film: 0 でなければ映像の場面だけを見る(1 = オープニング、2〜7 = 1〜6 面の後、8 = エンディング。そこから最後まで) */
+typedef struct { u8 damage, god, stage, life, oneshot, fps, xfer, split, roll, lockbox, film; } Config;   /* lockbox: 誘導弾のロックの枠の大きさ 1〜4(1 = 横 8 × 縦 6 ブロックが既定、3 = 横 24 × 縦 16 ブロック)。film: 0 でなければ映像の場面だけを見る(1 = オープニング、2〜7 = 1〜6 面の後、8 = エンディング。そこから最後まで) */
 extern Config g_cfg;
 extern u8 g_auto;               /* 1 = 自動プレイ(デモと test_flow) */
 extern u8 g_scene;              /* 0 = タイトル 1 = ゲーム 2 = 継ぎ目 3 = 場面 */

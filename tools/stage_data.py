@@ -35,6 +35,8 @@ class Mod:
         self.stg = 1 <= n <= 6 or n == 21   # 面: 面のコード(stg.c)を呼ぶ(tools/mkrom.py が見出しに番地を書く)
         self.models = ['FLAK', 'ROCKET', 'SUPPLY', 'MEDIC']
         self.boss = None
+        self.waves = []                 # 海の白波: 64 単位四方の中の (x, z)(0〜63)。海の面に敷き詰めて、飛ぶと手前へ流れる
+        self.sky = []                   # 空の飾り: (色, 方位, 仰角, 長さ)。方位は北から東回り、角度は 256 で 1 周(1 ≒ 画面の 1 ブロック)。長さ 0 = 星、それ以外 = 横に伸びる筋雲
         self._p = []          # 点ごとの (x, y, z, yaw_rad, spd)
 
     def segs(self, *segs):
@@ -154,6 +156,19 @@ MODS = []
 
 CLR_LASER, CLR_FIBER = 0x10, 0x12
 
+def sky_streaks(*ls):
+    """筋雲(地平線の帯と同じ色の、薄く長い横線)。(左端の列, 行, 長さ) は画面のブロックで、水平に飛んでいるときの見え方"""
+    return [(C_SKY1_IDX, (bx - 32) & 255, (20 - by) & 255, n) for bx, by, n in ls]
+
+
+def sky_stars(*ls):
+    """星(1 ブロック)。(列, 行, 白か)。ほとんどは灰色にして、白はわずかに"""
+    return [(2 if w else 8, (bx - 32) & 255, (20 - by) & 255, 0) for bx, by, w in ls]
+
+
+C_SKY1_IDX = 9                       # src/engine/engine.h の C_SKY1
+
+
 def towns():
     road = lambda: strip(Mesh(), -4, 4, TER2, detail=True)
     a = road()
@@ -176,6 +191,7 @@ def ahead_alt(s, m, d=0.0):
 
 def s1():
     s = Mod(1, 'STAGE 1 / THE TOWN', MORNING, 'STAGE1', radio='HOLD ON, HINA.', line='HOT AIR.')
+    s.sky = sky_streaks((2, 13, 18), (30, 12, 26), (44, 9, 12), (12, 7, 7))      # 朝: 地平線の色の筋雲
     s.y0 = 6
     s.weapon = 1                        # 秘密兵器: 気球の爆弾
     sp = 14     # 低く飛ぶ面なので、ほかの面(20〜26)より遅く。20 だとロックした戦車へ誘導弾が届く前に通り過ぎ、倒したか見えなかった
@@ -227,6 +243,8 @@ def s1():
 
 def s2():
     s = Mod(2, 'STAGE 2 / THE HARBOR', NOON, 'STAGE2', radio='THEY HAVE LASERS, PAPA.', line='CRABS GO IN THE POT.')
+    s.sky = sky_streaks((4, 11, 20), (36, 9, 14), (20, 5, 9), (50, 13, 10))      # 昼: 高い筋雲
+    s.waves = [(5, 9), (23, 3), (41, 14), (58, 6), (14, 27), (33, 22), (50, 31), (2, 44), (27, 40), (45, 51), (61, 38), (18, 58)]   # 海の白波(控えめに)
     # 追っ手との空中戦が主なので、前半は高く(24)飛ぶ。中ほどで港の基地(レーザー戦車)へ降りて叩き、沖の艦隊を抜けてボスへ
     s.y0 = 24
     s.weapon = 2                        # 秘密兵器: 左右からの誘導弾
@@ -244,7 +262,7 @@ def s2():
     s.finish(lambda k: pats[(k * 3 + k // 5) % len(pats)])
     # 周回区間 0: 168-296、1: 376-504、2: 984-1112、ボス: 1144-1272
     s.lap(0); s.lap(1); s.lap(2); s.lap(3)
-    s.text(40, 'Bandits!')
+    s.text(40, 'BANDITS!')
     for at in (16, 48, 80, 112):
         s.spawn(at, E04, at + 70, -6, 25, P_PASS, 128); s.spawn(at, E04, at + 76, 5, 22, P_PASS, 128)
     for at in (130, 170, 200, 226):
@@ -278,7 +296,8 @@ def s2():
     return s
 
 def s3():
-    s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', radio='Papa, hurry!', line='THREE FOR ONE.')
+    s = Mod(3, 'STAGE 3 / THE CANYON', DUSK, 'STAGE3', radio='PAPA, HURRY!', line='THREE FOR ONE.')
+    s.sky = sky_streaks((0, 15, 22), (34, 14, 30), (8, 12, 10), (46, 11, 8))     # 夕方: 照らされた低い雲の層
     s.ahead = 11                        # 谷の壁を遠くまで見せる(8 区画だと、高く飛ぶ前半に遠くの壁が消えて平地に見えた)
     s.weapon = 3                        # 秘密兵器: P-51 の群れ
     # 前半は谷の上(28。壁は 24 まで)で追っ手と空中戦。中ほどで谷へ降り、谷底の基地(戦車)を叩きながら谷を抜けてボスへ
@@ -338,6 +357,8 @@ def s3():
 
 def s4():
     s = Mod(4, 'STAGE 4 / THE CLOUD SEA', NIGHT, 'STAGE4', radio='THEY ARE ON YOUR TAIL!', line='TOO MUCH GAS.')
+    s.sky = sky_stars((5, 2, 0), (13, 6, 0), (21, 1, 1), (29, 9, 0), (34, 3, 0), (41, 7, 0), (47, 1, 0), (53, 5, 1),
+                      (60, 10, 0), (9, 11, 0), (38, 13, 0), (57, 2, 0))              # 夜: まばらな星
     # 雲の峰(18 まで)の上を飛ぶ(前は 12 で、雲の海の中に沈んで見えた)
     s.y0 = 20
     s.weapon = 4                        # 秘密兵器: 横一列の弾幕
@@ -388,7 +409,8 @@ def s4():
     return s
 
 def s5():
-    s = Mod(5, 'STAGE 5 / THE STRATOSPHERE', TWILIGHT, 'STAGE5', radio='Papa, hurry!', line='NICE WINGS.')
+    s = Mod(5, 'STAGE 5 / THE STRATOSPHERE', TWILIGHT, 'STAGE5', radio='PAPA, HURRY!', line='NICE WINGS.')
+    s.sky = sky_stars((6, 8, 0), (19, 10, 0), (31, 7, 1), (44, 9, 0), (55, 7, 0), (61, 11, 0))   # 成層圏: 上のほうにかすかな星(この面は少し見下ろすので低めに)
     s.y0 = 22
     s.weapon = 5                        # 秘密兵器: 大きな誘導弾
     s.models.append('ROCKETL')
@@ -433,7 +455,9 @@ def s5():
     return s
 
 def s6():
-    s = Mod(6, 'STAGE 6 / THE ORBIT', SPACE, 'STAGE6', flags=SF_SPACE, radio='She is on that rocket!', line='NOT SO FAST!')
+    s = Mod(6, 'STAGE 6 / THE ORBIT', SPACE, 'STAGE6', flags=SF_SPACE, radio='SHE IS ON THAT ROCKET!', line='NOT SO FAST!')
+    s.sky = sky_stars((4, 3, 0), (11, 14, 1), (18, 6, 0), (26, 2, 0), (33, 9, 0), (40, 1, 1), (3, 17, 0),
+                      (50, 5, 0), (58, 12, 0), (46, 16, 0))                         # 軌道: 星(地球より上だけ)
     s.y0 = 60
     s.weapon = 6                        # 秘密兵器: 機雷
     sp = 20
@@ -481,7 +505,7 @@ def s6():
 
 def s7():
     """7 面: 深宇宙。地球の見えない星空。ヒナを乗せたロケット(方舟)を追い、小惑星の間を抜けて取り戻す"""
-    s = Mod(21, 'STAGE 7 / DEEP SPACE', SPACE, 'STAGE6', flags=SF_SPACE | SF_DEEP, radio='I can see you!', line='GIVE HER BACK.')
+    s = Mod(21, 'STAGE 7 / DEEP SPACE', SPACE, 'STAGE6', flags=SF_SPACE | SF_DEEP, radio='I CAN SEE YOU!', line='GIVE HER BACK.')
     s.y0 = 60
     s.weapon = 7                        # 秘密兵器: 全部を順に
     s.models += ['MUSTANG', 'MINE', 'ROCKETL']

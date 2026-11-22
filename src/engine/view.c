@@ -162,8 +162,8 @@ void sky_draw(u8 space)
         {   /* 星: 視線の向き(ヨー・ピッチの 1 = 約 1 ブロック)で流す。遠い星なので経路を進んでも動かない */
             static const u8 st[16] = { 3, 5, 11, 30, 22, 51, 29, 8, 34, 37, 47, 58, 52, 3, 57, 26 };
             u8 i;
-            g_color = C_WHITE;
             for (i = 0; i < 16; i += 2) {
+                g_color = i & 4 ? C_IRON : C_WHITE;     /* 半分は灰色(明るさに差をつける) */
                 g_rx = (u8)(st[i] - cam_yaw) & 63;
                 g_ry = (u8)(st[i + 1] + cam_pitch) & 63;
                 if (g_ry < 40) pset();

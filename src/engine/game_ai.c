@@ -20,6 +20,26 @@ void shot(u8 t, i16 x, i16 y, i16 z, u8 tm)
     o->x = x; o->y = y; o->z = z; o->tm = tm;
 }
 
+/* 画面の真ん中の大きな字幕(ページ0に空きが無いので、game.c から HICODE へ移した) */
+extern const char *cap_s;
+extern u8 cap_t, cap_c;
+void caption(const char *s, u8 color, u8 t)
+{
+    cap_s = s; cap_c = color; cap_t = t;
+}
+
+/* 自機が当たった(ページ0に空きが無いので、game.c から HICODE へ移した) */
+void damage(u8 n)
+{
+    if (inv_t || g_cfg.god || g_auto == 2) return;
+    n = (u8)(n * g_cfg.damage);
+    life = life > n ? (u8)(life - n) : 0;
+    flash_palette();
+    se_play(SE_DAMAGE);
+    g_shake = 10;
+    inv_t = 12;
+}
+
 void laser_start(u8 owner, u8 kind)
 {
     u8 i;

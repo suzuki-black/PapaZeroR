@@ -80,7 +80,7 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
 |-------|--------|
 | Arrow keys | Move the sight |
 | Space | Vulcan · start · skip the opening |
-| **M** or **B** | Homing missile (performs the manoeuvre while a prompt is shown) |
+| **M** or **B** | Homing missile (while a prompt is shown it also performs the manoeuvre; a missile still fires if anything is locked) |
 | ↑↑↓↓←→←→ B A on the title screen | Hidden settings menu (damage, invincibility, starting stage, lives, one-shot, FPS display, transfer, split, roll, size of the missile lock-on box) |
 
 - **Vulcan:** hold Space to fire at whatever is under the sight (the sight turns red over a target).
@@ -205,7 +205,7 @@ of real equipment. No specific game's names, characters, images or audio are use
 |------|------|
 | カーソルキー | 照準を動かす |
 | スペース | バルカン・開始・オープニングを飛ばす |
-| **M** または **B** | 誘導弾（指示が出ている間は機動） |
+| **M** または **B** | 誘導弾（指示が出ている間は機動もする。ロックがあれば誘導弾も撃つ） |
 | タイトルで ↑↑↓↓←→←→ B A | 隠しの設定メニュー（ダメージ・無敵・開始面・残機・一撃・FPS 表示・転送・分割・ロール・誘導弾のロックの枠の大きさ・映像の場面だけを見る FILM） |
 | タイトルで M | サウンドテスト（↑↓ で選ぶ、←→ で曲・効果音・声を切り替え、スペースで鳴らす、M で戻る） |
 

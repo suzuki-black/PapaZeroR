@@ -151,7 +151,7 @@ void main(void)
     g_cfg.damage = 1;
     g_cfg.stage = 1;
     g_cfg.life = 8;
-    g_cfg.lockbox = 3;
+    g_cfg.lockbox = 1;                 /* 誘導弾のロックの枠: いちばん小さい横 8 × 縦 6 ブロック(作者が遊んで選んだ) */
 #ifdef DEBUG_FPS
     g_cfg.fps = 1;
 #endif

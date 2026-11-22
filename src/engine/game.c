@@ -61,8 +61,8 @@ static u8 env_roll, env_rt;     /* 演出のロール: 残りフレーム */
 static i8 env_rs;
 static u8 cam_spin;             /* 宇宙でゆっくり回る(ティックごとに足す 1/8 度) */
 /* 字幕 */
-static const char *cap_s;
-static u8 cap_t, cap_c;
+const char *cap_s;               /* 静的にしない(caption は game_ai.c) */
+u8 cap_t, cap_c;
 Laser laser[MAX_LASER];
 /* 爆発 */
 Fx fx[MAX_FX];
@@ -91,22 +91,6 @@ void fx_add(i16 x, i16 y, i16 z, u8 big)
         fx[i].x = x; fx[i].y = y; fx[i].z = z; fx[i].t = FX_T; fx[i].big = big;
         return;
     }
-}
-
-void caption(const char *s, u8 color, u8 t)
-{
-    cap_s = s; cap_c = color; cap_t = t;
-}
-
-void damage(u8 n)
-{
-    if (inv_t || g_cfg.god || g_auto == 2) return;
-    n = (u8)(n * g_cfg.damage);
-    life = life > n ? (u8)(life - n) : 0;
-    flash_palette();
-    se_play(SE_DAMAGE);
-    g_shake = 10;
-    inv_t = 12;
 }
 
 Obj *obj_new(u8 t)
@@ -309,6 +293,40 @@ static void aim_poll(void)
 
 
 
+/* 空の飾り(筋雲・星。tools/stage_data.py の Mod.sky)。空の決まった方角(ワールド。どの面も経路は北から ±40 度に収まる)に貼り付け、
+ * カメラの向きで画面に写すので、
+ * ロールや宙返りでは地平線と一緒に回る。シリアスな映画の空に合うよう、地平線の帯と同じ色の筋雲と、灰色の星だけにする(記号の太陽や月は描かない)。
+ * データは [点の数][色] { 方角(x 東, y 上, z 北。長さ 127) } × 点の数 を 0 まで繰り返す(筋雲の点も、ビルドのときに 1 つずつ並べる)。
+ * 色に 80h が立った組は海の白波: { x, z(0〜63 単位) } × 点の数。64 単位四方の並びを海の面(y = 0)に敷き詰め、2 ブロックの横線で描く */
+static void sky_marks(void)
+{
+    const u8 *p = MOD->sky;
+    u8 n, g;
+    i16 x, y, wx, wy, wz;
+    V3 c;
+    g_rh = 1;
+    while ((n = *p++)) {
+        g = *p++;
+        g_color = g & 15;
+        g_rw = (g >> 7) + 1;                  /* 白波は 2 ブロック、ほかは 1 */
+        for (; n; n--) {
+            if (g & 0x80) {
+                wx = ((((u16)p[0] << 8) - cam_x) & 0x3FFF) - 0x2000;
+                wz = (((u16)p[1] << 8) - cam_z) & 0x3FFF;
+                wy = -cam_y;
+                p += 2;
+            } else {                          /* カメラから約 64 単位先の点 */
+                wx = (i8)p[0] << 7; wy = (i8)p[1] << 7; wz = (i8)p[2] << 7;
+                p += 3;
+            }
+            pt_cam(cam_x + wx, cam_y + wy, cam_z + wz, &c);
+            if (!pt_screen(&c, &x, &y)) continue;
+            x >>= 4; y >>= 4;
+            if ((u16)x < 63 && (u16)y < GAME_ROWS) { g_rx = (u8)x; g_ry = (u8)y; rect_fill(); }
+        }
+    }
+}
+
 static void man_start(u8 kind, u8 len)
 {
     man_kind = kind; man_t = 0; man_len = len;
@@ -392,10 +410,11 @@ static void lock_box_draw(void)
 static void fire_step(u8 dt)
 {
     u8 in = in_cur, pressed = (u8)(in & ~in_prev), b = pressed & IN_B, i, id;
-    /* 機動の指示に応える(指示が出ている間は B は機動) */
+    /* 機動の指示に応える(指示が出ている間は B で機動。ロックがあれば誘導弾も撃つ。
+     * 前は B が機動だけになり、撃ったつもりの誘導弾が出ず、消えたように見えた) */
     if (pr_kind) {
         if (b) {
-            b = 0;
+            if (!lock_n) b = 0;
             man_start(pr_kind, pr_kind == PR_ROLL ? 24 : 32);
             inv_t = pr_kind == PR_ROLL ? 80 : 40;
             g_score += 50;
@@ -441,10 +460,11 @@ static void fire_step(u8 dt)
     }
     g_heat = heat_t >> 3;
     /* 誘導弾のロック: 照準のまわりの大きな枠に敵の枠が少しでもかかれば自動(8 体まで。外れても約 1 秒残る)。
-     * 撃っても外さない。外すのは時間切れ・倒した・通り過ぎたとき */
+     * 撃っても外さない。外すのは時間切れ・倒した・通り過ぎたとき。機動の間は画面が回って敵が枠を出るので、
+     * 残り時間を減らさず、終わってから約 1 秒残す(前はロールの後にロックが外れていた) */
     for (i = 0; i < lock_n; ) {
         if (lock_t[i] <= dt || !lock_keep(lock_id[i])) { lock_drop(i); continue; }
-        lock_t[i] -= dt;
+        lock_t[i] = man_len ? LOCK_HOLD : lock_t[i] - dt;
         i++;
     }
     lock_scan();
@@ -796,6 +816,7 @@ static u8 stage_body(u8 mod)
             g_perf_polys = 0; g_perf_verts = 0;
             g_spr_live = 1;                /* 描画の間は VDP に触らない。照準は割り込みが書く */
             sky_draw(g_space);
+            sky_marks();
             aim_poll();
             g_ph[0] = timer_read() - t;
             sects_draw();
