@@ -61,7 +61,6 @@ void fm_write(u8 reg, u8 val);       /* FM 音源(MSX-MUSIC)のレジスタ(書�
 extern u8 g_seg2;                    /* ページ2のいまのセグメント(sys.s) */
 void timer_reset(void);
 u16  timer_read(void);
-u8   sys_cpu_status(void);          /* S1990 レジスタ 6(bit5 = 0 で R800、bit6 = 0 で DRAM モード) */
 void sys_install_loader(void);
 void sys_page0_ram(void);           /* ページ0を自前の RAM に(0x0038 に割り込み処理) */
 void mod_load(u8 bank);             /* ROM の bank, bank+1(16KB)をページ2(いまのセグメント)の 0x8000- へ写す */

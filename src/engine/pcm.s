@@ -30,7 +30,9 @@ STEP	= 504			; 1 サンプルの行数(9.7)= 3.9375 行
 PERIOD	= 64			; 1 サンプルのカウント(システムタイマ 3.911µs × 64 = 250µs)
 FIRSTLINE = 3			; フレームの最初のサンプルの行
 TICKLINE = 234			; 合図の行(割込みが来る最後の行)
-LATE	= 24			; これ以上(カウント、約 1.5 行)遅れて入ったら張り直す(40 では、2 行ほど遅れたまま次の行を張り、張り終える前に過ぎることがあった)
+SPLIT_DL = 159 * 128		; 分割線(sys.s の SPLIT_LINE。外の記号は式で掛けられないので、ここに値で書く)の行 × 128
+LATE	= 16			; これ以上(カウント、約 1 行)遅れて入ったら張り直す(40 では、2 行ほど遅れたまま次の行を張り、張り終える前に過ぎることがあった。
+				; 24 でも、予定の時刻が実際の行より少し遅く見積もられる分すり抜け、90 秒に 2 回、1 フレーム割込みが来なかった)
 
 	.area	_DATA
 _pcm_mode::	.ds	1	; 0 = ふだん(垂直帰線の割込み) / 1 = 走査線割込みで鳴らしている
@@ -195,6 +197,106 @@ pcm_leave:
 	out	(0xA4), a
 	ret
 
+; ■ 声を鳴らしている間の分割線(SPLIT_LINE = 159)
+;   前は、分割線をまたぐサンプルの行を分割線にそろえて張っていた。その前のサンプルの割込みが 2 行ほど遅れて入ると、張ったときには
+;   159 行目が過ぎていて、割込みは次のフレームの 159 行目まで来なかった。声を出し終えたフレームも、残りの行は合図(234)しか張らず、
+;   分割が抜けた。そのフレームは下 52 ラインが SCREEN 3 の名前表の続き(24 行目からの空の模様)で水色の帯になった
+;   (誘導弾の「Fire!」を鳴らしている間、自動プレイの 90 秒に 22 回)。いまは分割線の時刻が 5 行以内なら、その時刻まで待って
+;   ここで下のモードへ切り替える。それより先なら分割線に割込みを張る。
+
+; 分割線の時刻が 16 行より先でなければ、その時刻まで待って下のモードへ切り替え、キャリーを立てて返す。先ならキャリーなし。
+;   分割線の時刻 = 次のサンプルの予定の時刻 pcm_due - (その行 pcm_dline - 159 行) × 16 カウント。A・DE・HL を壊す。
+;   次のサンプルの行が分割線の前後 8 行より外なら、時刻を出さない(行の差を 32 倍するのであふれる。前は声を出し終えた
+;   97 行目ごろで呼んで、あふれた時刻を「過ぎた」と読み、76 行も早く下のモードにしていた)。8 行より後ならすぐ切り替え、
+;   8 行より前ならキャリーなし
+split_try:
+	ld	hl, (pcm_dline)
+	ld	de, #-SPLIT_DL
+	add	hl, de			; HL = (行 - 159) × 128
+	ld	a, h
+	add	a, #4
+	cp	a, #8
+	jr	c, 1$			; 前後 8 行のうち
+	bit	7, h
+	jr	z, 3$			; 8 行より後(大きく遅れて入った): すぐ切り替える
+	ret				; 8 行より前(キャリーなし)
+1$:
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl			; H = (行 - 159) × 128 / 8 = × 16 カウント(-1〜+8 行ほどなので、32 倍してもあふれない)
+	ld	e, h
+	ld	a, h
+	rla
+	sbc	a, a
+	ld	d, a			; DE = H を符号つきで広げた値
+	ld	hl, (pcm_due)
+	or	a, a
+	sbc	hl, de
+	push	hl			; 分割線の時刻
+	call	pcm_now
+	ex	de, hl
+	pop	hl
+	push	hl
+	or	a, a
+	sbc	hl, de			; HL = 分割線の時刻 - 今
+	pop	de			; DE = 分割線の時刻
+	bit	7, h
+	jr	nz, 3$			; 過ぎている
+	ld	a, h
+	or	a, a
+	ret	nz			; 16 行より先(キャリーなし)
+2$:
+	call	pcm_now
+	or	a, a
+	sbc	hl, de
+	bit	7, h
+	jr	nz, 2$
+3$:
+	call	split_to_bot
+	scf
+	ret
+
+; pcm_set から: A = 張るサンプルの行。分割線をまたぐなら split_try で切り替え、張る行を A で返す。
+;   切り替えたら 165 行目より後を張る(分割線の時刻は予定から出すので 2 行ほど遅れることがあり、切り替えは 161 行目ごろ。
+;   160〜167 行目は名前表の 20 行目の黒が映るので見えない。162 行目を張ると、もう過ぎていて 1 フレーム来なかった)。
+pcm_cross:
+	ld	c, a
+	ld	a, (pcm_arm)
+	cp	a, #SPLIT_LINE
+	jr	nc, 9$			; このフレームの分割は済んでいる
+	ld	a, c
+	cp	a, #SPLIT_LINE
+	ret	c			; 分割線の前
+	ld	a, (_g_split)
+	or	a, a
+	jr	z, 9$
+	call	split_try
+	ld	a, #SPLIT_LINE + 6
+	cp	a, c
+	ret	nc
+9$:
+	ld	a, c
+	ret
+
+; pcm_set_tick から: 合図の前に、このフレームの分割がまだなら済ませる。張る行を A で返し、pcm_kind を決める
+;   (分割線を返したら pcm_set_tick が pcm_kind を 2 にする。分割線の割込みで切り替えてから合図を張る)
+pcm_tick_line:
+	ld	a, (pcm_arm)
+	cp	a, #SPLIT_LINE
+	jr	nc, 1$
+	ld	a, (_g_split)
+	or	a, a
+	jr	z, 1$
+	call	split_try
+	jr	c, 1$
+	ld	a, #SPLIT_LINE		; 分割線がまだ先: 分割線に張る
+	ret
+1$:
+	ld	a, #TICKLINE
+	ret
+
 	.area	_PAGE0
 
 ; 今の時刻(システムタイマ 16bit)を HL へ。上位・下位・上位と読み、上位が揃うまで読み直す(繰り上がりで 256 狂わないため)
@@ -213,15 +315,7 @@ pcm_now::
 pcm_set:
 	cp	a, #TICKLINE + 1
 	jr	nc, pcm_set_tick
-	ld	c, a			; 分割線をまたぐ行は、分割線に張る(サンプルは最大 3 行早く出る)
-	ld	a, (pcm_arm)
-	cp	a, #SPLIT_LINE
-	ld	a, c
-	jr	nc, 1$
-	cp	a, #SPLIT_LINE
-	jr	c, 1$
-	ld	a, #SPLIT_LINE
-1$:
+	call	pcm_cross		; 分割線をまたぐ行なら、分割線の時刻に下のモードへ切り替えてから張る
 	ld	(pcm_arm), a
 	out	(0x99), a
 	ld	a, #0x80 + 19
@@ -232,13 +326,17 @@ pcm_set:
 
 ; 合図の行(234)を張る
 pcm_set_tick:
-	ld	a, #TICKLINE
+	call	pcm_tick_line		; 分割がまだなら済ませるか、先に分割線を張る(A = 合図か分割線)
 	ld	(pcm_arm), a
 	out	(0x99), a
+	cp	a, #TICKLINE
+	ld	a, #1			; 1 = 合図、2 = 分割線
+	jr	z, 1$
+	inc	a
+1$:
+	ld	(pcm_kind), a
 	ld	a, #0x80 + 19
 	out	(0x99), a
-	ld	a, #1
-	ld	(pcm_kind), a
 	ret
 
 ; 合図(pcm_cur = 今の行): 毎フレームの処理(表示ページの切り替え・音)をして、次のフレームの最初の行を張る。
@@ -356,9 +454,14 @@ _pcm_isr::
 	ld	a, (pcm_kind)
 	or	a, a
 	jr	z, 1$
+	dec	a
+	jr	nz, 11$			; 分割線(入口で切り替えた): 合図を張る
 	ld	hl, #TICKLINE		; 合図の行
 	ld	(pcm_cur), hl
 	call	pcm_tick_do
+	jp	pcm_ret
+11$:
+	call	pcm_set_tick
 	jp	pcm_ret
 1$:
 	; ---- サンプルの行
