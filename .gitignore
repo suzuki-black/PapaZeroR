@@ -3,3 +3,6 @@ build/
 __pycache__/
 *.swp
 .claude/settings.local.json
+
+# 手元だけに置くもの(動画など。コミットしない)
+/local/
