@@ -18,10 +18,11 @@
 ;   ・声のデータは声のモジュール(セグメント 9。tools/gen_voice.sh)にある。割込みの中ではページ2を声のセグメントにして読む
 ;   ・割込みの処理(サンプルごとに走る所)はページ0の RAM(エリア _PAGE0)に置く。切り替え(pcm_begin / pcm_leave)は常駐部。Z80 で転送している間も動くので、R800 専用の命令は使わない
 ;
-; ■ 割込みの中で触る VDP: S#1 の読み 1 回と R#19 の書き込み(2 バイト)。本体は 99h への 2 バイトの書き込みを DI で囲んでいる
+; ■ 割込みの中で触る VDP: S#1 の読み 1 回と R#19 の書き込み(2 バイト)。本体は 99h への 2 バイトの書き込みを DI で囲んでいる。
+;   描画バッファを送っている途中に分割線で下のモードへ切り替えたときは、出口(sys.s の isr_exit)で書き込み先も付け直す
 
 	.module	pcm
-	.globl	htimi, _g_seg2, _g_vdp_r1
+	.globl	htimi, _g_seg2, _g_vdp_r1, isr_exit
 	.globl	_g_split, _g_r1_mask, split_phase, split_to_bot, split_to_top, SPLIT_LINE
 
 SEG_VOICE = 9			; 声のモジュール(game.h の SEG_VOICE。形は tools/gen_voice.sh の冒頭)
@@ -280,6 +281,18 @@ pcm_cross:
 	ld	a, c
 	ret
 
+; pcm_isr の、間に合って入ったときから: H = 予定の行 → 張る。ただし、いま来た行(pcm_arm)+ 3 より手前は張らない。
+;   分割線をまたぐサンプルは 165 行目まで遅らせて張る(pcm_cross)。その次のサンプルの予定が 166 行目になることがあり、
+;   165 行目の割込みの中で 166 を張ると、張り終える前にその行が過ぎて割込みが 1 フレーム来ず、次のフレームの分割線が抜けた
+;   (1〜5 面の自動プレイ 90 秒に 0〜2 回。計器盤が 1 枚消える)
+pcm_set_on:
+	ld	a, (pcm_arm)
+	add	a, #3
+	cp	a, h
+	jp	nc, pcm_set		; 予定が近すぎる: いま来た行 + 3
+	ld	a, h
+	jp	pcm_set
+
 ; pcm_set_tick から: 合図の前に、このフレームの分割がまだなら済ませる。張る行を A で返し、pcm_kind を決める
 ;   (分割線を返したら pcm_set_tick が pcm_kind を 2 にする。分割線の割込みで切り替えてから合図を張る)
 pcm_tick_line:
@@ -525,8 +538,7 @@ _pcm_isr::
 	ld	de, #127
 	add	hl, de
 	add	hl, hl
-	ld	a, h			; 張る行(切り上げ)
-	call	pcm_set
+	call	pcm_set_on		; H = 張る行(切り上げ)
 	jr	pcm_ret
 5$:
 	; 合図の行(234)を張る。張った行が 231 以降なら、すぐ合図(1〜2 行先を張ると、割込みが少し遅れて入っただけで
@@ -564,6 +576,4 @@ pcm_ret:
 	pop	hl
 	pop	de
 	pop	bc
-	pop	af
-	ei
-	ret
+	jp	isr_exit		; sys.s(描画バッファを送っている途中に下のモードへ切り替えたなら、書き込み先を付け直してから戻る)

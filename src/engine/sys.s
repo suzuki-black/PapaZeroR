@@ -320,6 +320,8 @@ _split_off::
 
 ; 下のモードへ(AF だけ壊す)。pcm.s の声の割込みからも呼ぶ
 split_to_bot::
+	ld	a, (_xf_busy)		; 描画バッファを送っている途中なら、割込みの出口で書き込み先を付け直す(vdp.s の xf_fixup)
+	ld	(_xf_hit), a
 	ld	a, (_g_r1_mask)
 	and	a, #(R1_BOT & 0xBF)
 	out	(0x99), a
@@ -383,13 +385,11 @@ isr0:
 	VREG	#1, 15			; S#1 を読んで FH を落とす
 	in	a, (0x99)
 	VREG	#0, 15
-	pop	af
-	ei
-	ret
+	jr	isr_exit
 5$:
 	in	a, (0x99)
 	rlca
-	jr	nc, 9$
+	jr	nc, isr_exit
 	push	bc
 	push	de
 	push	hl
@@ -409,7 +409,9 @@ isr0:
 	pop	hl
 	pop	de
 	pop	bc
-9$:
+; 割込みの出口(pcm.s の声の割込みも、ここから戻る)
+isr_exit::
+	call	xf_fixup		; 送っている途中に下のモードへ切り替えたなら、書き込み先を付け直す(vdp.s)
 	pop	af
 	ei
 	ret
@@ -707,7 +709,7 @@ _g_z80x::	.ds	1	; 1 = Z80 で転送する(隠しコンフィグの XFER で R800
 _g_z80x_ok::	.ds	1	; 1 = ファームウェアに CHGCPU がある(sys_z80x_init が決める)
 	.area	_CODE
 
-	.globl	_g_vdp_r1, XF_CODE, xfer_r800
+	.globl	_g_vdp_r1, XF_CODE, xfer_r800, xf_run, xf_fixup, _xf_busy, _xf_hit
 
 ; void sys_z80x_init(void) — ファームウェアに CHGCPU があるか(MSXVER >= 3)で g_z80x_ok と g_z80x を決める。起動時に 1 回
 _sys_z80x_init::
@@ -779,7 +781,7 @@ _xfer_z80::
 	out	(0x99), a		; R#14 = 0
 	ei
 	ld	c, #0x98
-	call	XF_CODE			; vdp.s の xfer_prep が書き出した転送のコード
+	call	xf_run			; vdp.s の xfer_prep が書き出した転送のコード
 	ld	a, #FMW_WAIT		; R800 に戻す前に、FM の待ちを長く
 	ld	(_g_fmw_n), a
 	ld	a, #2

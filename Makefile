@@ -81,6 +81,11 @@ $(patsubst %,$(BUILD)/%.rel,$(CP0)): $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUIL
 $(BUILD)/game_ai.rel $(BUILD)/sndtest.rel: $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --constseg HICODE --codeseg HICODE --opt-code-size -c -o $@ $<
 
+# 爆発(fx.c)は大きさを優先する(常駐部が足りない。約 370 バイト小さい。重いのは呼び先の塗りで、ここは爆発ごとに数回のループ。
+# 1・3 面の自動プレイ 90 秒で fps は変わらなかった)
+$(BUILD)/fx.rel: $(ENG)/fx.c $(HDRS) | $(BUILD)
+	$(CC) $(CFLAGS) --opt-code-size -c -o $@ $<
+
 $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --opt-code-speed -c -o $@ $<
 
