@@ -47,6 +47,7 @@ town, a harbor, a canyon, a sea of clouds, the stratosphere, and into orbit.
 - [Controls](#controls)
 - [Cockpit](#cockpit)
 - [Requirements](#requirements)
+- [Download](#download)
 - [Building](#building)
 - [Running](#running)
 - [Project structure](#project-structure)
@@ -143,6 +144,11 @@ walks through it, one instrument at a time, before the demo.
 - The ROM also runs in [WebMSX](https://webmsx.org/) (turboR machine); the official WebMSX does not
   emulate the turboR PCM, so the voices may be silent there.
 
+### Download
+The ROM is on the [Releases page](https://github.com/suzuki-black/PapaZeroR/releases/latest). The zip holds
+`PapaZero [ASCII8].rom`, a 512 KB ASCII8 MegaROM image, and the license. It needs an MSX turboR (or openMSX with a
+turboR machine).
+
 ### Building
 Requires [SDCC](https://sdcc.sourceforge.net/) and Python 3 with Pillow. [Flite](http://www.festvox.org/flite/)
 is needed only to regenerate the voices (`sh tools/gen_voice.sh`).
@@ -179,6 +185,7 @@ docs/          development notes
 - **[Design spec / 指示書](docs/指示書.md)** — what the game is and how it is built (screens, rules, enemies, stages, rendering, sound, memory map).
 - **[Verification log / 検証記録](docs/検証記録.md)** — every problem found in testing, how it was measured and fixed.
 - **[TODO](docs/TODO.md)** — what is left.
+- **[CHANGELOG](CHANGELOG.md)**.
 
 ### Scope & honest positioning
 **[CoasterHomeRunR](https://github.com/suzuki-black/CoasterHomeRunR)** showed that real-time 3D is possible in
@@ -219,6 +226,7 @@ only as the kind of game this aims at; PAPA ZERO is not affiliated with it or it
 - [操作](#操作)
 - [計器盤](#計器盤)
 - [動作環境](#動作環境)
+- [ダウンロード](#ダウンロード)
 - [ビルド](#ビルド)
 - [実行](#実行)
 - [ディレクトリ構成](#ディレクトリ構成)
@@ -307,6 +315,10 @@ only as the kind of game this aims at; PAPA ZERO is not affiliated with it or it
 - **実機ではまだ試していません。**
 - [WebMSX](https://webmsx.org/)（turboR 機種）でも動きます。本家の WebMSX は turboR の PCM を鳴らさないので、声は出ないことがあります。
 
+### ダウンロード
+ROM は [Releases のページ](https://github.com/suzuki-black/PapaZeroR/releases/latest)にあります。zip の中身は
+512KB の ASCII8 メガROM イメージ `PapaZero [ASCII8].rom` とライセンスです。MSX turboR（または turboR の機種を使う openMSX）で動きます。
+
 ### ビルド
 [SDCC](https://sdcc.sourceforge.net/) と Python 3（Pillow）が必要です。[Flite](http://www.festvox.org/flite/) は声を作り直すときだけ使います（`sh tools/gen_voice.sh`）。
 
@@ -341,6 +353,7 @@ docs/          開発ノート
 - **[指示書](docs/指示書.md)** — ゲームの仕様と作り(画面・遊びの決まり・敵・面・描画・音・メモリの配置)。
 - **[検証記録](docs/検証記録.md)** — 試験で見つけた問題と、測り方・直し方の記録。
 - **[TODO](docs/TODO.md)** — 残っていること。
+- **[CHANGELOG](CHANGELOG.md)**。
 
 ### 位置づけ
 『[CoasterHomeRunR](https://github.com/suzuki-black/CoasterHomeRunR)』で、turboR の SCREEN 3 でもリアルタイムの 3D が描けると分かりました。
