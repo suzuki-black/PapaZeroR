@@ -140,7 +140,12 @@ walks through it, one instrument at a time, before the demo.
 - **Target hardware: MSX turboR** (FS-A1ST / FS-A1GT).
 - The turboR system ROM is copyrighted and is **not** included. Development and testing are done in
   [openMSX](https://openmsx.org/) with a machine built from a dumped turboR BIOS.
-- It has **not been tried on real hardware yet**.
+- The author has also played it through to the ending on real hardware (FS-A1ST).
+- Known issues on real hardware:
+  - After explosions or rolls, old blocks sometimes stayed on the 3D view (they cleared when the lock-on frame
+    passed over them; this never happens in openMSX). A fix is in, but it has not been confirmed on real hardware yet.
+  - The hardware pause key freezes the game; pressing it again does not resume.
+- The author's machine is not in good shape, so fixes that need testing on real hardware may have to wait.
 - The ROM also runs in [WebMSX](https://webmsx.org/) (turboR machine); the official WebMSX does not
   emulate the turboR PCM, so the voices may be silent there.
 
@@ -193,9 +198,9 @@ SCREEN 3 on the turboR. PAPA ZERO pushes that further, aiming for a cinematic co
 of *Starblade* on the MSX: a cockpit you sit in, enemies and their shots coming at the screen, and films between the
 stages.
 - The whole game is in place: the opening, seven stages with their bosses, the films between them, the ending and
-  the staff roll. The author has played it through from the title to the ending in openMSX.
+  the staff roll. The author has played it through from the title to the ending, in openMSX and on real hardware.
 - 64 × 40 blocks is coarse, so the 3D is about readable shapes and framing rather than detail.
-- It has not been tried on real hardware yet. What is still open is in [TODO](docs/TODO.md).
+- Known issues on real hardware are listed under Requirements. What is still open is in [TODO](docs/TODO.md).
 
 ### Credits
 - **Original Concept / Direction:** suzuki-black
@@ -312,7 +317,12 @@ only as the kind of game this aims at; PAPA ZERO is not affiliated with it or it
 - **MSX turboR**（FS-A1ST / FS-A1GT）。
 - turboR 本体 ROM は著作物のため**同梱していません**。開発と検証は [openMSX](https://openmsx.org/) で、
   実機の BIOS を吸い出した機種定義を使って行っています。
-- **実機ではまだ試していません。**
+- 作者が実機（FS-A1ST）でもエンディングまで遊んでいます。
+- 実機で分かっている問題:
+  - 爆発やロールの後に、3D 画面へ古いブロックが残ることがありました（照準の枠が重なると消えます。openMSX では起きません）。
+    対策を入れましたが、実機ではまだ確かめていません。
+  - ハードウェアのポーズキーを押すとフリーズし、もう一度押しても戻りません。
+- 作者の実機の調子が悪く、実機での確認が要る直しは、しばらくできないかもしれません。
 - [WebMSX](https://webmsx.org/)（turboR 機種）でも動きます。本家の WebMSX は turboR の PCM を鳴らさないので、声は出ないことがあります。
 
 ### ダウンロード
@@ -360,9 +370,9 @@ docs/          開発ノート
 本作はそれをさらに推し進め、『スターブレード』のような、映画のように見せるコクピット視点の 3D シューティングを MSX で実現することを目指しました。
 操縦席に座り、敵と敵弾が画面へ向かってくる遊びと、面と面をつなぐ映像です。
 - オープニング、ボスのいる全 7 面、面の間の映像、エンディング、スタッフロールまで、ゲームとして揃っています。
-  作者が openMSX でタイトルからエンディングまで通して遊んでいます。
+  作者が openMSX と実機で、タイトルからエンディングまで通して遊んでいます。
 - 64 × 40 ブロックは粗いので、3D は細かさより、形の分かりやすさと映し方で見せています。
-- 実機ではまだ試していません。残っていることは [TODO](docs/TODO.md) にあります。
+- 実機で分かっている問題は、動作環境に書きました。残っていることは [TODO](docs/TODO.md) にあります。
 
 ### クレジット
 - **原案・監督:** suzuki-black
