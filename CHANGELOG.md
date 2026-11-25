@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-25
+
+### Added
+- F1 で一時停止(面の道中と、オープニング・面の間の映像で)。画面に大きく PAUSE を出し、止める・戻るときに音を鳴らす。
+  タイトル・デモ・エンディングでは止まらない。turbo R 本体のポーズキーはフリーズするので使わない。
+
+### Changed
+- README の題名から「仮題」を外した。
+
+### Fixed
+- 同じソースから作っても、映像の人物や機体を縮めたスプライトが数ドット違い、ROM が毎回変わっていた
+  (縮めるときに同じ数の色があると、実行ごとに順の変わる set で勝ちを決めていた)。毎回同じ ROM になる。
+
 ## [0.1.0] - 2026-11-23
 
 最初の公開版。オープニングから全 7 面、面の間の映像、エンディング、スタッフロールまで遊べる。作者が openMSX と実機(FS-A1ST)で
@@ -37,5 +50,6 @@
 - 宇宙の面で高度が「---」にならず、前の面の数字が残っていた。深宇宙の星がロールで回らなかった。
 - ロックしているのに誘導弾が飛ばない敵、照準の札が 1 体にいくつも付く、敵弾が画面の端へ流れて撃ち落とせない、などの遊びにくさ。
 
-[Unreleased]: https://github.com/suzuki-black/PapaZeroR/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/suzuki-black/PapaZeroR/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/suzuki-black/PapaZeroR/releases/tag/v0.1.1
 [0.1.0]: https://github.com/suzuki-black/PapaZeroR/releases/tag/v0.1.0
