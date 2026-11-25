@@ -1,4 +1,4 @@
-# PAPA ZERO(仮題 / working title)
+# PAPA ZERO
 
 <p align="center">
   <img src="docs/media/title.png" width="640" alt="PAPA ZERO — title screen">
@@ -110,6 +110,7 @@ curtain, a mega missile, space mines; stage 7 uses them all in turn). A short fi
 | Arrow keys | Move the sight |
 | Space | Vulcan · start · skip the opening |
 | **M** or **B** | Homing missile (while a prompt is shown it also performs the manoeuvre; a missile still fires if anything is locked) |
+| **F1** | Pause / resume (during the stages and the films between them; not on the title, the demo or the ending). Please don't use the turboR's own pause key |
 | ↑↑↓↓←→←→ B A on the title screen | Hidden settings menu (damage, invincibility, starting stage, lives, one-shot, FPS display, transfer, split, roll, size of the missile lock-on box, FILM: watch only the films) |
 | M on the title screen | Sound test (↑↓ choose, ←→ switch between music, effects and voices, Space plays, M returns) |
 
@@ -144,7 +145,7 @@ walks through it, one instrument at a time, before the demo.
 - Known issues on real hardware:
   - After explosions or rolls, old blocks sometimes stayed on the 3D view (they cleared when the lock-on frame
     passed over them; this never happens in openMSX). A fix is in, but it has not been confirmed on real hardware yet.
-  - The hardware pause key freezes the game; pressing it again does not resume.
+  - The hardware pause key freezes the game; pressing it again does not resume. Use F1 to pause instead.
 - The author's machine is not in good shape, so fixes that need testing on real hardware may have to wait.
 - The ROM also runs in [WebMSX](https://webmsx.org/) (turboR machine); the official WebMSX does not
   emulate the turboR PCM, so the voices may be silent there.
@@ -288,6 +289,7 @@ only as the kind of game this aims at; PAPA ZERO is not affiliated with it or it
 | カーソルキー | 照準を動かす |
 | スペース | バルカン・開始・オープニングを飛ばす |
 | **M** または **B** | 誘導弾（指示が出ている間は機動もする。ロックがあれば誘導弾も撃つ） |
+| **F1** | 一時停止・再開（面の道中と、オープニング・面の間の映像で。タイトル・デモ・エンディングでは止まりません）。turbo R 本体のポーズキーは使わないでください |
 | タイトルで ↑↑↓↓←→←→ B A | 隠しの設定メニュー（ダメージ・無敵・開始面・残機・一撃・FPS 表示・転送・分割・ロール・誘導弾のロックの枠の大きさ・映像の場面だけを見る FILM） |
 | タイトルで M | サウンドテスト（↑↓ で選ぶ、←→ で曲・効果音・声を切り替え、スペースで鳴らす、M で戻る） |
 
@@ -321,7 +323,7 @@ only as the kind of game this aims at; PAPA ZERO is not affiliated with it or it
 - 実機で分かっている問題:
   - 爆発やロールの後に、3D 画面へ古いブロックが残ることがありました（照準の枠が重なると消えます。openMSX では起きません）。
     対策を入れましたが、実機ではまだ確かめていません。
-  - ハードウェアのポーズキーを押すとフリーズし、もう一度押しても戻りません。
+  - ハードウェアのポーズキーを押すとフリーズし、もう一度押しても戻りません。一時停止は F1 を使ってください。
 - 作者の実機の調子が悪く、実機での確認が要る直しは、しばらくできないかもしれません。
 - [WebMSX](https://webmsx.org/)（turboR 機種）でも動きます。本家の WebMSX は turboR の PCM を鳴らさないので、声は出ないことがあります。
 

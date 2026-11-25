@@ -3,13 +3,14 @@
 ;   起動時に 1 回セグメント 8 へ読み込む。割り込み(sys.s)はページ2をセグメント 8 にしてから 0x8000 を呼び、
 ;   常駐部の bgm_play / bgm_stop(sys.s)はページ2を切り替えて 0x8003 / 0x8006 を呼ぶ。
 	.module	modhead_snd
-	.globl	_sndm_tick, _sndm_play, _sndm_stop
+	.globl	_sndm_tick, _sndm_play, _sndm_stop, fm_ch
 
 	.area	_HEADER (ABS)
 	.org	0x8000
 	jp	_sndm_tick		; void sndm_tick(void)
 	jp	_sndm_play		; void sndm_play(u8 song)   A = 曲の番号
 	jp	_sndm_stop		; void sndm_stop(void)
+	.dw	fm_ch			; 0x8009: FM のチャンネルの並び(sys.s の snd_hush が、一時停止で鳴っている音を切るのに読む)
 
 	; 区画の並び(crt0.s と同じ): コードと定数を先に、変数(0xBE00-)を後に置く
 	.area	_HOME

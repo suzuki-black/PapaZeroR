@@ -29,7 +29,7 @@ FMC_SIZE = 18
 FM_MEL	= 6
 
 	.area	_DATA
-fm_ch:		.ds	FMC_SIZE * (FM_MEL + 1)	; メロディ 6 + リズム
+fm_ch::		.ds	FMC_SIZE * (FM_MEL + 1)	; メロディ 6 + リズム
 fm_nmel:	.ds	1
 fm_rhy:		.ds	1
 fm_flags:	.ds	1

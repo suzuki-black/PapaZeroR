@@ -81,9 +81,9 @@ $(patsubst %,$(BUILD)/%.rel,$(CP0)): $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUIL
 $(BUILD)/game_ai.rel $(BUILD)/sndtest.rel: $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --constseg HICODE --codeseg HICODE --opt-code-size -c -o $@ $<
 
-# 爆発(fx.c)は大きさを優先する(常駐部が足りない。約 370 バイト小さい。重いのは呼び先の塗りで、ここは爆発ごとに数回のループ。
-# 1・3 面の自動プレイ 90 秒で fps は変わらなかった)
-$(BUILD)/fx.rel: $(ENG)/fx.c $(HDRS) | $(BUILD)
+# 爆発(fx.c)・計器の字と数字(hud.c)・起動と表示(main.c)は大きさを優先する(常駐部が足りない。fx.c は約 370 バイト小さい)。
+# どれも重いのは呼び先(塗り・字形・転送のアセンブラ)で、1・3 面の自動プレイ 90 秒で fps は変わらなかった
+$(BUILD)/fx.rel $(BUILD)/hud.rel $(BUILD)/main.rel: $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --opt-code-size -c -o $@ $<
 
 $(BUILD)/%.rel: $(ENG)/%.c $(HDRS) | $(BUILD)
@@ -123,7 +123,7 @@ $(BUILD)/sndtick.rel: $(ENG)/sndtick.c $(HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) --max-allocs-per-node 100000 -c -o $@ $<
 	@if grep -qiE '\b(multu|multuw|ixh|ixl|iyh|iyl)\b' $(BUILD)/sndtick.asm; then echo "sndtick.c: Z80 でも動くコードに R800 専用・非公式の命令が入った"; rm -f $@; exit 1; fi
 $(BUILD)/sndmod.ihx: $(BUILD)/modhead_snd.rel $(BUILD)/sndtick.rel $(BUILD)/sndfm.rel $(BUILD)/ressyms.rel
-	$(CC) -mr800 --no-std-crt0 --data-loc 0xBE00 -Wl-j -Wl-m -Wl-u --code-loc 0x8009 -o $@ $^
+	$(CC) -mr800 --no-std-crt0 --data-loc 0xBE00 -Wl-j -Wl-m -Wl-u --code-loc 0x800B -o $@ $^
 
 # 面のコード: 1 つだけ作り、ページ3の 2 か所に分けて置く
 $(BUILD)/stg.rel: $(ENG)/stg.c $(HDRS) | $(BUILD)

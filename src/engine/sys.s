@@ -87,6 +87,10 @@ _g_flip_req::	.ds	1	; 1 = 次の垂直帰線で g_flip_page を表示する
 _g_flip_page::	.ds	1	; R#4 に書く値(0 または 1)
 _g_spr_live::	.ds	1	; 1 = 本体が VDP に触らない間(描画中と表示待ち)。このときだけ割り込みが照準を書く
 _g_spr0_req::	.ds	1	; 1 = g_spr_attr の照準(スプライト 0 の Y, X)を次の割り込みで VRAM へ
+_g_paused::	.ds	1	; 1 = 一時停止中(割り込みは g_tick を進めず、音も進めない。下の pause_check)
+_g_f1_req::	.ds	1	; 1 = F1 キーが押された(一時停止の求め。割り込みが押し始めで立てる)
+f1_up:		.ds	1	; 0 = 前のティックで F1 キーが押されていた
+spr_y:		.ds	19	; 一時停止の間、隠したスプライトの Y
 flip_tick:	.ds	1	; 最後に切り替えたときの g_tick(下位)
 
 	.area	_CODE
@@ -117,6 +121,9 @@ htimi::
 	ld	sp, (isr_sp)
 	ret
 htimi_body:
+	ld	a, (_g_paused)
+	or	a, a
+	ret	nz			; 一時停止の間は時計も音も進めない(表示ページの切り替えもしない)
 	ld	hl, (_g_tick)
 	inc	hl
 	ld	(_g_tick), hl
@@ -147,6 +154,21 @@ htimi_body:
 	inc	hl			; _g_b_cnt
 	inc	(hl)
 12$:
+	; F1 キー(行6 の bit5)の押し始めで、一時停止を求める
+	ld	a, c
+	or	a, #6
+	out	(0xAA), a
+	in	a, (0xA9)
+	and	a, #0x20		; 0 = 押している
+	ld	hl, #f1_up
+	ld	e, (hl)
+	ld	(hl), a
+	jr	nz, 14$
+	or	a, e
+	jr	z, 14$			; 前のティックも押していた
+	ld	a, #1
+	ld	(_g_f1_req), a
+14$:
 	ld	a, (_g_flip_req)
 	or	a, a
 	jr	z, 1$
@@ -513,6 +535,195 @@ _psg_write::
 	out	(0xA0), a
 	ld	a, l
 	out	(0xA1), a
+	ret
+
+; ---------------------------------------------------------------------------
+; 一時停止の道具
+; void pause_check(u8 page)   A = 映していないページ(present の最後から)
+;   F1 が押されていて(g_f1_req)、止めてよい場面なら一時停止する。止められるのはゲーム(1〜7 面)と映像の場面(オープニング・
+;   面の間)だけで、タイトル・隠しコンフィグ・サウンドテスト(g_scene = 0)、自動のデモ(g_auto)、エンディングとスタッフロール
+;   (モジュール 7)、ゲームオーバー(life = 0)では、押されたことを捨てる。声の途中なら、鳴り終わるまで持ち越す。
+;   止めるとき: 切り替えを待ち、いまの絵に PAUSE を書いて映していないページへ送って映し(main.c の pause_draw)、音を切る。
+;   止めている間は割り込みが g_tick を進めないので、残り時間・敵・曲と同期した映像は全部止まる。F1 を離して、押して、離したら、
+;   PAUSE の無い元のページへ切り替えて戻る(描画バッファの PAUSE は次の絵で描き直される)。
+;   本体のポーズキー(turbo R)は使わない: 声の間は走査線割込みだけで回すので、CPU が止まって張った行が過ぎると割込みが来なくなる
+	.globl	_g_scene, _g_auto, _g_mod, _life, _pause_draw
+_pause_check::
+	ld	c, a
+	ld	a, (_g_f1_req)
+	or	a, a
+	ret	z
+	ld	a, (_g_scene)
+	or	a, a
+	jr	z, 9$
+	ld	a, (_g_auto)
+	or	a, a
+	jr	nz, 9$
+	ld	a, (_g_mod)
+	cp	a, #7
+	jr	z, 9$
+	ld	a, (_life)
+	or	a, a
+	jr	z, 9$
+	ld	a, (_pcm_mode)
+	ld	hl, #_pcm_req
+	or	a, (hl)
+	ret	nz			; 声の途中: 次の絵で
+	push	bc			; C = 映していないページ(呼ぶ先が BC を壊すので積んでおく)
+	call	wait_flip
+	call	_pause_draw
+	call	spr_swap		; 照準・札のスプライトを隠す(PAUSE の字に重なって読めなかった)
+	pop	bc
+	push	bc
+	ld	a, c
+	call	flip_to			; PAUSE のページを映す(スプライトの表も送られる)
+	ld	a, #1
+	ld	(_g_paused), a
+	call	_snd_hush		; 音のドライバが止まってから切る(先に切ると、切り替えを待つ間にドライバがまた鳴らした)
+	call	pause_beep
+	ld	b, #0
+	call	f1_until		; 離す
+	inc	b
+	call	f1_until		; 押す
+	dec	b
+	call	f1_until		; 離す
+	call	pause_beep
+	call	spr_swap
+	xor	a, a
+	ld	(_g_paused), a
+	pop	bc
+	ld	a, c
+	xor	a, #1
+	call	flip_to			; 元のページへ(スプライトも戻る)
+9$:
+	xor	a, a
+	ld	(_g_f1_req), a
+	ret
+; スプライトを隠す・戻す(同じものを 2 回呼ぶ)。Y と spr_y を、どちらも 209 と XOR して入れ替える:
+;   spr_y が 0 の 1 回目は Y = 209(表示しない)になり、2 回目で元の Y に戻って spr_y は 0 に戻る。C を壊す
+N_SPR	= 19
+spr_swap:
+	ld	hl, #_g_spr_attr
+	ld	de, #spr_y
+	ld	b, #N_SPR
+1$:
+	ld	a, (de)
+	xor	a, #209
+	ld	c, (hl)
+	ld	(hl), a
+	ld	a, c
+	xor	a, #209
+	ld	(de), a
+	inc	de
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	hl
+	djnz	1$
+	ret
+; 止める・戻るときの音: PSG の ch C で短く 2 音(ド → ソ)。音のドライバは止まっているので直に鳴らす
+;   (ミキサーは戻ればドライバが毎ティック書き直す)
+pause_beep:
+	ld	hl, #(0xBB << 8) | 7	; ミキサー: ch C の音だけ(bit7 = ポート B は出力のまま)
+	call	psg_hl
+	ld	hl, #(12 << 8) | 10	; ch C の音量
+	call	psg_hl
+	ld	de, #(107 << 8) | 8	; 1046Hz(C6)、割り込み 8 回(約 4 フレーム)
+	call	1$
+	ld	de, #(71 << 8) | 12	; 1568Hz(G6)、12 回
+	call	1$
+	ld	hl, #(0 << 8) | 10
+	jr	psg_hl
+1$:
+	ld	h, d
+	ld	l, #4
+	call	psg_hl
+	ld	hl, #(0 << 8) | 5
+	call	psg_hl
+	ld	b, e
+2$:
+	ei
+	halt
+	djnz	2$
+	ret
+; L = レジスタ、H = 値
+psg_hl:
+	ld	a, l
+	ld	l, h
+	jp	_psg_write
+; A = ページ → 表示の切り替えを予約し、済むまで待つ
+flip_to:
+	ld	(_g_flip_page), a
+	ld	a, #1
+	ld	(_g_flip_req), a
+wait_flip:
+	ld	a, (_g_flip_req)
+	or	a, a
+	ret	z
+	call	_wait_tick
+	jr	wait_flip
+; B = 1 なら F1 を押すまで、0 なら離すまで待つ(一時停止の間は g_tick が進まないので、割り込みごとに見る)
+f1_until:
+	di
+	in	a, (0xAA)
+	and	a, #0xF0
+	or	a, #6
+	out	(0xAA), a
+	in	a, (0xA9)
+	ei
+	cpl
+	rlca
+	rlca
+	rlca
+	and	a, #1			; bit5 → bit0(1 = 押している)
+	cp	a, b
+	ret	z
+	halt
+	jr	f1_until
+; void snd_hush(void) — 鳴っている音を切る(曲の進み具合はそのまま)。FM のメロディ(ch0〜5)はキーオン中のものを
+;   音程はそのままでキーオフし、PSG の 3 つの音量を 0 にする。戻ったら、次の音から鳴り直す。
+;   FM のチャンネルの並びの番地は、音のモジュールの 0x8009 にある(modhead_snd.s)
+SND_FMCH = 0x8009
+FMC_HI	= 8			; sndfm.s のチャンネルの並び: レジスタ 0x20+ch の値(キーオンを除く)、次がキーオン中か
+FMC_SIZE = 18
+_snd_hush::				; (一時停止はゲームの中だけなので、音のモジュールは読み込んである)
+	di
+	ld	a, #SEG_SND
+	out	(0xFE), a
+	ld	hl, (SND_FMCH)
+	ld	de, #FMC_HI
+	add	hl, de
+	ld	bc, #0x0620		; B = メロディ 6 つ、C = レジスタ 0x20
+1$:
+	ld	e, (hl)			; FMC_HI
+	inc	hl
+	ld	a, (hl)			; FMC_ON
+	dec	hl
+	or	a, a
+	jr	z, 2$
+	push	hl
+	push	bc
+	ld	a, c
+	ld	l, e
+	call	_fm_write
+	pop	bc
+	pop	hl
+2$:
+	ld	de, #FMC_SIZE
+	add	hl, de
+	inc	c
+	djnz	1$
+	ld	b, #3
+	ld	c, #8
+3$:
+	ld	a, c
+	ld	l, #0
+	call	_psg_write
+	inc	c
+	djnz	3$
+	ld	a, (_g_seg2)
+	out	(0xFE), a
+	ei
 	ret
 
 ; ---------------------------------------------------------------------------

@@ -36,6 +36,21 @@ void flash_palette(void) { pal_state = 1; }
 
 void (*g_poll)(void);       /* 表示を待つ間に毎ティック呼ぶ(game.c の照準)。0 = 呼ばない */
 
+/* ---- 一時停止(F1)。止められるのはゲーム(1〜7 面)と映像の場面(オープニング・面の間)の間だけ。
+ * タイトル・隠しコンフィグ・サウンドテスト・自動のデモ・ゲームオーバー・エンディング(とスタッフロール)では止めない。
+ * 本体のポーズキー(turbo R)は使わない: 声を鳴らしている間は走査線割込みだけで回しているので、CPU が止まって張った行が過ぎると
+ * 割込みが二度と来ない(実機でポーズキーを押して戻らなくなった)。 */
+void pause_check(u8 page);       /* sys.s */
+void text_center(i8 y, const char *s, u8 color, u8 scale);
+
+/* 一時停止に入るとき(sys.s の pause_check から): いまの絵に大きく PAUSE を書き、映していないページへ送る */
+void pause_draw(void)
+{
+    text_center(13, "PAUSE", C_BLACK, 3);
+    text_center(12, "PAUSE", C_WHITE, 3);
+    vdp_xfer(back_page);
+}
+
 void present(void)
 {
     u16 now;
@@ -56,6 +71,7 @@ void present(void)
     g_flip_page = back_page;
     g_flip_req = 1;
     back_page ^= 1;
+    pause_check(back_page);            /* F1 が押されていれば一時停止(sys.s) */
 }
 
 static u8 mod_seg = SEG_MOD_A;      /* いま使っているセグメント */
