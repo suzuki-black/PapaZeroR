@@ -238,7 +238,7 @@ def shrink(rows, k, ch):
             cells = [rows[yy][xx] for yy in range(sy0, sy1) for xx in range(sx0, sx1)]
             filled = [c for c in cells if c != '.']
             if len(filled) * 2 >= len(cells):
-                best = max(set(filled), key=filled.count)
+                best = max(sorted(set(filled)), key=filled.count)   # 同じ数なら並びの順(set の順は実行ごとに変わり、ROM が毎回違った)
                 if best == ch:
                     out[16 - m + y][(16 - m) // 2 + x] = '#'
     return [''.join(r) for r in out]
